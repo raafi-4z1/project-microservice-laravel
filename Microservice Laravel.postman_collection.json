@@ -1,0 +1,567 @@
+{
+	"info": {
+		"_postman_id": "a0b11f0a-861e-44b3-8b5b-f034a2537f00",
+		"name": "Microservice Laravel",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "14041935"
+	},
+	"item": [
+		{
+			"name": "Class-microservice",
+			"item": [
+				{
+					"name": "All",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{authorizationClass}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURLClass}}/class/all",
+							"host": [
+								"{{baseURLClass}}"
+							],
+							"path": [
+								"class",
+								"all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "By Id",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{authorizationClass}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURLClass}}/class?idRuangKelas=3",
+							"host": [
+								"{{baseURLClass}}"
+							],
+							"path": [
+								"class"
+							],
+							"query": [
+								{
+									"key": "idRuangKelas",
+									"value": "3"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create  Class",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{authorizationClass}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "namaRuangKelas",
+									"value": "1 A",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseURLClass}}/class",
+							"host": [
+								"{{baseURLClass}}"
+							],
+							"path": [
+								"class"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Class",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{authorizationClass}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURLClass}}/class?idRuangKelas=3&namaRuangKelas=1 AA",
+							"host": [
+								"{{baseURLClass}}"
+							],
+							"path": [
+								"class"
+							],
+							"query": [
+								{
+									"key": "idRuangKelas",
+									"value": "3"
+								},
+								{
+									"key": "namaRuangKelas",
+									"value": "1 AA"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Class",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{authorizationClass}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": []
+						},
+						"url": {
+							"raw": "{{baseURLClass}}/class?idRuangKelas=4",
+							"host": [
+								"{{baseURLClass}}"
+							],
+							"path": [
+								"class"
+							],
+							"query": [
+								{
+									"key": "idRuangKelas",
+									"value": "4"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Gateway",
+			"item": [
+				{
+					"name": "Basic",
+					"item": [
+						{
+							"name": "Register",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "name",
+											"value": "Jhon",
+											"type": "text"
+										},
+										{
+											"key": "email",
+											"value": "jhon@email.com",
+											"type": "text"
+										},
+										{
+											"key": "password",
+											"value": "123456",
+											"type": "text"
+										},
+										{
+											"key": "confirm_password",
+											"value": "123456",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseURLGateway}}/register",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"register"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Login",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "email",
+											"value": "jhon@email.com",
+											"type": "text"
+										},
+										{
+											"key": "password",
+											"value": "123456",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseURLGateway}}/login",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"login"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "User",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": []
+								},
+								"url": {
+									"raw": "{{baseURLGateway}}/user",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"user"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Class-microservice",
+					"item": [
+						{
+							"name": "All",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{baseURLGateway}}/class/all",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"class",
+										"all"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "By Id",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{baseURLGateway}}/class?idRuangKelas=8",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"class"
+									],
+									"query": [
+										{
+											"key": "idRuangKelas",
+											"value": "8"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create  Class",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "namaRuangKelas",
+											"value": "1 B",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseURLGateway}}/class",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"class"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Class",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{baseURLGateway}}/class?idRuangKelas=2&namaRuangKelas=1 AA",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"class"
+									],
+									"query": [
+										{
+											"key": "idRuangKelas",
+											"value": "2"
+										},
+										{
+											"key": "namaRuangKelas",
+											"value": "1 AA"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Class",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": []
+								},
+								"url": {
+									"raw": "{{baseURLGateway}}/class?idRuangKelas=1",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"class"
+									],
+									"query": [
+										{
+											"key": "idRuangKelas",
+											"value": "1"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"auth": {
+				"type": "oauth2",
+				"oauth2": [
+					{
+						"key": "addTokenTo",
+						"value": "header",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseURLClass",
+			"value": "http://classmicroservices.test/api",
+			"type": "default"
+		},
+		{
+			"key": "authorizationClass",
+			"value": "base64:uUTtmBL1ZmUdIOtGSx+2uWQuYg1MdGWnyZb1AC4W/go=",
+			"type": "string"
+		},
+		{
+			"key": "baseURLGateway",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		}
+	]
+}
