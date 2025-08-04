@@ -32,7 +32,7 @@ php artisan key:generate
 6.  Selanjutnya migrasi database. Tunggu sampai prosesnya selesai
 
 ```sh
-php artisan migrate --seed
+php artisan migrate
 ```
 7. Untuk men-setting passport jalankan perintah untuk membuat encryption keys dan password grant client
 
@@ -74,7 +74,7 @@ php artisan key:generate
 6.  Selanjutnya migrasi database. Tunggu sampai prosesnya selesai
 
 ```sh
-php artisan migrate --seed
+php artisan migrate
 ```
 7. Buat sebuah virtual host untuk Class Microservice anda jika dilakukan di local machine atau sebuah subdomain jika dilakukan di live server. Pastikan setting url virtual host di file .env pada Gateway.
 8. Buka file .env pada Class Microservice dan tambahkan baris untuk microservice authentication.
