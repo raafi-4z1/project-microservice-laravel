@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
+use Illuminate\Http\Response;
 
 trait ConsumeMicroserviceService
 {
@@ -42,7 +43,8 @@ trait ConsumeMicroserviceService
                 throw $e;
             }
         }
-
-        return json_decode($response->getBody()->getContents(), true);
+		
+		$response = json_decode($response->getBody()->getContents(), true);
+        return response($response, $response['resCode']);
     }
 }

@@ -13,7 +13,10 @@ return new class extends Migration
     {
         Schema::create('ruang_kelas', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->string('nama_kelas', 25);
+            $table->string('tingkat', 10);
+            $table->string('jurusan', 10);
+            // $table->string('tahun_ajaran', 9);
             $table->timestamps();
             $table->softDeletes();
         });

@@ -61,7 +61,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseURLClass}}/class?idRuangKelas=3",
+							"raw": "{{baseURLClass}}/class?idKelas=3",
 							"host": [
 								"{{baseURLClass}}"
 							],
@@ -70,7 +70,7 @@
 							],
 							"query": [
 								{
-									"key": "idRuangKelas",
+									"key": "idKelas",
 									"value": "3"
 								}
 							]
@@ -101,8 +101,18 @@
 							"mode": "formdata",
 							"formdata": [
 								{
-									"key": "namaRuangKelas",
-									"value": "1 A",
+									"key": "noKelas",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "tingkat",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "jurusan",
+									"value": "MIPA",
 									"type": "text"
 								}
 							]
@@ -139,7 +149,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseURLClass}}/class?idRuangKelas=3&namaRuangKelas=1 AA",
+							"raw": "{{baseURLClass}}/class?idKelas=2",
 							"host": [
 								"{{baseURLClass}}"
 							],
@@ -148,12 +158,28 @@
 							],
 							"query": [
 								{
-									"key": "idRuangKelas",
-									"value": "3"
+									"key": "idKelas",
+									"value": "2"
 								},
 								{
-									"key": "namaRuangKelas",
-									"value": "1 AA"
+									"key": "namaKelas",
+									"value": "Bunga",
+									"disabled": true
+								},
+								{
+									"key": "noKelas",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "tingkat",
+									"value": "2",
+									"disabled": true
+								},
+								{
+									"key": "jurusan",
+									"value": "MIPAs",
+									"disabled": true
 								}
 							]
 						}
@@ -184,7 +210,7 @@
 							"formdata": []
 						},
 						"url": {
-							"raw": "{{baseURLClass}}/class?idRuangKelas=4",
+							"raw": "{{baseURLClass}}/class?idKelas=1",
 							"host": [
 								"{{baseURLClass}}"
 							],
@@ -193,8 +219,8 @@
 							],
 							"query": [
 								{
-									"key": "idRuangKelas",
-									"value": "4"
+									"key": "idKelas",
+									"value": "1"
 								}
 							]
 						}
@@ -372,7 +398,7 @@
 									}
 								],
 								"url": {
-									"raw": "{{baseURLGateway}}/class?idRuangKelas=8",
+									"raw": "{{baseURLGateway}}/class?idKelas=3",
 									"host": [
 										"{{baseURLGateway}}"
 									],
@@ -381,8 +407,8 @@
 									],
 									"query": [
 										{
-											"key": "idRuangKelas",
-											"value": "8"
+											"key": "idKelas",
+											"value": "3"
 										}
 									]
 								}
@@ -404,8 +430,18 @@
 									"mode": "formdata",
 									"formdata": [
 										{
-											"key": "namaRuangKelas",
-											"value": "1 B",
+											"key": "noKelas",
+											"value": "1",
+											"type": "text"
+										},
+										{
+											"key": "tingkat",
+											"value": "1",
+											"type": "text"
+										},
+										{
+											"key": "jurusan",
+											"value": "MIPA",
 											"type": "text"
 										}
 									]
@@ -434,7 +470,7 @@
 									}
 								],
 								"url": {
-									"raw": "{{baseURLGateway}}/class?idRuangKelas=2&namaRuangKelas=1 AA",
+									"raw": "{{baseURLGateway}}/class?idKelas=2&tingkat=1",
 									"host": [
 										"{{baseURLGateway}}"
 									],
@@ -443,12 +479,27 @@
 									],
 									"query": [
 										{
-											"key": "idRuangKelas",
+											"key": "idKelas",
 											"value": "2"
 										},
 										{
-											"key": "namaRuangKelas",
-											"value": "1 AA"
+											"key": "namaKelas",
+											"value": "Bunga",
+											"disabled": true
+										},
+										{
+											"key": "noKelas",
+											"value": "2",
+											"disabled": true
+										},
+										{
+											"key": "tingkat",
+											"value": "1"
+										},
+										{
+											"key": "jurusan",
+											"value": "MIPA",
+											"disabled": true
 										}
 									]
 								}
@@ -471,7 +522,7 @@
 									"formdata": []
 								},
 								"url": {
-									"raw": "{{baseURLGateway}}/class?idRuangKelas=1",
+									"raw": "{{baseURLGateway}}/class?idKelas=1",
 									"host": [
 										"{{baseURLGateway}}"
 									],
@@ -480,7 +531,7 @@
 									],
 									"query": [
 										{
-											"key": "idRuangKelas",
+											"key": "idKelas",
 											"value": "1"
 										}
 									]
@@ -560,7 +611,7 @@
 		},
 		{
 			"key": "baseURLGateway",
-			"value": "http://localhost:8000/api",
+			"value": "http://gateway.test/api",
 			"type": "string"
 		}
 	]

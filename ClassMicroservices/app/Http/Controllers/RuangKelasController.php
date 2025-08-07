@@ -7,10 +7,13 @@ use App\Traits\ApiResponser;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class RuangKelasController extends Controller
 {
     use ApiResponser;
+    private array $rombels = [1 => 'X', 2 => 'XI', 3 => 'XII'];
+
     /**
      * Display a listing of the resource for ruang kelas.
      */
@@ -18,7 +21,7 @@ class RuangKelasController extends Controller
     {
         try {
             return $this->response(
-                "Semua Ruang kelas.", 
+                "Semua ruang kelas.", 
                 Response::HTTP_OK, 
                 RuangKelas::all()->toArray()
             );
@@ -38,23 +41,23 @@ class RuangKelasController extends Controller
     {
         try {
             $validate = Validator::make($request->all(), [
-                'idRuangKelas' => 'required|exists:ruang_kelas,id',
+                'idKelas' => 'required|exists:ruang_kelas,id',
             ], [
-                'idRuangKelas.exists' => 'Ruang kelas dengan ID tersebut tidak ada di database.',
+                'idKelas.exists' => "Ruang kelas dengan id:{$request->idKelas} tidak ada di database.",
             ]);
 
             if($validate->fails()){
                 return $this->response(
                     $validate->errors()->first(), 
-                    Response::HTTP_BAD_REQUEST,
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
                     $validate->errors()
                 );
             }
 
             return $this->response(
-                "Ruang kelas dengan id:{$request->idRuangKelas}.", 
+                "Ruang kelas dengan id:{$request->idKelas}.", 
                 Response::HTTP_OK, 
-                RuangKelas::find($request->idRuangKelas)
+                RuangKelas::find($request->idKelas)
             );
         } catch (Exception $e) {
             return $this->response(
@@ -71,21 +74,34 @@ class RuangKelasController extends Controller
     public function store(Request $request)
     {
         try {
+            $request->merge([
+                'jurusan' => strtoupper($request->jurusan),
+            ]);
             $validate = Validator::make($request->all(), [
-                'namaRuangKelas' => 'required|string|max:25',
+                'noKelas' => 'required|numeric|min:1',
+                'tingkat' => 'required|in:1,2,3',
+                'jurusan' => 'required|in:MIPA,IPS',
+            ], [
+                'jurusan.in' => "Jurusan harus MIPA atau IPS.",
+                'tingkat.in' => "Tingkatan harus 1, 2, atau 3.",
             ]);
 
             if($validate->fails()){
                 return $this->response(
                     $validate->errors()->first(), 
-                    Response::HTTP_BAD_REQUEST,
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
                     $validate->errors()
                 );
             }
+            $namaKelas = $this->rombels[(int)$request->tingkat]
+                    .' '.$request->jurusan
+                    .' '.$request->noKelas;
 
-            $ruangKelas = new RuangKelas();
-            $ruangKelas->name = $request->namaRuangKelas;
-            $ruangKelas->save();
+            $ruangKelas = RuangKelas::create([
+                'nama_kelas' => $namaKelas,
+                'tingkat'    => $request->tingkat,
+                'jurusan'    => $request->jurusan,
+            ]);
 
             return $this->response(
                 "Ruang kelas berhasil disimpan.", 
@@ -107,34 +123,75 @@ class RuangKelasController extends Controller
     public function update(Request $request)
     {
         try {
+            $isJurusan = $request->filled('jurusan');
+            if ($isJurusan) {
+                $request->merge([
+                    'jurusan' => strtoupper($request->jurusan),
+                ]);
+            }
+
             $validate = Validator::make($request->all(), [
-                'idRuangKelas' => 'required|exists:ruang_kelas,id',
-                'namaRuangKelas' => 'required|string|max:25',
+                'idKelas' => 'required',
+                'namaKelas' => 'sometimes|string|max:25',
+                'noKelas' => 'sometimes|numeric|min:1',
+                'tingkat' => 'sometimes|in:1,2,3',
+                'jurusan' => 'sometimes|in:MIPA,IPS',
             ], [
-                'idRuangKelas.exists' => 'Ruang kelas dengan ID tersebut tidak ada di database.',
+                'jurusan.in' => "Jurusan harus MIPA atau IPS.",
+                'tingkat.in' => "Tingkatan harus 1, 2, atau 3.",
             ]);
 
             if($validate->fails()){
                 return $this->response(
                     $validate->errors()->first(), 
-                    Response::HTTP_BAD_REQUEST,
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
                     $validate->errors()
                 );
             }
 
-            if (RuangKelas::withTrashed()->find($request->idRuangKelas)->trashed()) {
+            $ruangKelas = RuangKelas::withTrashed()->find($request->idKelas);
+            if (!$ruangKelas) {
+                return $this->response(
+                    "Ruang kelas dengan id:{$request->idKelas} tidak ditemukan.",
+                    Response::HTTP_NOT_FOUND
+                );
+            }
+            if ($ruangKelas->trashed()) {
                 return $this->response(
                     "Data sudah dihapus sebelumnya.", 
                     Response::HTTP_NOT_FOUND
                 );
             }
 
-            $ruangKelas = RuangKelas::find($request->idRuangKelas);
-            $ruangKelas->name = $request->namaRuangKelas;
-            $ruangKelas->save();
+            $updateData = [];
+            $isTingkat = $request->filled('tingkat');
+            $isNoKelas = $request->filled('noKelas');
+            
+            if ($isTingkat) {
+                $updateData['tingkat'] = $request->tingkat;
+            }
+            if ($isJurusan) {
+                $updateData['jurusan'] = $request->jurusan;
+            }
+
+            if ($request->filled('namaKelas')) {
+                $updateData['nama_kelas'] = $request->namaKelas;
+            } else if ($isTingkat || $isJurusan || $isNoKelas) {
+                $updateData['nama_kelas'] = $this->rombels[(int)($isTingkat? $request->tingkat : $ruangKelas->tingkat)]
+                        .' '.($isJurusan? $request->jurusan : $ruangKelas->jurusan)
+                        .' '.($isNoKelas? $request->noKelas : Str::afterLast($ruangKelas->nama_kelas, ' '));
+            }
+            
+            if (empty($updateData)) {
+                return $this->response(
+                    "Tidak ada data yang diperbarui.",
+                    Response::HTTP_BAD_REQUEST
+                );
+            }
+            $ruangKelas->update($updateData);
 
             return $this->response(
-                "Ruang kelas dengan id:{$request->idRuangKelas} berhasil diupdate.", 
+                "Ruang kelas dengan id:{$request->idKelas} berhasil diupdate.", 
                 Response::HTTP_ACCEPTED, 
                 $ruangKelas
             );
@@ -154,30 +211,30 @@ class RuangKelasController extends Controller
     {
         try {
             $validate = Validator::make($request->all(), [
-                'idRuangKelas' => 'required|exists:ruang_kelas,id',
+                'idKelas' => 'required|exists:ruang_kelas,id',
             ], [
-                'idRuangKelas.exists' => 'Ruang kelas dengan ID tersebut tidak ada di database.',
+                'idKelas.exists' => "Ruang kelas dengan id:{$request->idKelas} tidak ada di database.",
             ]);
 
             if($validate->fails()){
                 return $this->response(
                     $validate->errors()->first(), 
-                    Response::HTTP_BAD_REQUEST,
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
                     $validate->errors()
                 );
             }
 
-            if (RuangKelas::withTrashed()->find($request->idRuangKelas)->trashed()) {
+            if (RuangKelas::withTrashed()->find($request->idKelas)->trashed()) {
                 return $this->response(
                     "Data sudah dihapus sebelumnya.", 
                     Response::HTTP_NOT_FOUND
                 );
             }
             
-            RuangKelas::destroy($request->idRuangKelas);
+            RuangKelas::destroy($request->idKelas);
 
             return $this->response(
-                "Ruang kelas dengan id:{$request->idRuangKelas} berhasil dihapus.", 
+                "Ruang kelas dengan id:{$request->idKelas} berhasil dihapus.", 
                 Response::HTTP_ACCEPTED
             );
         } catch (Exception $e) {
