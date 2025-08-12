@@ -17,10 +17,12 @@ trait ConsumeMicroserviceService
      */
     public function performRequest($method, $requestUrl, $formParams = [])
     {
+        $xff = request()->header('X-Forwarded-For');
         $options = [
             'headers' => [
                 'Authorization' => $this->secret,
                 'Accept'        => 'application/json',
+                'X-Forwarded-For' => $xff,
             ],
         ];
         $method = strtoupper($method);

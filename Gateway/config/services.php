@@ -40,4 +40,10 @@ return [
         'base_uri'  =>  env('CLASS_SERVICE_BASE_URL'),
         'secret'  =>  env('CLASS_SERVICE_SECRET'),
     ],
+    
+    // Mapel API Service
+    'mapel'  =>  [
+        'base_uri'  =>  env('MAPEL_SERVICE_BASE_URL'),
+        'secret'  =>  env('MAPEL_SERVICE_SECRET'),
+    ],
 ];

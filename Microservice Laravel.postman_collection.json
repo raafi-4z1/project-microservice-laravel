@@ -61,7 +61,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseURLClass}}/class?idKelas=3",
+							"raw": "{{baseURLClass}}/class?idKelas=1",
 							"host": [
 								"{{baseURLClass}}"
 							],
@@ -71,7 +71,7 @@
 							"query": [
 								{
 									"key": "idKelas",
-									"value": "3"
+									"value": "1"
 								}
 							]
 						}
@@ -221,6 +221,214 @@
 								{
 									"key": "idKelas",
 									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Mapel-service",
+			"item": [
+				{
+					"name": "All",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{authorizationMapel}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURLMapel}}/mapel/all",
+							"host": [
+								"{{baseURLMapel}}"
+							],
+							"path": [
+								"mapel",
+								"all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "By Id",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{authorizationMapel}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURLMapel}}/mapel?idPelajaran=2",
+							"host": [
+								"{{baseURLMapel}}"
+							],
+							"path": [
+								"mapel"
+							],
+							"query": [
+								{
+									"key": "idPelajaran",
+									"value": "2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Mata Pelajaran",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{authorizationMapel}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "nama",
+									"value": "Fisika",
+									"type": "text"
+								},
+								{
+									"key": "keterangan",
+									"value": "ini keterangan mata pelajaan",
+									"type": "text",
+									"disabled": true
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseURLMapel}}/mapel",
+							"host": [
+								"{{baseURLMapel}}"
+							],
+							"path": [
+								"mapel"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Mata Pelajaran",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{authorizationMapel}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURLMapel}}/mapel?idPelajaran=2&keterangan=ini keterangan mata pelajaan fisika",
+							"host": [
+								"{{baseURLMapel}}"
+							],
+							"path": [
+								"mapel"
+							],
+							"query": [
+								{
+									"key": "idPelajaran",
+									"value": "2"
+								},
+								{
+									"key": "nama",
+									"value": "Fisika",
+									"disabled": true
+								},
+								{
+									"key": "keterangan",
+									"value": "ini keterangan mata pelajaan fisika"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Mata Pelajaran",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{authorizationMapel}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": []
+						},
+						"url": {
+							"raw": "{{baseURLMapel}}/mapel?idPelajaran=2",
+							"host": [
+								"{{baseURLMapel}}"
+							],
+							"path": [
+								"mapel"
+							],
+							"query": [
+								{
+									"key": "idPelajaran",
+									"value": "2"
 								}
 							]
 						}
@@ -470,7 +678,7 @@
 									}
 								],
 								"url": {
-									"raw": "{{baseURLGateway}}/class?idKelas=2&tingkat=1",
+									"raw": "{{baseURLGateway}}/class?idKelas=1&tingkat=1",
 									"host": [
 										"{{baseURLGateway}}"
 									],
@@ -480,7 +688,7 @@
 									"query": [
 										{
 											"key": "idKelas",
-											"value": "2"
+											"value": "1"
 										},
 										{
 											"key": "namaKelas",
@@ -533,6 +741,174 @@
 										{
 											"key": "idKelas",
 											"value": "1"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Mapel-service",
+					"item": [
+						{
+							"name": "All",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{baseURLGateway}}/mapel/all",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"mapel",
+										"all"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "By Id",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{baseURLGateway}}/mapel?idPelajaran=2",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"mapel"
+									],
+									"query": [
+										{
+											"key": "idPelajaran",
+											"value": "2"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Mata Pelajaran",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "nama",
+											"value": "Fisika",
+											"type": "text"
+										},
+										{
+											"key": "keterangan",
+											"value": "ini keterangan mata pelajaan",
+											"type": "text",
+											"disabled": true
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseURLGateway}}/mapel",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"mapel"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Mata Pelajaran",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{baseURLGateway}}/mapel?idPelajaran=2&keterangan=ini keterangan mata pelajaan fisika",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"mapel"
+									],
+									"query": [
+										{
+											"key": "idPelajaran",
+											"value": "2"
+										},
+										{
+											"key": "nama",
+											"value": "Fisika",
+											"disabled": true
+										},
+										{
+											"key": "keterangan",
+											"value": "ini keterangan mata pelajaan fisika"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Mata Pelajaran",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": []
+								},
+								"url": {
+									"raw": "{{baseURLGateway}}/mapel?idPelajaran=2",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"mapel"
+									],
+									"query": [
+										{
+											"key": "idPelajaran",
+											"value": "2"
 										}
 									]
 								}
@@ -600,6 +976,11 @@
 	],
 	"variable": [
 		{
+			"key": "baseURLGateway",
+			"value": "http://gateway.test/api",
+			"type": "string"
+		},
+		{
 			"key": "baseURLClass",
 			"value": "http://classmicroservices.test/api",
 			"type": "default"
@@ -610,8 +991,13 @@
 			"type": "string"
 		},
 		{
-			"key": "baseURLGateway",
-			"value": "http://gateway.test/api",
+			"key": "baseURLMapel",
+			"value": "http://mapelservice.test/api",
+			"type": "string"
+		},
+		{
+			"key": "authorizationMapel",
+			"value": "base64:tV2U1JsoTvOqIgaDJXb1aHrmAhnGW0uvs/tY9h4xuCE=",
 			"type": "string"
 		}
 	]

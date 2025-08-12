@@ -21,7 +21,7 @@ class RuangKelasController extends Controller
     {
         try {
             return $this->response(
-                "Semua ruang kelas.", 
+                "List Ruang Kelas.", 
                 Response::HTTP_OK, 
                 RuangKelas::all()->toArray()
             );
@@ -53,11 +53,19 @@ class RuangKelasController extends Controller
                     $validate->errors()
                 );
             }
+            
+            $kelas = RuangKelas::find($request->idKelas);
+            if ($kelas == null) {
+                return $this->response(
+                    "Data sudah dihapus.", 
+                    Response::HTTP_NOT_FOUND
+                );
+            }
 
             return $this->response(
                 "Ruang kelas dengan id:{$request->idKelas}.", 
                 Response::HTTP_OK, 
-                RuangKelas::find($request->idKelas)
+                $kelas
             );
         } catch (Exception $e) {
             return $this->response(
@@ -158,7 +166,7 @@ class RuangKelasController extends Controller
             }
             if ($ruangKelas->trashed()) {
                 return $this->response(
-                    "Data sudah dihapus sebelumnya.", 
+                    "Data sudah dihapus.", 
                     Response::HTTP_NOT_FOUND
                 );
             }
@@ -226,7 +234,7 @@ class RuangKelasController extends Controller
 
             if (RuangKelas::withTrashed()->find($request->idKelas)->trashed()) {
                 return $this->response(
-                    "Data sudah dihapus sebelumnya.", 
+                    "Data sudah dihapus.", 
                     Response::HTTP_NOT_FOUND
                 );
             }

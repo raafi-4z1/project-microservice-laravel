@@ -14,12 +14,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        //"alias(string $name, string $class)" membuat kita bisa memanggilnya di route seperti "->middleware('check.role:SuperAdmin,Admin')".
+        $middleware->alias([
+            'check.role' => \App\Http\Middleware\CheckRole::class
+        ]);
+        $middleware->append(\App\Http\Middleware\CollectForwardedIps::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // 📦 Not Found
         $exceptions->render(function (NotFoundHttpException $e, Request $request) {
-            if ($request->is('api/*')) {
+            // if ($request->is('api/*')) {
                 return response()->json([
                     'resCode' => 404,
                     'resPhrase' => "Not Found",
@@ -27,12 +31,12 @@ return Application::configure(basePath: dirname(__DIR__))
                     'resMsg' => "Record not found.",
                     'data' => $e->getMessage()
                 ], 404);
-            }
+            // }
         });
 
         // 🚫 Fallback untuk semua API exception
         $exceptions->render(function (Throwable $e, Request $request) {
-            if ($request->is('api/*')) {
+            // if ($request->is('api/*')) {
                 $msg = "Unexpected Error.";
                 $err = 500;
 
@@ -54,6 +58,6 @@ return Application::configure(basePath: dirname(__DIR__))
                     'resMsg' => $msg,
                     'data' => $e->getMessage()
                 ], $err);
-            }
+            // }
         });
     })->create();
