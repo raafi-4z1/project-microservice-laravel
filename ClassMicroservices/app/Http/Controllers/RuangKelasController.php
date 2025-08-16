@@ -89,6 +89,7 @@ class RuangKelasController extends Controller
                 'noKelas' => 'required|numeric|min:1',
                 'tingkat' => 'required|in:1,2,3',
                 'jurusan' => 'required|in:MIPA,IPS',
+                'limitSiswa' => 'required|numeric|min:1|max:62',
             ], [
                 'jurusan.in' => "Jurusan harus MIPA atau IPS.",
                 'tingkat.in' => "Tingkatan harus 1, 2, atau 3.",
@@ -109,6 +110,7 @@ class RuangKelasController extends Controller
                 'nama_kelas' => $namaKelas,
                 'tingkat'    => $request->tingkat,
                 'jurusan'    => $request->jurusan,
+                'limit_siswa'    => $request->limitSiswa,
             ]);
 
             return $this->response(
@@ -144,6 +146,7 @@ class RuangKelasController extends Controller
                 'noKelas' => 'sometimes|numeric|min:1',
                 'tingkat' => 'sometimes|in:1,2,3',
                 'jurusan' => 'sometimes|in:MIPA,IPS',
+                'limitSiswa' => 'sometimes|numeric|min:1|max:62',
             ], [
                 'jurusan.in' => "Jurusan harus MIPA atau IPS.",
                 'tingkat.in' => "Tingkatan harus 1, 2, atau 3.",
@@ -174,12 +177,16 @@ class RuangKelasController extends Controller
             $updateData = [];
             $isTingkat = $request->filled('tingkat');
             $isNoKelas = $request->filled('noKelas');
+            $isLimitSiswa = $request->filled('limitSiswa');
             
             if ($isTingkat) {
                 $updateData['tingkat'] = $request->tingkat;
             }
             if ($isJurusan) {
                 $updateData['jurusan'] = $request->jurusan;
+            }
+            if ($isLimitSiswa) {
+                $updateData['limit_siswa'] = $request->limitSiswa;
             }
 
             if ($request->filled('namaKelas')) {

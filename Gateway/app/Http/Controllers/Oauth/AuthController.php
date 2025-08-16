@@ -56,7 +56,8 @@ class AuthController extends Controller
                 $data = [
                     'token' => $user->createToken("My Token")->accessToken,
                     'user' => $user->name,
-                    'email' => $user->email
+                    'email' => $user->email,
+                    'role' => $user->role
                 ];
 
                 return $this->response("Access granted.", Response::HTTP_OK, $data);
@@ -66,5 +67,11 @@ class AuthController extends Controller
         } catch (Exception $e) {
             return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    public function logout(Request $request)
+    {
+        $request->user()->token()->revoke();
+        return $this->response("Logged out.", Response::HTTP_OK);
     }
 }

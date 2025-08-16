@@ -12,17 +12,17 @@ trait ConsumeMicroserviceService
      * Send request to any service
      * @param $method
      * @param $requestUrl
-     * @param array $formParams
-     * @return string
+     * @param $formParams
+     * @param String $contentType
+     * @return $contentType
      */
-    public function performRequest($method, $requestUrl, $formParams = [])
+    public function performRequest($method, $requestUrl, $formParams = [], String $contentType = 'application/json')
     {
-        $xff = request()->header('X-Forwarded-For');
         $options = [
             'headers' => [
                 'Authorization' => $this->secret,
                 'Accept'        => 'application/json',
-                'X-Forwarded-For' => $xff,
+                'X-Forwarded-For' => request()->header('X-Forwarded-For'),
             ],
         ];
         $method = strtoupper($method);
@@ -33,9 +33,9 @@ trait ConsumeMicroserviceService
             $options['query'] = $formParams;
         }
         
-        $client = new Client(['base_uri'  =>  $this->baseUri,]);
+        $client = new Client(['base_uri'  =>  rtrim($this->baseUri, '/'),]);
         try {
-            $response = $client->request(strtoupper($method), '/api/'.$requestUrl, $options);
+            $response = $client->request($method, '/api/'.$requestUrl, $options);
         }
         catch (RequestException $e) {
             // Kalau ada response (4xx/5xx), ambil response dari exception
@@ -46,7 +46,8 @@ trait ConsumeMicroserviceService
             }
         }
 		
-		$response = json_decode($response->getBody()->getContents(), true);
-        return response($response, $response['resCode']);
+		// $response = json_decode($response->getBody()->getContents(), true);
+        // return response($response, $response['resCode'] ?? Response::HTTP_INTERNAL_SERVER_ERROR);
+        return response($response->getBody()->getContents(), $response->getStatusCode())->header('Content-Type', $contentType);
     }
 }

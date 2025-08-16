@@ -8,8 +8,9 @@ trait ApiResponser
 {
     /**
      * Building a JSON response
-     * @param $data
+     * @param $message
      * @param int $code
+     * @param $data
      * @return \Illuminate\Http\JsonResponse
      */
     public function response($msg, $code = Response::HTTP_OK, $data = [])
@@ -83,6 +84,4 @@ trait ApiResponser
         
         return \response()->json($response, $code);
     }
-
-
 }

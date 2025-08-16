@@ -18,8 +18,8 @@ class CheckRole
         $user = $request->user();
         if (!$user || !in_array($user->role, $roles)) {
             return $this->response(
-                "Anda tidak memiliki akses.", 
-                Response::HTTP_UNAUTHORIZED
+                "You do not have permission to access this page.", 
+                Response::HTTP_FORBIDDEN
             );
         }
 

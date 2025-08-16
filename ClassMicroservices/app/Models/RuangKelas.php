@@ -16,7 +16,7 @@ class RuangKelas extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'nama_kelas', 'tingkat', 'jurusan'
+        'nama_kelas', 'tingkat', 'jurusan', 'limit_siswa'
     ];
 
     /**

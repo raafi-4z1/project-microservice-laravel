@@ -6,11 +6,11 @@ use Illuminate\Http\Response;
 
 trait ApiResponser
 {
-    
     /**
-     * Building success response
-     * @param $data
+     * Building a JSON response
+     * @param $message
      * @param int $code
+     * @param $data
      * @return \Illuminate\Http\JsonResponse
      */
     public function response($msg, $code = Response::HTTP_OK, $data = [])
