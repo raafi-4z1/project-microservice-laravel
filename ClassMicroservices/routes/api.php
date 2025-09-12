@@ -11,6 +11,6 @@ Route::prefix('class')->group(function () {
     Route::get('all', [RuangKelasController::class, 'index']);
     Route::get('/', [RuangKelasController::class, 'show']);
     Route::post('/', [RuangKelasController::class, 'store']);
-    Route::patch('/', [RuangKelasController::class, 'update']);
+    Route::post('update', [RuangKelasController::class, 'update']);
     Route::delete('/', [RuangKelasController::class, 'destroy']);
 });

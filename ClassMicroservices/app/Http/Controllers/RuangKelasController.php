@@ -17,13 +17,89 @@ class RuangKelasController extends Controller
     /**
      * Display a listing of the resource for ruang kelas.
      */
-    public function index()
-    {
+    public function index(Request $request) {
         try {
+            $validate = Validator::make($request->all(), [
+                'page' => 'sometimes|numeric|min:1',
+                'per_page' => 'sometimes|numeric|min:1'
+            ]);
+
+            if($validate->fails()){
+                return $this->response(
+                    $validate->errors()->first(), 
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                    $validate->errors()
+                );
+            }
+
+            $columns = [
+                'id', 'nama_kelas', 'tingkat', 'jurusan', 'limit_siswa', 'deleted_at'
+            ];
+
+            $perPage = $request->input('per_page', 5);
+            $paginator = RuangKelas::select($columns)
+                ->withTrashed()
+                ->paginate($perPage)
+                ->withQueryString();
+
+            $current = $paginator->currentPage();
+            $last    = $paginator->lastPage();
+
+            // Tentukan range halaman
+            $start = max(1, $current - 2);
+            $end   = min($last,  $current + 2);
+
+            // Buat array URL untuk halaman dalam range
+            $urlRange = $paginator->getUrlRange($start, $end);
+
+            // Mapping jadi format yang diinginkan
+            $links = collect($urlRange)
+                ->map(function($url, $page) use ($current) {
+                    return [
+                        'query'  => parse_url($url, PHP_URL_QUERY),
+                        'label'  => (string) $page,
+                        'page'   => (int)    $page,
+                        'active' => $page == $current,
+                    ];
+                })
+                ->values()
+                ->all();
+
+            // Tambahkan Prev & Next secara manual
+            if ($paginator->onFirstPage() === false) {
+                array_unshift($links, [
+                    'query'  => parse_url($paginator->previousPageUrl(), PHP_URL_QUERY),
+                    'label'  => '&laquo; Previous',
+                    'page'   => $current - 1,
+                    'active' => false,
+                ]);
+            }
+
+            if ($paginator->hasMorePages()) {
+                $links[] = [
+                    'query'  => parse_url($paginator->nextPageUrl(), PHP_URL_QUERY),
+                    'label'  => 'Next &raquo;',
+                    'page'   => $current + 1,
+                    'active' => false,
+                ];
+            }
+
+            // Hasil akhir
+            $pageArr = $paginator->toArray();
+            $pageArr['links'] = $links;
+            
+            unset(
+                $pageArr['first_page_url'],
+                $pageArr['last_page_url'],
+                $pageArr['next_page_url'],
+                $pageArr['prev_page_url'],
+                $pageArr['path']
+            );
+
             return $this->response(
                 "List Ruang Kelas.", 
-                Response::HTTP_OK, 
-                RuangKelas::all()->toArray()
+                Response::HTTP_OK,
+                $pageArr
             );
         } catch (Exception $e) {
             return $this->response(

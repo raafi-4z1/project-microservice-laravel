@@ -1,9 +1,10 @@
 {
 	"info": {
-		"_postman_id": "a0b11f0a-861e-44b3-8b5b-f034a2537f00",
+		"_postman_id": "fa1ef22d-c0df-47ab-9e0e-d6b01000f670",
 		"name": "Microservice Laravel",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "14041935"
+		"_exporter_id": "14041935",
+		"_collection_link": "https://fiaar45.postman.co/workspace/Team-Workspace~0df96f52-6042-4df4-8855-51db16743aff/collection/14041935-fa1ef22d-c0df-47ab-9e0e-d6b01000f670?action=share&source=collection_link&creator=14041935"
 	},
 	"item": [
 		{
@@ -29,13 +30,24 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseURLClass}}/class/all",
+							"raw": "{{baseURLClass}}/class/all?page=2",
 							"host": [
 								"{{baseURLClass}}"
 							],
 							"path": [
 								"class",
 								"all"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "2"
+								},
+								{
+									"key": "per_page",
+									"value": "2",
+									"disabled": true
+								}
 							]
 						}
 					},
@@ -114,6 +126,11 @@
 									"key": "jurusan",
 									"value": "MIPA",
 									"type": "text"
+								},
+								{
+									"key": "limitSiswa",
+									"value": "",
+									"type": "text"
 								}
 							]
 						},
@@ -135,12 +152,13 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "PATCH",
+						"method": "POST",
 						"header": [
 							{
 								"key": "Accept",
 								"value": "application/json",
-								"type": "text"
+								"type": "text",
+								"disabled": true
 							},
 							{
 								"key": "Authorization",
@@ -148,39 +166,54 @@
 								"type": "text"
 							}
 						],
-						"url": {
-							"raw": "{{baseURLClass}}/class?idKelas=2",
-							"host": [
-								"{{baseURLClass}}"
-							],
-							"path": [
-								"class"
-							],
-							"query": [
+						"body": {
+							"mode": "formdata",
+							"formdata": [
 								{
 									"key": "idKelas",
-									"value": "2"
+									"value": "2",
+									"type": "text"
 								},
 								{
 									"key": "namaKelas",
 									"value": "Bunga",
+									"type": "text",
 									"disabled": true
 								},
 								{
 									"key": "noKelas",
 									"value": "1",
+									"type": "text",
 									"disabled": true
 								},
 								{
 									"key": "tingkat",
 									"value": "2",
+									"type": "text",
 									"disabled": true
 								},
 								{
 									"key": "jurusan",
 									"value": "MIPAs",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "limitSiswa",
+									"value": "",
+									"type": "text",
 									"disabled": true
 								}
+							]
+						},
+						"url": {
+							"raw": "{{baseURLClass}}/class/update",
+							"host": [
+								"{{baseURLClass}}"
+							],
+							"path": [
+								"class",
+								"update"
 							]
 						}
 					},
@@ -252,13 +285,24 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseURLMapel}}/mapel/all",
+							"raw": "{{baseURLMapel}}/mapel/all?page=2",
 							"host": [
 								"{{baseURLMapel}}"
 							],
 							"path": [
 								"mapel",
 								"all"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "2"
+								},
+								{
+									"key": "per_page",
+									"value": "2",
+									"disabled": true
+								}
 							]
 						}
 					},
@@ -324,6 +368,11 @@
 							"mode": "formdata",
 							"formdata": [
 								{
+									"key": "kode",
+									"value": "",
+									"type": "text"
+								},
+								{
 									"key": "nama",
 									"value": "Fisika",
 									"type": "text"
@@ -354,7 +403,7 @@
 						"auth": {
 							"type": "noauth"
 						},
-						"method": "PATCH",
+						"method": "POST",
 						"header": [
 							{
 								"key": "Accept",
@@ -367,28 +416,40 @@
 								"type": "text"
 							}
 						],
-						"url": {
-							"raw": "{{baseURLMapel}}/mapel?idPelajaran=2&keterangan=ini keterangan mata pelajaan fisika",
-							"host": [
-								"{{baseURLMapel}}"
-							],
-							"path": [
-								"mapel"
-							],
-							"query": [
+						"body": {
+							"mode": "formdata",
+							"formdata": [
 								{
 									"key": "idPelajaran",
-									"value": "2"
+									"value": "2",
+									"type": "text"
+								},
+								{
+									"key": "kode",
+									"value": "",
+									"type": "text"
 								},
 								{
 									"key": "nama",
 									"value": "Fisika",
+									"type": "text",
 									"disabled": true
 								},
 								{
 									"key": "keterangan",
-									"value": "ini keterangan mata pelajaan fisika"
+									"value": "ini keterangan mata pelajaan fisika",
+									"type": "text"
 								}
+							]
+						},
+						"url": {
+							"raw": "{{baseURLMapel}}/mapel/update",
+							"host": [
+								"{{baseURLMapel}}"
+							],
+							"path": [
+								"mapel",
+								"update"
 							]
 						}
 					},
@@ -513,12 +574,12 @@
 									"formdata": [
 										{
 											"key": "email",
-											"value": "jhon@email.com",
+											"value": "Admin1@email.com",
 											"type": "text"
 										},
 										{
 											"key": "password",
-											"value": "123456",
+											"value": "Admin1@123",
 											"type": "text"
 										}
 									]
@@ -546,7 +607,8 @@
 									{
 										"key": "Accept",
 										"value": "application/json",
-										"type": "text"
+										"type": "text",
+										"disabled": true
 									}
 								],
 								"body": {
@@ -560,6 +622,33 @@
 									],
 									"path": [
 										"user"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Logout",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": []
+								},
+								"url": {
+									"raw": "{{baseURLGateway}}/logout",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"logout"
 									]
 								}
 							},
@@ -582,13 +671,24 @@
 									}
 								],
 								"url": {
-									"raw": "{{baseURLGateway}}/class/all",
+									"raw": "{{baseURLGateway}}/class/all?page=2",
 									"host": [
 										"{{baseURLGateway}}"
 									],
 									"path": [
 										"class",
 										"all"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "2"
+										},
+										{
+											"key": "per_page",
+											"value": "2",
+											"disabled": true
+										}
 									]
 								}
 							},
@@ -651,6 +751,11 @@
 											"key": "jurusan",
 											"value": "MIPA",
 											"type": "text"
+										},
+										{
+											"key": "limitSiswa",
+											"value": "",
+											"type": "text"
 										}
 									]
 								},
@@ -669,46 +774,62 @@
 						{
 							"name": "Update Class",
 							"request": {
-								"method": "PATCH",
+								"method": "POST",
 								"header": [
 									{
 										"key": "Accept",
 										"value": "application/json",
-										"type": "text"
+										"type": "text",
+										"disabled": true
 									}
 								],
-								"url": {
-									"raw": "{{baseURLGateway}}/class?idKelas=1&tingkat=1",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"class"
-									],
-									"query": [
+								"body": {
+									"mode": "formdata",
+									"formdata": [
 										{
 											"key": "idKelas",
-											"value": "1"
+											"value": "1",
+											"type": "text"
 										},
 										{
 											"key": "namaKelas",
 											"value": "Bunga",
+											"type": "text",
 											"disabled": true
 										},
 										{
 											"key": "noKelas",
 											"value": "2",
+											"type": "text",
 											"disabled": true
 										},
 										{
 											"key": "tingkat",
-											"value": "1"
+											"value": "1",
+											"type": "text"
 										},
 										{
 											"key": "jurusan",
 											"value": "MIPA",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "limitSiswa",
+											"value": "",
+											"type": "text",
 											"disabled": true
 										}
+									]
+								},
+								"url": {
+									"raw": "{{baseURLGateway}}/class/update",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"class",
+										"update"
 									]
 								}
 							},
@@ -760,7 +881,8 @@
 									{
 										"key": "Accept",
 										"value": "application/json",
-										"type": "text"
+										"type": "text",
+										"disabled": true
 									}
 								],
 								"url": {
@@ -771,6 +893,18 @@
 									"path": [
 										"mapel",
 										"all"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "2",
+											"disabled": true
+										},
+										{
+											"key": "per_page",
+											"value": "2",
+											"disabled": true
+										}
 									]
 								}
 							},
@@ -820,6 +954,11 @@
 									"mode": "formdata",
 									"formdata": [
 										{
+											"key": "kode",
+											"value": "",
+											"type": "text"
+										},
+										{
 											"key": "nama",
 											"value": "Fisika",
 											"type": "text"
@@ -847,36 +986,49 @@
 						{
 							"name": "Update Mata Pelajaran",
 							"request": {
-								"method": "PATCH",
+								"method": "POST",
 								"header": [
 									{
 										"key": "Accept",
 										"value": "application/json",
-										"type": "text"
+										"type": "text",
+										"disabled": true
 									}
 								],
-								"url": {
-									"raw": "{{baseURLGateway}}/mapel?idPelajaran=2&keterangan=ini keterangan mata pelajaan fisika",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"mapel"
-									],
-									"query": [
+								"body": {
+									"mode": "formdata",
+									"formdata": [
 										{
 											"key": "idPelajaran",
-											"value": "2"
+											"value": "2",
+											"type": "text"
+										},
+										{
+											"key": "kode",
+											"value": "",
+											"type": "text"
 										},
 										{
 											"key": "nama",
 											"value": "Fisika",
+											"type": "text",
 											"disabled": true
 										},
 										{
 											"key": "keterangan",
-											"value": "ini keterangan mata pelajaan fisika"
+											"value": "ini keterangan mata pelajaan fisika",
+											"type": "text"
 										}
+									]
+								},
+								"url": {
+									"raw": "{{baseURLGateway}}/mapel/update",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"mapel",
+										"update"
 									]
 								}
 							},
@@ -908,6 +1060,420 @@
 									"query": [
 										{
 											"key": "idPelajaran",
+											"value": "2"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Guru-service",
+					"item": [
+						{
+							"name": "All",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text",
+										"disabled": true
+									}
+								],
+								"url": {
+									"raw": "{{baseURLGateway}}/guru/all?page=2",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"guru",
+										"all"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "2"
+										},
+										{
+											"key": "per_page",
+											"value": "2",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "By Id",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text",
+										"disabled": true
+									}
+								],
+								"url": {
+									"raw": "{{baseURLGateway}}/guru?idGuru=2",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"guru"
+									],
+									"query": [
+										{
+											"key": "idGuru",
+											"value": "2"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Data Guru",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "email",
+											"value": "raafi@gmail.com",
+											"type": "text"
+										},
+										{
+											"key": "nik",
+											"value": "112233445566",
+											"type": "text"
+										},
+										{
+											"key": "nip",
+											"value": "112233445566",
+											"type": "text"
+										},
+										{
+											"key": "namaLengkap",
+											"value": "Raafi",
+											"type": "text"
+										},
+										{
+											"key": "telephone",
+											"value": "083877527832",
+											"type": "text"
+										},
+										{
+											"key": "jenisKelamin",
+											"value": "Laki-Laki",
+											"type": "text"
+										},
+										{
+											"key": "tempatLahir",
+											"value": "Hulu Sungai Selatan",
+											"type": "text"
+										},
+										{
+											"key": "tanggalLahir",
+											"value": "2000-03-29",
+											"type": "text"
+										},
+										{
+											"key": "agama",
+											"value": "",
+											"description": "Opsional",
+											"type": "text"
+										},
+										{
+											"key": "statusPernikahan",
+											"value": "",
+											"description": "Opsional",
+											"type": "text"
+										},
+										{
+											"key": "alamat",
+											"value": "Jagapura",
+											"type": "text"
+										},
+										{
+											"key": "foto",
+											"type": "file",
+											"src": "/C:/Users/901102/Downloads/376663.png"
+										},
+										{
+											"key": "statusKepegawaian",
+											"value": "PNS",
+											"type": "text"
+										},
+										{
+											"key": "nomorSKPengangkatan",
+											"value": "",
+											"description": "Opsional",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "tanggalMasuk",
+											"value": "2025-08-08",
+											"type": "text"
+										},
+										{
+											"key": "jabatan",
+											"value": "Guru",
+											"type": "text"
+										},
+										{
+											"key": "nomorSertifikasi",
+											"value": "",
+											"description": "Opsional",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "pendidikanTerakhir",
+											"value": "S1",
+											"type": "text"
+										},
+										{
+											"key": "jurusan",
+											"value": "Pendidikan",
+											"type": "text"
+										},
+										{
+											"key": "universitas",
+											"value": "STI",
+											"type": "text"
+										},
+										{
+											"key": "tahunLulus",
+											"value": "2025",
+											"type": "text"
+										},
+										{
+											"key": "pelatihan",
+											"value": "",
+											"description": "Opsional",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseURLGateway}}/guru",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"guru"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Data Guru",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "idGuru",
+											"value": "2",
+											"type": "text"
+										},
+										{
+											"key": "nik",
+											"value": "112233445566",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "nip",
+											"value": "112233445566",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "namaLengkap",
+											"value": "Raafi Azizan",
+											"type": "text"
+										},
+										{
+											"key": "telephone",
+											"value": "083877527832",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "jenisKelamin",
+											"value": "Laki-Laki",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "tempatLahir",
+											"value": "Hulu Sungai Selatan",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "tanggalLahir",
+											"value": "2000-03-29",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "agama",
+											"value": "",
+											"description": "Opsional",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "statusPernikahan",
+											"value": "",
+											"description": "Opsional",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "alamat",
+											"value": "Jagapura",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "foto",
+											"type": "file",
+											"src": "/C:/Users/901102/Downloads/376663.png",
+											"disabled": true
+										},
+										{
+											"key": "statusKepegawaian",
+											"value": "PNS",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "nomorSKPengangkatan",
+											"value": "",
+											"description": "Opsional",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "tanggalMasuk",
+											"value": "2025-08-08",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "jabatan",
+											"value": "Guru",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "nomorSertifikasi",
+											"value": "",
+											"description": "Opsional",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "pendidikanTerakhir",
+											"value": "S1",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "jurusan",
+											"value": "Pendidikan",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "universitas",
+											"value": "STI",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "tahunLulus",
+											"value": "2025",
+											"type": "text",
+											"disabled": true
+										},
+										{
+											"key": "pelatihan",
+											"value": "",
+											"description": "Opsional",
+											"type": "text",
+											"disabled": true
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseURLGateway}}/guru/update",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"guru",
+										"update"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Guru",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text",
+										"disabled": true
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": []
+								},
+								"url": {
+									"raw": "{{baseURLGateway}}/guru?idGuru=2",
+									"host": [
+										"{{baseURLGateway}}"
+									],
+									"path": [
+										"guru"
+									],
+									"query": [
+										{
+											"key": "idGuru",
 											"value": "2"
 										}
 									]
@@ -977,28 +1543,23 @@
 	"variable": [
 		{
 			"key": "baseURLGateway",
-			"value": "http://gateway.test/api",
-			"type": "string"
+			"value": "http://10.70.129.9:8000/api"
 		},
 		{
 			"key": "baseURLClass",
-			"value": "http://classmicroservices.test/api",
-			"type": "default"
+			"value": "http://classmicroservices.test/api"
 		},
 		{
 			"key": "authorizationClass",
-			"value": "base64:uUTtmBL1ZmUdIOtGSx+2uWQuYg1MdGWnyZb1AC4W/go=",
-			"type": "string"
+			"value": "base64:uUTtmBL1ZmUdIOtGSx+2uWQuYg1MdGWnyZb1AC4W/go="
 		},
 		{
 			"key": "baseURLMapel",
-			"value": "http://mapelservice.test/api",
-			"type": "string"
+			"value": "http://mapelservice.test/api"
 		},
 		{
 			"key": "authorizationMapel",
-			"value": "base64:tV2U1JsoTvOqIgaDJXb1aHrmAhnGW0uvs/tY9h4xuCE=",
-			"type": "string"
+			"value": "base64:tV2U1JsoTvOqIgaDJXb1aHrmAhnGW0uvs/tY9h4xuCE="
 		}
 	]
 }

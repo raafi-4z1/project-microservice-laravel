@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('mapels', function (Blueprint $table) {
             $table->id();
+            $table->string('kode', 50)->unique();
             $table->string('nama', 128);
             $table->string('keterangan')->nullable();
             $table->timestamps();

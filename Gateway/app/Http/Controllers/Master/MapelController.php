@@ -1,24 +1,25 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Master;
 
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 use App\Traits\ConsumeMicroserviceService;
 
-class ClassController extends Controller
+class MapelController extends Controller
 {
     use ConsumeMicroserviceService;
     private $baseUri, $secret, $reqUrl;
 
     public function __construct()
     {
-        $this->reqUrl = config('gateway.class_prefix');
-        $this->baseUri = config('services.class.base_uri');
-        $this->secret = config('services.class.secret');
+        $this->reqUrl = config('gateway.mapel_prefix');
+        $this->baseUri = config('services.mapel.base_uri');
+        $this->secret = config('services.mapel.secret');
     }
     
     public function index(Request $request) {
-        return $this->performRequest($request->method(), "{$this->reqUrl}/all");
+        return $this->performRequest($request->method(), "{$this->reqUrl}/all", $request->all());
     }
 
     public function show(Request $request) {

@@ -44,6 +44,11 @@ class RouteServiceProvider extends ServiceProvider
                 ->middleware('api')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/mapel-service-routes.php'));
+                //Guru service routes registration
+            Route::prefix('api')
+                ->middleware('api')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/guru-service-routes.php'));
         });
     }
 

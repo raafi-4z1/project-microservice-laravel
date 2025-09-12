@@ -46,4 +46,10 @@ return [
         'base_uri'  =>  env('MAPEL_SERVICE_BASE_URL'),
         'secret'  =>  env('MAPEL_SERVICE_SECRET'),
     ],
+    
+    // Guru API Service
+    'guru'  =>  [
+        'base_uri'  =>  env('GURU_SERVICE_BASE_URL'),
+        'secret'  =>  env('GURU_SERVICE_SECRET'),
+    ],
 ];
