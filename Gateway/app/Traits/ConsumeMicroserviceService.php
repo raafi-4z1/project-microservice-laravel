@@ -18,28 +18,39 @@ trait ConsumeMicroserviceService
     public function performRequest($method, $requestUrl, $formParams = [])
     {
         $method = strtoupper($method);
-        $options = [
-            'headers' => [
-                'Authorization' => $this->secret,
-                'X-Forwarded-For' => request()->header('X-Forwarded-For'),
-            ],
-            'timeout'         => 600,
-            'connect_timeout' => 30,
-        ];
+        $timestamp = time();
 
         $hasFile = collect($formParams)->contains(fn($v) =>
             $v instanceof \Illuminate\Http\UploadedFile || is_resource($v)
         );
 
+        // Body yang akan dikirim menentukan HMAC yang ditandatangani:
+        // - POST JSON  : sign json_encode (cocok dengan $request->getContent() di service)
+        // - POST multipart: sign "" (binary boundary tidak bisa di-hash deterministik)
+        // - GET/DELETE : sign "" (tidak ada body, params via query string)
         if ($method === 'POST') {
             if ($hasFile) {
+                $hmacBody = '';
                 $options['multipart'] = $this->buildMultipart($formParams);
             } else {
-                $options['form_params'] = $formParams;
+                $hmacBody = json_encode($formParams);
+                $options['json'] = $formParams;
             }
         } else {
+            // Sign query params agar GET/DELETE tidak bisa di-tamper di transit
+            $hmacBody = http_build_query($formParams);
             $options['query'] = $formParams;
         }
+
+        $signature = hash_hmac('sha256', $timestamp . $hmacBody, $this->secret);
+
+        $options['headers'] = [
+            'X-Timestamp'     => $timestamp,
+            'X-Signature'     => $signature,
+            'X-Forwarded-For' => request()->ip(),
+        ];
+        $options['timeout']         = 30;
+        $options['connect_timeout'] = 5;
         
         $client = new Client(['base_uri'  =>  rtrim($this->baseUri, '/')]);
         try {

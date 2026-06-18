@@ -49,6 +49,11 @@ class RouteServiceProvider extends ServiceProvider
                 ->middleware('api')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/guru-service-routes.php'));
+                //Siswa service routes registration
+            Route::prefix('api')
+                ->middleware('api')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/siswa-service-routes.php'));
         });
     }
 

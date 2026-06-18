@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -21,6 +22,17 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\CollectForwardedIps::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // 🚦 Rate limit
+        $exceptions->render(function (ThrottleRequestsException $e, Request $request) {
+            return response()->json([
+                'resCode'   => 429,
+                'resPhrase' => 'Too Many Requests',
+                'resStatus' => 'fail',
+                'resMsg'    => 'Terlalu banyak percobaan login. Coba lagi dalam 1 menit.',
+                'data'      => []
+            ], 429);
+        });
+
         // 📦 Not Found
         $exceptions->render(function (NotFoundHttpException $e, Request $request) {
             // if ($request->is('api/*')) {

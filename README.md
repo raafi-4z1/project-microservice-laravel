@@ -1,129 +1,586 @@
-## Langkah-langkah
+# Microservice Laravel — School Management System
 
-Pertama clone repository
+Arsitektur microservice berbasis Laravel 12 dengan API Gateway terpusat. Seluruh request dari klien/frontend masuk melalui **Gateway**, yang kemudian meneruskannya ke masing-masing service menggunakan autentikasi **HMAC SHA-256**.
+
+## Arsitektur
+
+```
+Klien / Frontend
+      │
+      ▼ Bearer Token (Laravel Passport OAuth2)
+┌─────────────┐
+│   Gateway   │  https://gateway.test
+└─────┬───────┘
+      │ HMAC SHA-256 (X-Timestamp + X-Signature + Body)
+      ├──────────────► ClassMicroservices  http://classmicroservices.test
+      ├──────────────► MapelService        http://mapelservice.test
+      ├──────────────► GuruService         http://guruservice.test
+      └──────────────► SiswaService        http://siswaservice.test
+```
+
+| Folder | Domain lokal | Fungsi |
+|--------|-------------|--------|
+| `Gateway` | `gateway.test` | Auth (OAuth2 Passport), routing, RBAC, audit log |
+| `ClassMicroservices` | `classmicroservices.test` | Manajemen ruang kelas |
+| `MapelService` | `mapelservice.test` | Manajemen mata pelajaran |
+| `GuruService` | `guruservice.test` | Manajemen data guru + foto |
+| `SiswaService` | `siswaservice.test` | Manajemen data siswa + foto |
+
+---
+
+## Prasyarat
+
+- **[Laragon](https://laragon.org/download/)** versi Full (sudah termasuk Apache, MySQL, PHP)
+- **PHP ≥ 8.2** — cek versi aktif di Laragon: klik kanan tray → PHP → versi
+- **Ekstensi PHP yang wajib aktif:** `pdo_mysql`, `gd`, `mbstring`, `openssl`, `fileinfo`
+  - Cek di Laragon: klik kanan tray → PHP → Extensions
+- **Composer ≥ 2** — download di [getcomposer.org](https://getcomposer.org)
+- **Git**
+
+---
+
+## Instalasi
+
+### 1. Clone Repository
+
+Clone ke folder manapun di komputer kamu (tidak harus di dalam folder `www` Laragon):
 
 ```sh
 git clone https://github.com/raafi-4z1/project-microservice-laravel.git
+cd project-microservice-laravel
 ```
-### API Gateway
-Setting Gateway.
-1. Buka terminal dan masuk ke folder Gateway
-2. Jalankan perintah composer
+
+---
+
+### 2. Konfigurasi Virtual Host di Laragon
+
+Karena project ini punya 5 service dengan domain berbeda, kamu perlu mendaftarkan setiap service secara manual di Laragon. **Gateway dikonfigurasi HTTPS**, service lain tetap HTTP internal.
+
+#### 2a. Generate Sertifikat SSL dengan mkcert (sekali saja)
+
+Laragon versi baru tidak menyertakan server certificate siap pakai. Gunakan **mkcert** untuk generate sertifikat lokal yang dipercaya browser secara otomatis.
+
+**Install mkcert:**
+
+Pilih salah satu cara:
+
+```powershell
+# Cara 1 – via Scoop (direkomendasikan jika sudah punya Scoop)
+scoop install mkcert
+
+# Cara 2 – via Chocolatey
+choco install mkcert
+
+# Cara 3 – download manual
+# Buka https://github.com/FiloSottile/mkcert/releases
+# Download mkcert-v*-windows-amd64.exe → rename jadi mkcert.exe → taruh di folder yang ada di PATH
+```
+
+**Generate sertifikat untuk `gateway.test`:**
+
+```powershell
+# Install CA lokal mkcert ke Windows (sekali saja, perlu dijalankan sebagai Administrator)
+mkcert -install
+
+# Buat folder untuk menyimpan sertifikat
+mkdir C:\laragon\etc\ssl\mkcert
+
+# Generate sertifikat gateway.test
+cd C:\laragon\etc\ssl\mkcert
+mkcert gateway.test
+```
+
+Perintah di atas menghasilkan dua file:
+- `gateway.test.pem` — sertifikat
+- `gateway.test-key.pem` — private key
+
+> Setelah `mkcert -install`, browser (Chrome/Edge/Firefox) otomatis mempercayai sertifikat yang dibuat mkcert — tidak perlu install manual ke Windows.
+
+#### 2b. Buat file konfigurasi Virtual Host
+
+1. Klik kanan ikon Laragon di system tray → **Apache** → **sites-enabled** → folder akan terbuka
+2. Buat file baru bernama `microservice.conf` di folder tersebut
+3. Isi dengan konfigurasi berikut (sesuaikan path ke lokasi project kamu):
+
+```apache
+# Ganti "C:/path/to/project-microservice-laravel" dengan path project kamu
+# Contoh: C:/Users/NamaKamu/Documents/project-microservice-laravel
+
+# ─── GATEWAY: HTTP → HTTPS redirect ─────────────────────────────────────────
+<VirtualHost *:80>
+    ServerName gateway.test
+    Redirect permanent / https://gateway.test/
+</VirtualHost>
+
+# ─── GATEWAY: HTTPS (satu-satunya yang diakses client/browser) ───────────────
+<VirtualHost *:443>
+    ServerName gateway.test
+    DocumentRoot "C:/path/to/project-microservice-laravel/Gateway/public"
+    SSLEngine on
+    SSLCertificateFile    "C:/laragon/etc/ssl/mkcert/gateway.test.pem"
+    SSLCertificateKeyFile "C:/laragon/etc/ssl/mkcert/gateway.test-key.pem"
+    <Directory "C:/path/to/project-microservice-laravel/Gateway/public">
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+
+# ─── SERVICE INTERNAL: hanya localhost (127.0.0.1), tidak bisa diakses dari LAN ──
+<VirtualHost 127.0.0.1:80>
+    ServerName classmicroservices.test
+    DocumentRoot "C:/path/to/project-microservice-laravel/ClassMicroservices/public"
+    <Directory "C:/path/to/project-microservice-laravel/ClassMicroservices/public">
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+
+<VirtualHost 127.0.0.1:80>
+    ServerName mapelservice.test
+    DocumentRoot "C:/path/to/project-microservice-laravel/MapelService/public"
+    <Directory "C:/path/to/project-microservice-laravel/MapelService/public">
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+
+<VirtualHost 127.0.0.1:80>
+    ServerName guruservice.test
+    DocumentRoot "C:/path/to/project-microservice-laravel/GuruService/public"
+    <Directory "C:/path/to/project-microservice-laravel/GuruService/public">
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+
+<VirtualHost 127.0.0.1:80>
+    ServerName siswaservice.test
+    DocumentRoot "C:/path/to/project-microservice-laravel/SiswaService/public"
+    <Directory "C:/path/to/project-microservice-laravel/SiswaService/public">
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+```
+
+4. Simpan file, lalu klik kanan Laragon tray → **Reload** (atau restart Apache)
+
+> **Catatan:** Laragon menangani file `hosts` dan domain `.test` secara otomatis. Kamu tidak perlu mengedit file `hosts` secara manual.
+
+---
+
+### 3. Setup Gateway
+
+Buka terminal di folder `Gateway`:
 
 ```sh
+cd Gateway
 composer install
+cp .env.example .env
 ```
-3. Copy file .env.example dan simpan sebagai file .env di folder root yang sama
-4. Buka dan edit file .env
 
-```
+Edit file `.env` dan isi bagian berikut:
+
+```env
+APP_URL=https://gateway.test
+
+SESSION_ENCRYPT=true
+SESSION_SECURE_COOKIE=true
+
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=YOURDATABASE
-DB_USERNAME=USERNAME
-DB_PASSWORD=PASSWORD
-```
-5. Jalankan perintah untuk generate sebuah unique key untuk aplikasi
+DB_DATABASE=gateway_db
+DB_USERNAME=root
+DB_PASSWORD=
 
-```sh
-php artisan key:generate
-```
-6.  Selanjutnya migrasi database. Tunggu sampai prosesnya selesai
-
-```sh
-php artisan migrate
-```
-7. Untuk men-setting passport jalankan perintah untuk membuat encryption keys dan password grant client
-
-```sh
-php artisan passport:install
-```
-8. Buat sebuah virtual host untuk Gateway anda jika dilakukan di local machine atau sebuah subdomain jika dilakukan di live server
-9. Buka file .env pada Gateway dan tambahkan baris untuk microservice authentication
-
-```sh
+# Secret HMAC per service (nilai di bawah adalah default)
 CLASS_SERVICE_BASE_URL=http://classmicroservices.test
 CLASS_SERVICE_SECRET=base64:uUTtmBL1ZmUdIOtGSx+2uWQuYg1MdGWnyZb1AC4W/go=
 
 MAPEL_SERVICE_BASE_URL=http://mapelservice.test
 MAPEL_SERVICE_SECRET=base64:tV2U1JsoTvOqIgaDJXb1aHrmAhnGW0uvs/tY9h4xuCE=
+
+GURU_SERVICE_BASE_URL=http://guruservice.test
+GURU_SERVICE_SECRET=base64:bIah+HgRXoDF2xOZx6VqQHwPAi9Qn8EL+odWRRAC4LA=
+
+SISWA_SERVICE_BASE_URL=http://siswaservice.test
+SISWA_SERVICE_SECRET=base64:9sFQ/3POZdTj36SAka4tl76ZOBEw28KCqbUGFch/iPw=
+
+# Kredensial akun SuperAdmin pertama (dipakai oleh seeder)
+SUPERADMIN_NAME="Nama Admin Kamu"
+SUPERADMIN_EMAIL="email_kamu@domain.com"
+SUPERADMIN_PASSWORD="MinimalDuabelasKarakter1"
 ```
 
-### Class Microservice
-Setting Class Microservice.
-1. Buka terminal dan masuk ke folder Class Microservice
-2. Jalankan perintah composer
+> **Penting:**
+> - `SUPERADMIN_EMAIL` dan `SUPERADMIN_PASSWORD` wajib diganti — seeder akan **gagal** jika masih menggunakan nilai default atau password kurang dari 12 karakter
+> - Ganti juga semua nilai `*_SERVICE_SECRET` dengan secret baru (lihat [Catatan Keamanan HMAC](#catatan-keamanan-hmac))
 
-```sh
-composer install
-```
-3. Copy file .env.example dan simpan sebagai file .env di folder root yang sama
-4. Buka dan edit file .env
-
-```
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=YOURDATABASE
-DB_USERNAME=USERNAME
-DB_PASSWORD=PASSWORD
-```
-5. Jalankan perintah untuk generate sebuah unique key untuk aplikasi
+Jalankan setup:
 
 ```sh
 php artisan key:generate
-```
-6.  Selanjutnya migrasi database. Tunggu sampai prosesnya selesai
-
-```sh
 php artisan migrate
+php artisan passport:install
+php artisan db:seed
 ```
-7. Buat sebuah virtual host untuk Class Microservice anda jika dilakukan di local machine atau sebuah subdomain jika dilakukan di live server. Pastikan setting url virtual host di file .env pada Gateway.
-8. Buka file .env pada Class Microservice dan tambahkan baris untuk microservice authentication.
+
+> **Jika `passport:install` gagal** karena sudah pernah dijalankan, jalankan:
+> ```sh
+> php artisan passport:client --personal
+> ```
+
+---
+
+### 4. Setup ClassMicroservices
 
 ```sh
+cd ../ClassMicroservices
+composer install
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```env
+APP_URL=http://classmicroservices.test
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=class_db
+DB_USERNAME=root
+DB_PASSWORD=
+
+# Harus sama persis dengan CLASS_SERVICE_SECRET di Gateway
 ACCEPTED_SECRETS=base64:uUTtmBL1ZmUdIOtGSx+2uWQuYg1MdGWnyZb1AC4W/go=
 ```
 
-### Mapel Service
-Setting Mapel Service.
-1. Buka terminal dan masuk ke folder Mapel Service
-2. Jalankan perintah composer
+```sh
+php artisan key:generate
+php artisan migrate
+```
+
+---
+
+### 5. Setup MapelService
 
 ```sh
+cd ../MapelService
 composer install
+cp .env.example .env
 ```
-3. Copy file .env.example dan simpan sebagai file .env di folder root yang sama
-4. Buka dan edit file .env
 
-```
+Edit `.env`:
+
+```env
+APP_URL=http://mapelservice.test
+
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=YOURDATABASE
-DB_USERNAME=USERNAME
-DB_PASSWORD=PASSWORD
-```
-5. Jalankan perintah untuk generate sebuah unique key untuk aplikasi
+DB_DATABASE=mapel_db
+DB_USERNAME=root
+DB_PASSWORD=
 
-```sh
-php artisan key:generate
-```
-6.  Selanjutnya migrasi database. Tunggu sampai prosesnya selesai
-
-```sh
-php artisan migrate
-```
-7. Buat sebuah virtual host untuk Mapel Service anda jika dilakukan di local machine atau sebuah subdomain jika dilakukan di live server. Pastikan setting url virtual host di file .env pada Gateway.
-8. Buka file .env pada Mapel Service dan tambahkan baris untuk microservice authentication.
-
-```sh
+# Harus sama persis dengan MAPEL_SERVICE_SECRET di Gateway
 ACCEPTED_SECRETS=base64:tV2U1JsoTvOqIgaDJXb1aHrmAhnGW0uvs/tY9h4xuCE=
 ```
 
-### Catatan
-Buatlah value ACCEPTED_SECRETS berbeda-beda pada setiap microservice dan value ..._SERVICE_SECRET merupakan value ACCEPTED_SECRETS dari microservice yang ingin dihubungkan.
+```sh
+php artisan key:generate
+php artisan migrate
+```
+
+---
+
+### 6. Setup GuruService
+
+```sh
+cd ../GuruService
+composer install
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```env
+APP_URL=http://guruservice.test
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=guru_db
+DB_USERNAME=root
+DB_PASSWORD=
+
+FILESYSTEM_DISK=private
+
+# Harus sama persis dengan GURU_SERVICE_SECRET di Gateway
+ACCEPTED_SECRETS=base64:bIah+HgRXoDF2xOZx6VqQHwPAi9Qn8EL+odWRRAC4LA=
+```
+
+```sh
+php artisan key:generate
+php artisan migrate
+```
+
+---
+
+### 7. Setup SiswaService
+
+```sh
+cd ../SiswaService
+composer install
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```env
+APP_URL=http://siswaservice.test
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=siswa_db
+DB_USERNAME=root
+DB_PASSWORD=
+
+FILESYSTEM_DISK=private
+
+# Harus sama persis dengan SISWA_SERVICE_SECRET di Gateway
+ACCEPTED_SECRETS=base64:9sFQ/3POZdTj36SAka4tl76ZOBEw28KCqbUGFch/iPw=
+```
+
+```sh
+php artisan key:generate
+php artisan migrate
+```
+
+---
+
+### 8. Verifikasi
+
+Buka browser dan akses:
+- `https://gateway.test/api/login` — harus memunculkan respons JSON (bukan halaman error 404/500)
+- Jika muncul halaman "403 Forbidden" atau "404", cek kembali konfigurasi virtual host dan pastikan Laragon sudah di-reload
+- Jika muncul peringatan SSL "Not Secure", pastikan langkah 2a (install CA mkcert) sudah dijalankan
+
+---
+
+## Keamanan Aplikasi
+
+### Registrasi & Kontrol Role
+
+- `/register` hanya dapat diakses oleh **SuperAdmin** atau **Admin** (wajib menyertakan Bearer token)
+- **SuperAdmin** dapat mendaftarkan: `Admin`, `Guru`, `Siswa`, `Karyawan`
+- **Admin** hanya dapat mendaftarkan: `Guru`, `Siswa`, `Karyawan`
+- Role `SuperAdmin` tidak dapat dibuat melalui API — hanya via `php artisan db:seed`
+
+### Proteksi Hapus Akun User (`/users/{id}`)
+
+| Kondisi | Hasil |
+|---------|-------|
+| Admin menghapus Guru / Siswa / Karyawan | ✅ Diizinkan |
+| Admin menghapus Admin lain | ❌ 403 |
+| Admin menghapus SuperAdmin | ❌ 403 |
+| SuperAdmin menghapus Admin / Guru / Siswa / Karyawan | ✅ Diizinkan |
+| Siapapun menghapus SuperAdmin | ❌ 403 (tidak bisa via API) |
+| Menghapus akun sendiri | ❌ 403 |
+
+- Hapus bersifat **soft delete** — kolom `deleted_at` terisi, data tetap di database
+- Token aktif milik user yang dihapus **langsung dicabut** saat dihapus
+
+### Ubah & Reset Password
+
+| Endpoint | Siapa | Keterangan |
+|----------|-------|------------|
+| `POST /password` | Semua user | Ganti password **sendiri** — wajib kirim `current_password` |
+| `POST /users/{id}/password` | SuperAdmin, Admin | Reset password **user lain** — tidak perlu password lama |
+
+- `new_password`: min 8 karakter, harus mengandung huruf dan angka
+- `confirm_password`: harus sama dengan `new_password`
+- `new_password` tidak boleh sama dengan `current_password`
+- Saat admin reset password orang lain, **semua token aktif target langsung dicabut** (paksa login ulang)
+- Admin hanya dapat reset password Guru, Siswa, Karyawan — tidak bisa reset Admin/SuperAdmin
+- Password SuperAdmin tidak dapat direset melalui API (hanya via database langsung)
+
+### Token & Sesi
+
+- Token OAuth2 (Bearer) berlaku selama **8 jam**, refresh token **30 hari**
+- Login baru **mencabut semua token lama** — tidak ada concurrent session
+- Endpoint `/login` dibatasi **5 percobaan per menit** (throttle)
+
+### Audit Log
+
+Semua aksi tulis (create, update, delete, login, register) dicatat di tabel `audit_logs` di database Gateway.
+
+| Kolom | Isi |
+|-------|-----|
+| `action` | `login` / `created` / `updated` / `deleted` / `registered` |
+| `resource` | `guru` / `siswa` / `mapel` / `kelas` / `user` |
+| `resource_id` | ID record yang diubah |
+| `performed_by` | Email pelaku aksi |
+| `role` | Role pelaku |
+| `ip_address` | IP address pengirim request |
+| `payload` | Data yang dikirim (foto dan password otomatis disanitasi) |
+
+---
+
+## Catatan Keamanan HMAC
+
+Setiap service hanya bisa diakses dari Gateway, bukan langsung dari klien. Mekanismenya:
+
+- Gateway menambahkan header `X-Timestamp` dan `X-Signature` di setiap request ke service
+- Signature mencakup: `HMAC-SHA256(secret, timestamp + body)` — untuk GET, query string ikut di-sign; DELETE menggunakan ID di path
+- Service memverifikasi signature dengan `ACCEPTED_SECRETS`
+- Request lebih dari 5 menit akan ditolak (replay protection)
+
+**Nilai `ACCEPTED_SECRETS` di setiap service harus sama persis dengan nilai `*_SERVICE_SECRET` di Gateway yang terhubung.**
+
+Untuk generate secret baru:
+
+```sh
+cd Gateway
+php artisan tinker
+>>> echo base64_encode(random_bytes(32));
+```
+
+---
+
+## Testing dengan Postman
+
+1. Import file `Microservice Laravel.postman_collection.json` ke Postman
+2. Buka tab **Variables** collection — pastikan:
+   - `baseURL` = `https://gateway.test/api`
+   - `superadmin_email` dan `superadmin_password` diisi di kolom **Current Value**
+3. Di Settings Postman → centang **"SSL certificate verification" → Off** (karena sertifikat lokal mkcert)
+4. Jalankan request **Login** — token tersimpan otomatis ke `{{token}}`
+5. Semua request lain sudah menggunakan `{{token}}` secara otomatis
+
+### Urutan test yang direkomendasikan
+
+```
+1. Auth → Login (isi variabel superadmin_email & superadmin_password di tab Variables)
+2. Auth → Register (buat akun Admin / Guru / Siswa baru)
+3. Auth → Ganti Password Sendiri
+4. Manajemen User → GET Semua User → GET User by ID → Reset Password User → Hapus User
+5. Mata Pelajaran → Tambah → GET All → GET by ID → Update → Hapus
+6. Kelas → Tambah → GET All → GET by ID → Update → Hapus
+7. Guru → Tambah (dengan foto) → GET All → GET by ID → Update → Hapus
+8. Siswa → Tambah (dengan foto) → GET All → GET by ID → Update → Hapus
+9. Auth → Logout
+```
+
+### Role & Akses
+
+| Role | GET | POST (CREATE/UPDATE) | DELETE | Register |
+|------|-----|----------------------|--------|----------|
+| SuperAdmin | ✅ | ✅ | ✅ | ✅ (Admin/Guru/Siswa/Karyawan) |
+| Admin | ✅ | ✅ | ✅* | ✅ (Guru/Siswa/Karyawan) |
+| Guru / Siswa / Karyawan | ✅ | ❌ 403 | ❌ 403 | ❌ 403 |
+
+> \* Proteksi DELETE untuk Admin berlaku pada:
+> - **`/users/{id}`** — Admin tidak dapat menghapus **akun user** (hasil `/register`) yang memiliki role Admin atau SuperAdmin
+> - **`/guru`** dan **`/siswa`** — Admin tidak dapat menghapus data guru/siswa jika email-nya terdaftar sebagai akun Admin/SuperAdmin di Gateway
+>
+> Untuk **`/mapel`** dan **`/class`**: tidak ada proteksi berdasarkan siapa yang membuat — semua Admin dapat menghapus data apapun.
+
+### Ketentuan Upload Foto (Guru & Siswa)
+
+- Format: **JPEG, PNG, atau JPG**
+- Ukuran maksimal: **2 MB**
+- Dimensi sumber: minimal **360×480 px**
+- Foto dikonversi otomatis ke rasio **3:4 portrait (360×480 px)** dan disimpan sebagai **WebP** (kualitas 85)
+
+---
+
+## API Endpoints (via Gateway)
+
+Base URL: `https://gateway.test/api`
+
+| Method | Endpoint | Role | Keterangan |
+|--------|----------|------|------------|
+| POST | `/login` | Publik | Login, max 5x/menit |
+| POST | `/logout` | Semua | Cabut token |
+| GET | `/user` | Semua | Info user yang sedang login |
+| POST | `/password` | Semua | Ganti password sendiri (butuh `current_password`) |
+| POST | `/register` | SuperAdmin, Admin | Daftar akun baru (wajib login) |
+| GET | `/users` | SuperAdmin, Admin | List semua akun user |
+| GET | `/users/{id}` | SuperAdmin, Admin | Detail akun user by ID |
+| POST | `/users/{id}/password` | SuperAdmin, Admin | Reset password user lain (token target dicabut) |
+| DELETE | `/users/{id}` | SuperAdmin, Admin | Hapus akun user (soft delete) |
+| GET | `/mapel/all` | Semua | List mata pelajaran |
+| GET | `/mapel` | Semua | Detail mapel by `idPelajaran` |
+| POST | `/mapel` | SuperAdmin, Admin | Tambah mapel |
+| POST | `/mapel/update` | SuperAdmin, Admin | Update mapel |
+| DELETE | `/mapel/{id}` | SuperAdmin, Admin | Hapus mapel |
+| GET | `/class/all` | Semua | List kelas |
+| GET | `/class` | Semua | Detail kelas by `idKelas` |
+| POST | `/class` | SuperAdmin, Admin | Tambah kelas |
+| POST | `/class/update` | SuperAdmin, Admin | Update kelas |
+| DELETE | `/class/{id}` | SuperAdmin, Admin | Hapus kelas |
+| GET | `/guru/all` | Semua | List guru |
+| GET | `/guru` | Semua | Detail guru by `idGuru` |
+| POST | `/guru` | SuperAdmin, Admin | Tambah guru + foto |
+| POST | `/guru/update` | SuperAdmin, Admin | Update guru + foto opsional |
+| DELETE | `/guru/{id}` | SuperAdmin, Admin | Hapus guru |
+| GET | `/siswa/all` | Semua | List siswa |
+| GET | `/siswa` | Semua | Detail siswa by `idSiswa` |
+| POST | `/siswa` | SuperAdmin, Admin | Tambah siswa + foto |
+| POST | `/siswa/update` | SuperAdmin, Admin | Update siswa + foto opsional |
+| DELETE | `/siswa/{id}` | SuperAdmin, Admin | Hapus siswa |
+
+---
+
+## Konvensi Penamaan Field
+
+| Layer | Konvensi | Contoh |
+|-------|----------|--------|
+| Kolom database | `snake_case` deskriptif | `nama_pelajaran`, `limit_siswa`, `jenis_kelamin` |
+| Body request & response API | `camelCase` | `namaPelajaran`, `limitSiswa`, `jenisKelamin` |
+| Field ID di response | prefix nama resource | `idPelajaran`, `idKelas`, `idGuru`, `idSiswa` |
+
+### Request Fields — Mata Pelajaran (`/mapel`)
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `kode` | ✅ store | Kode unik mapel (auto-UPPERCASE) |
+| `namaPelajaran` | ✅ store | Nama mata pelajaran |
+| `keterangan` | ❌ | Deskripsi tambahan |
+| `idPelajaran` | ✅ update/delete | ID mata pelajaran |
+
+**Response:** `idPelajaran`, `kode`, `namaPelajaran`, `keterangan`
+
+### Request Fields — Kelas (`/class`)
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `noKelas` | ✅ store | Nomor urut kelas |
+| `tingkat` | ✅ store | `1` (X) / `2` (XI) / `3` (XII) |
+| `jurusan` | ✅ store | `MIPA` / `IPS` |
+| `limitSiswa` | ✅ store | Kapasitas siswa (1–62) |
+| `idKelas` | ✅ update/delete | ID kelas |
+| `namaKelas` | ❌ | Override nama kelas secara manual |
+
+**Response:** `idKelas`, `namaKelas`, `tingkat`, `jurusan`, `limitSiswa`
+
+### Response Fields — Guru (`/guru`)
+
+**List:** `idGuru`, `foto`, `namaLengkap`, `nip`, `email`, `jabatan`, `statusKepegawaian`
+
+**Detail:** seluruh field list + `nik`, `jenisKelamin`, `tempatLahir`, `tanggalLahir`, `alamat`, `agama`, `statusPernikahan`, `tanggalMasuk`, `pendidikanTerakhir`, `jurusan`, `universitas`, `tahunLulus`, `nomorSKPengangkatan`, `nomorSertifikasi`, `pelatihan`
+
+### Response Fields — Siswa (`/siswa`)
+
+**List:** `idSiswa`, `foto`, `namaLengkap`, `nisn`, `jenisKelamin`, `tempatLahir`, `tanggalLahir`, `tanggalMasuk`, `status`
+
+**Detail:** seluruh field list + `email`, `alamat`, `agama`, `statusDate`, `namaAyah`, `namaIbu`, `pekerjaanAyah`, `pekerjaanIbu`, `noTelpAyah`, `noTelpIbu`, `namaWali`, `hubunganWali`, `noTelpWali`
+
+---
 
 ## Referensi
-Github: https://github.com/ismail17719/apigateway-based-microservices-in-laravel-and-lumen
+
+- Inspirasi arsitektur: [ismail17719/apigateway-based-microservices-in-laravel-and-lumen](https://github.com/ismail17719/apigateway-based-microservices-in-laravel-and-lumen)

@@ -16,40 +16,49 @@ class AuthenticateAccessMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-		$xffHeader = $request->headers->get('X-Forwarded-For', '');
+        $timestamp = $request->header('X-Timestamp');
+        $signature = $request->header('X-Signature');
 
-		// Pecah berdasarkan koma, lalu buang spasi di tiap elemen
-		$ipList = array_filter(
-			array_map('trim', explode(',', $xffHeader)),
-			fn($ip) => !empty($ip)
-		);
+        // Replay protection: tolak request lebih dari 5 menit
+        if (!$timestamp || abs(time() - (int)$timestamp) > 300) {
+            return $this->response("Request expired.", Response::HTTP_UNAUTHORIZED);
+        }
 
-		// client IP → elemen pertama
-		$clientIp  = $ipList[0] ?? $request->ip();
-		// gateway IP → elemen terakhir
-		$gatewayIp = end($ipList) ?? $request->ip();
+        $contentType = $request->header('Content-Type', '');
+        $isGetOrDelete = in_array($request->method(), ['GET', 'DELETE']);
+        if ($isGetOrDelete) {
+            $body = http_build_query($request->query->all());
+        } elseif (str_contains($contentType, 'multipart/form-data')) {
+            $body = '';
+        } else {
+            $body = $request->getContent();
+        }
+        $secrets = array_map('trim', explode(',', env('ACCEPTED_SECRETS', '')));
+        
+        $valid = false;
+        foreach ($secrets as $secret) {
+            if (!empty($secret) && hash_equals(
+                hash_hmac('sha256', $timestamp . $body, $secret),
+                (string) $signature
+            )) {
+                $valid = true;
+                break;
+            }
+        }
 
-        Log::info('Incoming request', [
-			'all_ips' => $ipList,
-			'gateway_ip' => $gatewayIp,
-			'client_ip' => $clientIp,
-            'path' => $request->path(),
+        if (!$valid) {
+            return $this->response("Anda tidak memiliki akses.", Response::HTTP_UNAUTHORIZED);
+        }
+
+        // Log setelah auth sukses
+        $ipList = array_filter(array_map('trim', explode(',', $request->headers->get('X-Forwarded-For', ''))));
+        Log::info('Authenticated request', [
+            'client_ip'  => $ipList[0] ?? $request->ip(),
+            'gateway_ip' => end($ipList) ?: $request->ip(),
+            'path'   => $request->path(),
             'method' => $request->method(),
         ]);
 
-        $validSecrets = explode(',', env('ACCEPTED_SECRETS'));
-        if(in_array($request->header('Authorization'), $validSecrets))
-        {
-            return $next($request);
-        }
-
-        // abort(Response::HTTP_UNAUTHORIZED);
-        return $this->response(
-            "Anda tidak memiliki akses.", 
-            Response::HTTP_UNAUTHORIZED
-        );
-
-        //This for testing purpose and should be reomoved in production
-        // return $next($request);
+        return $next($request);
     }
 }

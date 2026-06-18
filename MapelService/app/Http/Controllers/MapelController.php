@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Mapel;
 use App\Traits\ApiResponser;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Validator;
@@ -11,59 +12,46 @@ use Illuminate\Support\Facades\Validator;
 class MapelController extends Controller
 {
     use ApiResponser;
-    /**
-     * Display a listing of the resource.
-     */
+
     public function index(Request $request)
     {
         try {
             $validate = Validator::make($request->all(), [
-                'page' => 'sometimes|numeric|min:1',
-                'per_page' => 'sometimes|numeric|min:1'
+                'page'     => 'sometimes|numeric|min:1',
+                'per_page' => 'sometimes|numeric|min:1',
             ]);
 
-            if($validate->fails()){
+            if ($validate->fails()) {
                 return $this->response(
-                    $validate->errors()->first(), 
+                    $validate->errors()->first(),
                     Response::HTTP_UNPROCESSABLE_ENTITY,
                     $validate->errors()
                 );
             }
 
-            $columns = [
-                'id', 'kode', 'nama', 'keterangan'
-            ];
-
+            $columns = ['id', 'kode', 'nama_pelajaran', 'keterangan'];
             $perPage = $request->input('per_page', 5);
-            $paginator = Mapel::select($columns)
-                //->withTrashed()
-                ->paginate($perPage)
-                ->withQueryString();
+            $paginator = Mapel::select($columns)->paginate($perPage)->withQueryString();
 
             $current = $paginator->currentPage();
             $last    = $paginator->lastPage();
+            $start   = max(1, $current - 2);
+            $end     = min($last, $current + 2);
 
-            // Tentukan range halaman
-            $start = max(1, $current - 2);
-            $end   = min($last,  $current + 2);
-
-            // Buat array URL untuk halaman dalam range
             $urlRange = $paginator->getUrlRange($start, $end);
 
-            // Mapping jadi format yang diinginkan
             $links = collect($urlRange)
-                ->map(function($url, $page) use ($current) {
+                ->map(function ($url, $page) use ($current) {
                     return [
                         'query'  => parse_url($url, PHP_URL_QUERY),
                         'label'  => (string) $page,
-                        'page'   => (int)    $page,
+                        'page'   => (int) $page,
                         'active' => $page == $current,
                     ];
                 })
                 ->values()
                 ->all();
 
-            // Tambahkan Prev & Next secara manual
             if ($paginator->onFirstPage() === false) {
                 array_unshift($links, [
                     'query'  => parse_url($paginator->previousPageUrl(), PHP_URL_QUERY),
@@ -82,10 +70,10 @@ class MapelController extends Controller
                 ];
             }
 
-            // Hasil akhir
-            $pageArr = $paginator->toArray();
+            $pageArr         = $paginator->toArray();
+            $pageArr['data'] = collect($pageArr['data'])->map(fn($item) => $this->toApiArray($item))->all();
             $pageArr['links'] = $links;
-            
+
             unset(
                 $pageArr['first_page_url'],
                 $pageArr['last_page_url'],
@@ -93,24 +81,13 @@ class MapelController extends Controller
                 $pageArr['prev_page_url'],
                 $pageArr['path']
             );
-            
-            return $this->response(
-                "List Mata Pelajaran.", 
-                Response::HTTP_OK, 
-                $pageArr
-            );
+
+            return $this->response("List Mata Pelajaran.", Response::HTTP_OK, $pageArr);
         } catch (Exception $e) {
-            return $this->response(
-                $e->getMessage(), 
-                Response::HTTP_INTERNAL_SERVER_ERROR, 
-                $e
-            );
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Request $request)
     {
         try {
@@ -120,51 +97,41 @@ class MapelController extends Controller
                 'idPelajaran.exists' => "Mata Pelajaran dengan id:{$request->idPelajaran} tidak ada di database.",
             ]);
 
-            if($validate->fails()){
+            if ($validate->fails()) {
                 return $this->response(
-                    $validate->errors()->first(), 
+                    $validate->errors()->first(),
                     Response::HTTP_UNPROCESSABLE_ENTITY,
                     $validate->errors()
                 );
             }
 
             $mapel = Mapel::find($request->idPelajaran);
-            if ($mapel == null) {
-                return $this->response(
-                    "Data sudah dihapus.", 
-                    Response::HTTP_NOT_FOUND
-                );
+            if ($mapel === null) {
+                return $this->response("Data sudah dihapus.", Response::HTTP_NOT_FOUND);
             }
 
             return $this->response(
-                "Mata Pelajaran dengan id:{$request->idPelajaran}.", 
-                Response::HTTP_OK, 
-                $mapel
+                "Mata Pelajaran dengan id:{$request->idPelajaran}.",
+                Response::HTTP_OK,
+                $this->toApiArray($mapel->toArray())
             );
         } catch (Exception $e) {
-            return $this->response(
-                $e->getMessage(), 
-                Response::HTTP_INTERNAL_SERVER_ERROR, 
-                $e
-            );
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         try {
             $validate = Validator::make($request->all(), [
-                'kode' => 'required|string',
-                'nama' => 'required|string',
-                'keterangan' => 'string',
+                'kode'          => 'required|string',
+                'namaPelajaran' => 'required|string',
+                'keterangan'    => 'sometimes|string',
             ]);
 
-            if($validate->fails()){
+            if ($validate->fails()) {
                 return $this->response(
-                    $validate->errors()->first(), 
+                    $validate->errors()->first(),
                     Response::HTTP_UNPROCESSABLE_ENTITY,
                     $validate->errors()
                 );
@@ -172,40 +139,33 @@ class MapelController extends Controller
 
             $mapel = Mapel::create([
                 'kode'          => strtoupper($request->kode),
-                'nama'          => $request->nama,
+                'nama_pelajaran' => $request->namaPelajaran,
                 'keterangan'    => $request->keterangan,
             ]);
 
             return $this->response(
-                "Mata Pelajaran berhasil disimpan.", 
-                Response::HTTP_CREATED, 
-                $mapel
+                "Mata Pelajaran berhasil disimpan.",
+                Response::HTTP_CREATED,
+                $this->toApiArray($mapel->toArray())
             );
         } catch (Exception $e) {
-            return $this->response(
-                $e->getMessage(), 
-                Response::HTTP_INTERNAL_SERVER_ERROR, 
-                $e
-            );
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request)
     {
         try {
             $validate = Validator::make($request->all(), [
-                'idPelajaran' => 'required|numeric',
-                'kode' => 'sometimes|string',
-                'nama' => 'sometimes|string',
-                'keterangan' => 'sometimes|string',
+                'idPelajaran'   => 'required|numeric',
+                'kode'          => 'sometimes|string',
+                'namaPelajaran' => 'sometimes|string',
+                'keterangan'    => 'sometimes|string',
             ]);
 
-            if($validate->fails()){
+            if ($validate->fails()) {
                 return $this->response(
-                    $validate->errors()->first(), 
+                    $validate->errors()->first(),
                     Response::HTTP_UNPROCESSABLE_ENTITY,
                     $validate->errors()
                 );
@@ -219,84 +179,79 @@ class MapelController extends Controller
                 );
             }
             if ($mapel->trashed()) {
-                return $this->response(
-                    "Data sudah dihapus.", 
-                    Response::HTTP_NOT_FOUND
-                );
+                return $this->response("Data sudah dihapus.", Response::HTTP_NOT_FOUND);
             }
 
             $updateData = [];
             if ($request->filled('kode')) {
                 $updateData['kode'] = strtoupper($request->kode);
             }
-            if ($request->filled('nama')) {
-                $updateData['nama'] = $request->nama;
+            if ($request->filled('namaPelajaran')) {
+                $updateData['nama_pelajaran'] = $request->namaPelajaran;
             }
             if ($request->filled('keterangan')) {
                 $updateData['keterangan'] = $request->keterangan;
             }
-            
+
             if (empty($updateData)) {
-                return $this->response(
-                    "Tidak ada data yang diperbarui.",
-                    Response::HTTP_BAD_REQUEST
-                );
+                return $this->response("Tidak ada data yang diperbarui.", Response::HTTP_BAD_REQUEST);
             }
+
             $mapel->update($updateData);
 
             return $this->response(
-                "Mata Pelajaran dengan id:{$request->idPelajaran} berhasil diupdate.", 
-                Response::HTTP_ACCEPTED, 
-                $mapel
+                "Mata Pelajaran dengan id:{$request->idPelajaran} berhasil diupdate.",
+                Response::HTTP_ACCEPTED,
+                $this->toApiArray($mapel->fresh()->toArray())
             );
         } catch (Exception $e) {
-            return $this->response(
-                $e->getMessage(), 
-                Response::HTTP_INTERNAL_SERVER_ERROR, 
-                $e
-            );
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Request $request)
+    public function destroy(Request $request, $id)
     {
         try {
-            $validate = Validator::make($request->all(), [
-                'idPelajaran' => 'required|numeric|exists:mapels,id',
+            $validate = Validator::make(['id' => $id], [
+                'id' => 'required|numeric|exists:mapels,id',
             ], [
-                'idPelajaran.exists' => "Mata Pelajaran dengan id:{$request->idPelajaran} tidak ada di database.",
+                'id.exists' => "Mata Pelajaran dengan id:{$id} tidak ada di database.",
             ]);
 
-            if($validate->fails()){
+            if ($validate->fails()) {
                 return $this->response(
-                    $validate->errors()->first(), 
+                    $validate->errors()->first(),
                     Response::HTTP_UNPROCESSABLE_ENTITY,
                     $validate->errors()
                 );
             }
 
-            if (Mapel::withTrashed()->find($request->idPelajaran)->trashed()) {
-                return $this->response(
-                    "Data sudah dihapus.", 
-                    Response::HTTP_NOT_FOUND
-                );
+            $mapelCheck = Mapel::withTrashed()->find($id);
+            if (!$mapelCheck || $mapelCheck->trashed()) {
+                return $this->response("Data sudah dihapus.", Response::HTTP_NOT_FOUND);
             }
-            
-            Mapel::destroy($request->idPelajaran);
+
+            Mapel::destroy($id);
 
             return $this->response(
-                "Mata Pelajaran dengan id:{$request->idPelajaran} berhasil dihapus.", 
+                "Mata Pelajaran dengan id:{$id} berhasil dihapus.",
                 Response::HTTP_ACCEPTED
             );
         } catch (Exception $e) {
-            return $this->response(
-                $e->getMessage(), 
-                Response::HTTP_INTERNAL_SERVER_ERROR, 
-                $e
-            );
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    private function toApiArray(array $data): array
+    {
+        $map = [
+            'id'             => 'idPelajaran',
+            'nama_pelajaran' => 'namaPelajaran',
+        ];
+        $result = [];
+        foreach ($data as $key => $value) {
+            $result[$map[$key] ?? $key] = $value;
+        }
+        return $result;
     }
 }

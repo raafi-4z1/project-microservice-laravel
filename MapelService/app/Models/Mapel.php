@@ -16,7 +16,7 @@ class Mapel extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'kode', 'nama', 'keterangan'
+        'kode', 'nama_pelajaran', 'keterangan'
     ];
 
     /**

@@ -1,1565 +1,767 @@
 {
-	"info": {
-		"_postman_id": "fa1ef22d-c0df-47ab-9e0e-d6b01000f670",
-		"name": "Microservice Laravel",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "14041935",
-		"_collection_link": "https://fiaar45.postman.co/workspace/Team-Workspace~0df96f52-6042-4df4-8855-51db16743aff/collection/14041935-fa1ef22d-c0df-47ab-9e0e-d6b01000f670?action=share&source=collection_link&creator=14041935"
-	},
-	"item": [
-		{
-			"name": "Class-microservice",
-			"item": [
-				{
-					"name": "All",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "{{authorizationClass}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{baseURLClass}}/class/all?page=2",
-							"host": [
-								"{{baseURLClass}}"
-							],
-							"path": [
-								"class",
-								"all"
-							],
-							"query": [
-								{
-									"key": "page",
-									"value": "2"
-								},
-								{
-									"key": "per_page",
-									"value": "2",
-									"disabled": true
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "By Id",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "{{authorizationClass}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{baseURLClass}}/class?idKelas=1",
-							"host": [
-								"{{baseURLClass}}"
-							],
-							"path": [
-								"class"
-							],
-							"query": [
-								{
-									"key": "idKelas",
-									"value": "1"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create  Class",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "{{authorizationClass}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "noKelas",
-									"value": "1",
-									"type": "text"
-								},
-								{
-									"key": "tingkat",
-									"value": "1",
-									"type": "text"
-								},
-								{
-									"key": "jurusan",
-									"value": "MIPA",
-									"type": "text"
-								},
-								{
-									"key": "limitSiswa",
-									"value": "",
-									"type": "text"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{baseURLClass}}/class",
-							"host": [
-								"{{baseURLClass}}"
-							],
-							"path": [
-								"class"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Update Class",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text",
-								"disabled": true
-							},
-							{
-								"key": "Authorization",
-								"value": "{{authorizationClass}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "idKelas",
-									"value": "2",
-									"type": "text"
-								},
-								{
-									"key": "namaKelas",
-									"value": "Bunga",
-									"type": "text",
-									"disabled": true
-								},
-								{
-									"key": "noKelas",
-									"value": "1",
-									"type": "text",
-									"disabled": true
-								},
-								{
-									"key": "tingkat",
-									"value": "2",
-									"type": "text",
-									"disabled": true
-								},
-								{
-									"key": "jurusan",
-									"value": "MIPAs",
-									"type": "text",
-									"disabled": true
-								},
-								{
-									"key": "limitSiswa",
-									"value": "",
-									"type": "text",
-									"disabled": true
-								}
-							]
-						},
-						"url": {
-							"raw": "{{baseURLClass}}/class/update",
-							"host": [
-								"{{baseURLClass}}"
-							],
-							"path": [
-								"class",
-								"update"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Class",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "{{authorizationClass}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "formdata",
-							"formdata": []
-						},
-						"url": {
-							"raw": "{{baseURLClass}}/class?idKelas=1",
-							"host": [
-								"{{baseURLClass}}"
-							],
-							"path": [
-								"class"
-							],
-							"query": [
-								{
-									"key": "idKelas",
-									"value": "1"
-								}
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Mapel-service",
-			"item": [
-				{
-					"name": "All",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "{{authorizationMapel}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{baseURLMapel}}/mapel/all?page=2",
-							"host": [
-								"{{baseURLMapel}}"
-							],
-							"path": [
-								"mapel",
-								"all"
-							],
-							"query": [
-								{
-									"key": "page",
-									"value": "2"
-								},
-								{
-									"key": "per_page",
-									"value": "2",
-									"disabled": true
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "By Id",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "{{authorizationMapel}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{baseURLMapel}}/mapel?idPelajaran=2",
-							"host": [
-								"{{baseURLMapel}}"
-							],
-							"path": [
-								"mapel"
-							],
-							"query": [
-								{
-									"key": "idPelajaran",
-									"value": "2"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create Mata Pelajaran",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "{{authorizationMapel}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "kode",
-									"value": "",
-									"type": "text"
-								},
-								{
-									"key": "nama",
-									"value": "Fisika",
-									"type": "text"
-								},
-								{
-									"key": "keterangan",
-									"value": "ini keterangan mata pelajaan",
-									"type": "text",
-									"disabled": true
-								}
-							]
-						},
-						"url": {
-							"raw": "{{baseURLMapel}}/mapel",
-							"host": [
-								"{{baseURLMapel}}"
-							],
-							"path": [
-								"mapel"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Update Mata Pelajaran",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "{{authorizationMapel}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "idPelajaran",
-									"value": "2",
-									"type": "text"
-								},
-								{
-									"key": "kode",
-									"value": "",
-									"type": "text"
-								},
-								{
-									"key": "nama",
-									"value": "Fisika",
-									"type": "text",
-									"disabled": true
-								},
-								{
-									"key": "keterangan",
-									"value": "ini keterangan mata pelajaan fisika",
-									"type": "text"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{baseURLMapel}}/mapel/update",
-							"host": [
-								"{{baseURLMapel}}"
-							],
-							"path": [
-								"mapel",
-								"update"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Mata Pelajaran",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "{{authorizationMapel}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "formdata",
-							"formdata": []
-						},
-						"url": {
-							"raw": "{{baseURLMapel}}/mapel?idPelajaran=2",
-							"host": [
-								"{{baseURLMapel}}"
-							],
-							"path": [
-								"mapel"
-							],
-							"query": [
-								{
-									"key": "idPelajaran",
-									"value": "2"
-								}
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Gateway",
-			"item": [
-				{
-					"name": "Basic",
-					"item": [
-						{
-							"name": "Register",
-							"request": {
-								"auth": {
-									"type": "noauth"
-								},
-								"method": "POST",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "name",
-											"value": "Jhon",
-											"type": "text"
-										},
-										{
-											"key": "email",
-											"value": "jhon@email.com",
-											"type": "text"
-										},
-										{
-											"key": "password",
-											"value": "123456",
-											"type": "text"
-										},
-										{
-											"key": "confirm_password",
-											"value": "123456",
-											"type": "text"
-										}
-									]
-								},
-								"url": {
-									"raw": "{{baseURLGateway}}/register",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"register"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Login",
-							"request": {
-								"auth": {
-									"type": "noauth"
-								},
-								"method": "POST",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "email",
-											"value": "Admin1@email.com",
-											"type": "text"
-										},
-										{
-											"key": "password",
-											"value": "Admin1@123",
-											"type": "text"
-										}
-									]
-								},
-								"url": {
-									"raw": "{{baseURLGateway}}/login",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"login"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "User",
-							"protocolProfileBehavior": {
-								"disableBodyPruning": true
-							},
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text",
-										"disabled": true
-									}
-								],
-								"body": {
-									"mode": "formdata",
-									"formdata": []
-								},
-								"url": {
-									"raw": "{{baseURLGateway}}/user",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"user"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Logout",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "formdata",
-									"formdata": []
-								},
-								"url": {
-									"raw": "{{baseURLGateway}}/logout",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"logout"
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				},
-				{
-					"name": "Class-microservice",
-					"item": [
-						{
-							"name": "All",
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"url": {
-									"raw": "{{baseURLGateway}}/class/all?page=2",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"class",
-										"all"
-									],
-									"query": [
-										{
-											"key": "page",
-											"value": "2"
-										},
-										{
-											"key": "per_page",
-											"value": "2",
-											"disabled": true
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "By Id",
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"url": {
-									"raw": "{{baseURLGateway}}/class?idKelas=3",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"class"
-									],
-									"query": [
-										{
-											"key": "idKelas",
-											"value": "3"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Create  Class",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "noKelas",
-											"value": "1",
-											"type": "text"
-										},
-										{
-											"key": "tingkat",
-											"value": "1",
-											"type": "text"
-										},
-										{
-											"key": "jurusan",
-											"value": "MIPA",
-											"type": "text"
-										},
-										{
-											"key": "limitSiswa",
-											"value": "",
-											"type": "text"
-										}
-									]
-								},
-								"url": {
-									"raw": "{{baseURLGateway}}/class",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"class"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update Class",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text",
-										"disabled": true
-									}
-								],
-								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "idKelas",
-											"value": "1",
-											"type": "text"
-										},
-										{
-											"key": "namaKelas",
-											"value": "Bunga",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "noKelas",
-											"value": "2",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "tingkat",
-											"value": "1",
-											"type": "text"
-										},
-										{
-											"key": "jurusan",
-											"value": "MIPA",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "limitSiswa",
-											"value": "",
-											"type": "text",
-											"disabled": true
-										}
-									]
-								},
-								"url": {
-									"raw": "{{baseURLGateway}}/class/update",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"class",
-										"update"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Class",
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "formdata",
-									"formdata": []
-								},
-								"url": {
-									"raw": "{{baseURLGateway}}/class?idKelas=1",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"class"
-									],
-									"query": [
-										{
-											"key": "idKelas",
-											"value": "1"
-										}
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				},
-				{
-					"name": "Mapel-service",
-					"item": [
-						{
-							"name": "All",
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text",
-										"disabled": true
-									}
-								],
-								"url": {
-									"raw": "{{baseURLGateway}}/mapel/all",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"mapel",
-										"all"
-									],
-									"query": [
-										{
-											"key": "page",
-											"value": "2",
-											"disabled": true
-										},
-										{
-											"key": "per_page",
-											"value": "2",
-											"disabled": true
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "By Id",
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"url": {
-									"raw": "{{baseURLGateway}}/mapel?idPelajaran=2",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"mapel"
-									],
-									"query": [
-										{
-											"key": "idPelajaran",
-											"value": "2"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Create Mata Pelajaran",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "kode",
-											"value": "",
-											"type": "text"
-										},
-										{
-											"key": "nama",
-											"value": "Fisika",
-											"type": "text"
-										},
-										{
-											"key": "keterangan",
-											"value": "ini keterangan mata pelajaan",
-											"type": "text",
-											"disabled": true
-										}
-									]
-								},
-								"url": {
-									"raw": "{{baseURLGateway}}/mapel",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"mapel"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update Mata Pelajaran",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text",
-										"disabled": true
-									}
-								],
-								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "idPelajaran",
-											"value": "2",
-											"type": "text"
-										},
-										{
-											"key": "kode",
-											"value": "",
-											"type": "text"
-										},
-										{
-											"key": "nama",
-											"value": "Fisika",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "keterangan",
-											"value": "ini keterangan mata pelajaan fisika",
-											"type": "text"
-										}
-									]
-								},
-								"url": {
-									"raw": "{{baseURLGateway}}/mapel/update",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"mapel",
-										"update"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Mata Pelajaran",
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "formdata",
-									"formdata": []
-								},
-								"url": {
-									"raw": "{{baseURLGateway}}/mapel?idPelajaran=2",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"mapel"
-									],
-									"query": [
-										{
-											"key": "idPelajaran",
-											"value": "2"
-										}
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				},
-				{
-					"name": "Guru-service",
-					"item": [
-						{
-							"name": "All",
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text",
-										"disabled": true
-									}
-								],
-								"url": {
-									"raw": "{{baseURLGateway}}/guru/all?page=2",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"guru",
-										"all"
-									],
-									"query": [
-										{
-											"key": "page",
-											"value": "2"
-										},
-										{
-											"key": "per_page",
-											"value": "2",
-											"disabled": true
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "By Id",
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text",
-										"disabled": true
-									}
-								],
-								"url": {
-									"raw": "{{baseURLGateway}}/guru?idGuru=2",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"guru"
-									],
-									"query": [
-										{
-											"key": "idGuru",
-											"value": "2"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Create Data Guru",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "email",
-											"value": "raafi@gmail.com",
-											"type": "text"
-										},
-										{
-											"key": "nik",
-											"value": "112233445566",
-											"type": "text"
-										},
-										{
-											"key": "nip",
-											"value": "112233445566",
-											"type": "text"
-										},
-										{
-											"key": "namaLengkap",
-											"value": "Raafi",
-											"type": "text"
-										},
-										{
-											"key": "telephone",
-											"value": "083877527832",
-											"type": "text"
-										},
-										{
-											"key": "jenisKelamin",
-											"value": "Laki-Laki",
-											"type": "text"
-										},
-										{
-											"key": "tempatLahir",
-											"value": "Hulu Sungai Selatan",
-											"type": "text"
-										},
-										{
-											"key": "tanggalLahir",
-											"value": "2000-03-29",
-											"type": "text"
-										},
-										{
-											"key": "agama",
-											"value": "",
-											"description": "Opsional",
-											"type": "text"
-										},
-										{
-											"key": "statusPernikahan",
-											"value": "",
-											"description": "Opsional",
-											"type": "text"
-										},
-										{
-											"key": "alamat",
-											"value": "Jagapura",
-											"type": "text"
-										},
-										{
-											"key": "foto",
-											"type": "file",
-											"src": "/C:/Users/901102/Downloads/376663.png"
-										},
-										{
-											"key": "statusKepegawaian",
-											"value": "PNS",
-											"type": "text"
-										},
-										{
-											"key": "nomorSKPengangkatan",
-											"value": "",
-											"description": "Opsional",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "tanggalMasuk",
-											"value": "2025-08-08",
-											"type": "text"
-										},
-										{
-											"key": "jabatan",
-											"value": "Guru",
-											"type": "text"
-										},
-										{
-											"key": "nomorSertifikasi",
-											"value": "",
-											"description": "Opsional",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "pendidikanTerakhir",
-											"value": "S1",
-											"type": "text"
-										},
-										{
-											"key": "jurusan",
-											"value": "Pendidikan",
-											"type": "text"
-										},
-										{
-											"key": "universitas",
-											"value": "STI",
-											"type": "text"
-										},
-										{
-											"key": "tahunLulus",
-											"value": "2025",
-											"type": "text"
-										},
-										{
-											"key": "pelatihan",
-											"value": "",
-											"description": "Opsional",
-											"type": "text"
-										}
-									]
-								},
-								"url": {
-									"raw": "{{baseURLGateway}}/guru",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"guru"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update Data Guru",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "idGuru",
-											"value": "2",
-											"type": "text"
-										},
-										{
-											"key": "nik",
-											"value": "112233445566",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "nip",
-											"value": "112233445566",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "namaLengkap",
-											"value": "Raafi Azizan",
-											"type": "text"
-										},
-										{
-											"key": "telephone",
-											"value": "083877527832",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "jenisKelamin",
-											"value": "Laki-Laki",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "tempatLahir",
-											"value": "Hulu Sungai Selatan",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "tanggalLahir",
-											"value": "2000-03-29",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "agama",
-											"value": "",
-											"description": "Opsional",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "statusPernikahan",
-											"value": "",
-											"description": "Opsional",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "alamat",
-											"value": "Jagapura",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "foto",
-											"type": "file",
-											"src": "/C:/Users/901102/Downloads/376663.png",
-											"disabled": true
-										},
-										{
-											"key": "statusKepegawaian",
-											"value": "PNS",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "nomorSKPengangkatan",
-											"value": "",
-											"description": "Opsional",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "tanggalMasuk",
-											"value": "2025-08-08",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "jabatan",
-											"value": "Guru",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "nomorSertifikasi",
-											"value": "",
-											"description": "Opsional",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "pendidikanTerakhir",
-											"value": "S1",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "jurusan",
-											"value": "Pendidikan",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "universitas",
-											"value": "STI",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "tahunLulus",
-											"value": "2025",
-											"type": "text",
-											"disabled": true
-										},
-										{
-											"key": "pelatihan",
-											"value": "",
-											"description": "Opsional",
-											"type": "text",
-											"disabled": true
-										}
-									]
-								},
-								"url": {
-									"raw": "{{baseURLGateway}}/guru/update",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"guru",
-										"update"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Guru",
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json",
-										"type": "text",
-										"disabled": true
-									}
-								],
-								"body": {
-									"mode": "formdata",
-									"formdata": []
-								},
-								"url": {
-									"raw": "{{baseURLGateway}}/guru?idGuru=2",
-									"host": [
-										"{{baseURLGateway}}"
-									],
-									"path": [
-										"guru"
-									],
-									"query": [
-										{
-											"key": "idGuru",
-											"value": "2"
-										}
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				}
-			],
-			"auth": {
-				"type": "oauth2",
-				"oauth2": [
-					{
-						"key": "addTokenTo",
-						"value": "header",
-						"type": "string"
-					}
-				]
-			},
-			"event": [
-				{
-					"listen": "prerequest",
-					"script": {
-						"type": "text/javascript",
-						"packages": {},
-						"exec": [
-							""
-						]
-					}
-				},
-				{
-					"listen": "test",
-					"script": {
-						"type": "text/javascript",
-						"packages": {},
-						"exec": [
-							""
-						]
-					}
-				}
-			]
-		}
-	],
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"exec": [
-					""
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"exec": [
-					""
-				]
-			}
-		}
-	],
-	"variable": [
-		{
-			"key": "baseURLGateway",
-			"value": "http://10.70.129.9:8000/api"
-		},
-		{
-			"key": "baseURLClass",
-			"value": "http://classmicroservices.test/api"
-		},
-		{
-			"key": "authorizationClass",
-			"value": "base64:uUTtmBL1ZmUdIOtGSx+2uWQuYg1MdGWnyZb1AC4W/go="
-		},
-		{
-			"key": "baseURLMapel",
-			"value": "http://mapelservice.test/api"
-		},
-		{
-			"key": "authorizationMapel",
-			"value": "base64:tV2U1JsoTvOqIgaDJXb1aHrmAhnGW0uvs/tY9h4xuCE="
-		}
-	]
+  "info": {
+    "_postman_id": "fa1ef22d-c0df-47ab-9e0e-d6b01000f670",
+    "name": "Microservice Laravel",
+    "description": "Koleksi API Gateway untuk project microservice Laravel.\n\n**Base URL:** `http://gateway.test/api`\n\n**Cara Pakai:**\n1. Jalankan **Login** → token otomatis tersimpan ke variabel `token`\n2. Semua request (termasuk Register) sudah menggunakan Bearer `token` secara otomatis\n3. Endpoint CREATE / UPDATE / DELETE butuh role **SuperAdmin** atau **Admin**\n\n**Keamanan:**\n- `/register` hanya bisa diakses oleh SuperAdmin atau Admin (wajib login terlebih dahulu)\n- SuperAdmin dapat membuat: Admin, Guru, Siswa, Karyawan\n- Admin hanya dapat membuat: Guru, Siswa, Karyawan\n- SuperAdmin tidak dapat dibuat melalui API — hanya via seeder/database\n- Admin tidak dapat menghapus users Admin atau SuperAdmin\n- Semua aksi tulis (create/update/delete/register) dicatat di audit log database\n\n**Foto (Guru & Siswa):**\n- Format: JPEG / PNG / JPG\n- Ukuran maksimal: 2 MB\n- Dimensi sumber: min 360×480 px (tidak ada batas maksimal)\n- Output: dikonversi otomatis ke **3:4 portrait (360×480 px)** WebP kualitas 85",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "14041935"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Autentikasi pengguna melalui Gateway (Laravel Passport OAuth2).",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nama Pengguna\",\n  \"email\": \"user@example.com\",\n  \"password\": \"Pass1234\",\n  \"confirm_password\": \"Pass1234\",\n  \"role\": \"Guru\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseURL}}/register",
+              "host": ["{{baseURL}}"],
+              "path": ["register"]
+            },
+            "description": "Daftarkan akun baru. **Wajib login terlebih dahulu** (SuperAdmin atau Admin).\n\n**Field:**\n- `name` (wajib) – nama lengkap\n- `email` (wajib) – email unik\n- `password` (wajib) – minimal 8 karakter, harus mengandung huruf dan angka\n- `confirm_password` (wajib) – harus sama dengan `password`\n- `role` (wajib) – role yang akan dibuat\n\n**Role yang diizinkan:**\n- SuperAdmin → dapat membuat: `Admin`, `Guru`, `Siswa`, `Karyawan`\n- Admin → hanya dapat membuat: `Guru`, `Siswa`, `Karyawan`\n\n**Catatan:** Role `SuperAdmin` tidak dapat dibuat melalui API. Akun SuperAdmin hanya dibuat saat setup pertama via `php artisan db:seed`."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.resCode === 200 && json.data && json.data.token) {",
+                  "    pm.collectionVariables.set('token', json.data.token);",
+                  "    console.log('Token tersimpan:', json.data.token.substring(0, 40) + '...');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{superadmin_email}}\",\n  \"password\": \"{{superadmin_password}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseURL}}/login",
+              "host": ["{{baseURL}}"],
+              "path": ["login"]
+            },
+            "description": "Login dan dapatkan Bearer token.\n\nSebelum menjalankan request ini, isi variabel collection:\n- `superadmin_email` → email SuperAdmin kamu (dari `SUPERADMIN_EMAIL` di `.env` Gateway)\n- `superadmin_password` → password SuperAdmin kamu (dari `SUPERADMIN_PASSWORD` di `.env` Gateway)\n\nTab **Variables** di collection → isi kolom **Current Value** (bukan Initial Value) agar tidak ter-sync ke cloud.\n\nToken otomatis tersimpan ke variabel `token` setelah login berhasil.\n\n**Throttle:** Dibatasi 5 percobaan per menit. Setelah itu akan mendapat resCode 429."
+          },
+          "response": []
+        },
+        {
+          "name": "Profil User",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/user",
+              "host": ["{{baseURL}}"],
+              "path": ["user"]
+            },
+            "description": "Lihat informasi pengguna yang sedang login (id, nama, email, role)."
+          },
+          "response": []
+        },
+        {
+          "name": "Ganti Password Sendiri",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"PasswordLama123\",\n  \"new_password\": \"PasswordBaru456\",\n  \"confirm_password\": \"PasswordBaru456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseURL}}/password",
+              "host": ["{{baseURL}}"],
+              "path": ["password"]
+            },
+            "description": "Ganti password akun yang sedang login.\n\n**Field:**\n- `current_password` (wajib) – password yang sekarang aktif\n- `new_password` (wajib) – min 8 karakter, harus mengandung huruf dan angka, tidak boleh sama dengan `current_password`\n- `confirm_password` (wajib) – harus sama dengan `new_password`\n\n**Catatan:** Token yang sedang dipakai tetap aktif setelah ganti password. Logout manual jika ingin mencabut sesi."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseURL}}/logout",
+              "host": ["{{baseURL}}"],
+              "path": ["logout"]
+            },
+            "description": "Cabut (revoke) token yang sedang aktif. Setelah logout, token tidak bisa digunakan lagi."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Manajemen User",
+      "description": "Kelola akun user Gateway (hasil dari /register).\n\n**Akses:** SuperAdmin dan Admin.\n\n**Aturan hapus:**\n- SuperAdmin → dapat menghapus: Admin, Guru, Siswa, Karyawan\n- Admin → hanya dapat menghapus: Guru, Siswa, Karyawan\n- SuperAdmin **tidak dapat dihapus** melalui API (hanya via database)\n- Tidak dapat menghapus akun sendiri\n- Hapus bersifat **soft delete** — data tetap di database, sesi aktif langsung dicabut",
+      "item": [
+        {
+          "name": "GET Semua User",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/users?page=1&per_page=10",
+              "host": ["{{baseURL}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Nomor halaman (default: 1)" },
+                { "key": "per_page", "value": "10", "description": "Jumlah item per halaman (default: 10)" },
+                { "key": "role", "value": "", "description": "Filter berdasarkan role: SuperAdmin / Admin / Guru / Siswa / Karyawan", "disabled": true }
+              ]
+            },
+            "description": "Ambil daftar semua akun user yang terdaftar di Gateway (hasil /register), dengan pagination.\n\nParameter opsional:\n- `page` – nomor halaman (default: 1)\n- `per_page` – jumlah item per halaman (default: 10)\n- `role` – filter by role\n\nResponse pagination:\n- `current_page` – halaman saat ini\n- `last_page` – total halaman\n- `total` – total seluruh data\n- `next_page_url` – URL halaman berikutnya (null jika sudah halaman terakhir)\n- `prev_page_url` – URL halaman sebelumnya (null jika halaman pertama)"
+          },
+          "response": []
+        },
+        {
+          "name": "GET User by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/users/1",
+              "host": ["{{baseURL}}"],
+              "path": ["users", "1"]
+            },
+            "description": "Ambil detail satu akun user berdasarkan ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password User Lain",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"new_password\": \"PasswordBaru456\",\n  \"confirm_password\": \"PasswordBaru456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseURL}}/users/1/password",
+              "host": ["{{baseURL}}"],
+              "path": ["users", "1", "password"]
+            },
+            "description": "Reset password akun user lain. Tidak memerlukan password lama.\n\n**Akses:** SuperAdmin, Admin.\n\n**Aturan:**\n- SuperAdmin → dapat reset password Admin, Guru, Siswa, Karyawan\n- Admin → hanya dapat reset password Guru, Siswa, Karyawan\n- Password SuperAdmin **tidak dapat** direset via API → resCode 403\n- Tidak dapat reset password akun sendiri lewat endpoint ini → gunakan POST /password\n- Semua token aktif milik user target **langsung dicabut** (paksa login ulang)\n\nGanti `1` di URL dengan ID user yang passwordnya ingin direset."
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/users/1",
+              "host": ["{{baseURL}}"],
+              "path": ["users", "1"]
+            },
+            "description": "Hapus akun user (soft delete). Token aktif milik user yang dihapus langsung dicabut.\n\n**Aturan:**\n- SuperAdmin → dapat menghapus Admin, Guru, Siswa, Karyawan\n- Admin → hanya dapat menghapus Guru, Siswa, Karyawan\n- SuperAdmin tidak dapat dihapus via API → resCode 403\n- Tidak dapat menghapus akun sendiri → resCode 403\n\nGanti `1` di URL dengan ID user yang ingin dihapus."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Mata Pelajaran",
+      "description": "CRUD Mata Pelajaran melalui Gateway → MapelService.\n\n**Akses read (GET):** Semua role.\n**Akses write (POST/DELETE):** SuperAdmin, Admin.",
+      "item": [
+        {
+          "name": "GET Semua Mapel",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/mapel/all?page=1&per_page=5",
+              "host": ["{{baseURL}}"],
+              "path": ["mapel", "all"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Nomor halaman (default: 1)" },
+                { "key": "per_page", "value": "5", "description": "Jumlah item per halaman (default: 5)" }
+              ]
+            },
+            "description": "Ambil daftar semua mata pelajaran dengan pagination."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Mapel by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/mapel?idPelajaran=1",
+              "host": ["{{baseURL}}"],
+              "path": ["mapel"],
+              "query": [
+                { "key": "idPelajaran", "value": "1", "description": "ID mata pelajaran yang dicari" }
+              ]
+            },
+            "description": "Ambil detail satu mata pelajaran berdasarkan ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Tambah Mapel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kode\": \"MTK\",\n  \"namaPelajaran\": \"Matematika\",\n  \"keterangan\": \"Mata pelajaran matematika wajib\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseURL}}/mapel",
+              "host": ["{{baseURL}}"],
+              "path": ["mapel"]
+            },
+            "description": "Tambah mata pelajaran baru.\n\n**Field:**\n- `kode` (wajib) – kode unik mapel, akan diubah ke UPPERCASE otomatis\n- `namaPelajaran` (wajib) – nama mata pelajaran\n- `keterangan` (opsional) – deskripsi tambahan\n\n**Response fields:** `idPelajaran`, `kode`, `namaPelajaran`, `keterangan`"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Mapel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idPelajaran\": 1,\n  \"namaPelajaran\": \"Matematika Lanjutan\",\n  \"keterangan\": \"Mata pelajaran matematika tingkat lanjut\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseURL}}/mapel/update",
+              "host": ["{{baseURL}}"],
+              "path": ["mapel", "update"]
+            },
+            "description": "Update data mata pelajaran. Kirim hanya field yang ingin diubah (selain `idPelajaran` yang wajib).\n\n**Field:**\n- `idPelajaran` (wajib) – ID mata pelajaran yang akan diupdate\n- `kode` (opsional)\n- `namaPelajaran` (opsional)\n- `keterangan` (opsional)\n\n**Response fields:** `idPelajaran`, `kode`, `namaPelajaran`, `keterangan`"
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Mapel",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/mapel/1",
+              "host": ["{{baseURL}}"],
+              "path": ["mapel", "1"]
+            },
+            "description": "Hapus (soft delete) mata pelajaran berdasarkan ID.\n\nGanti `1` di URL dengan ID mata pelajaran yang ingin dihapus."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Kelas",
+      "description": "CRUD Ruang Kelas melalui Gateway → ClassMicroservices.\n\n**Akses read (GET):** Semua role.\n**Akses write (POST/DELETE):** SuperAdmin, Admin.\n\n**Nama kelas** di-generate otomatis: `tingkat` + jurusan + noKelas (contoh: `X MIPA 1`).",
+      "item": [
+        {
+          "name": "GET Semua Kelas",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/class/all?page=1&per_page=5",
+              "host": ["{{baseURL}}"],
+              "path": ["class", "all"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Nomor halaman (default: 1)" },
+                { "key": "per_page", "value": "5", "description": "Jumlah item per halaman (default: 5)" }
+              ]
+            },
+            "description": "Ambil daftar semua kelas dengan pagination."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Kelas by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/class?idKelas=1",
+              "host": ["{{baseURL}}"],
+              "path": ["class"],
+              "query": [
+                { "key": "idKelas", "value": "1", "description": "ID kelas yang dicari" }
+              ]
+            },
+            "description": "Ambil detail satu kelas berdasarkan ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Tambah Kelas",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"noKelas\": 1,\n  \"tingkat\": 1,\n  \"jurusan\": \"MIPA\",\n  \"limitSiswa\": 36\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseURL}}/class",
+              "host": ["{{baseURL}}"],
+              "path": ["class"]
+            },
+            "description": "Tambah kelas baru. Nama kelas dibuat otomatis.\n\n**Field:**\n- `noKelas` (wajib, numeric ≥ 1) – nomor urut kelas\n- `tingkat` (wajib, enum: `1`, `2`, `3`) – tingkat kelas\n- `jurusan` (wajib, enum: `MIPA`, `IPS`) – jurusan\n- `limitSiswa` (wajib, numeric 1–62) – kapasitas maksimal siswa\n\n**Contoh nama kelas yang dihasilkan:** tingkat=1, jurusan=MIPA, noKelas=1 → `X MIPA 1`\n(tingkat 1→X, 2→XI, 3→XII)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Kelas",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idKelas\": 1,\n  \"noKelas\": 2,\n  \"tingkat\": 1,\n  \"jurusan\": \"IPS\",\n  \"limitSiswa\": 40\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseURL}}/class/update",
+              "host": ["{{baseURL}}"],
+              "path": ["class", "update"]
+            },
+            "description": "Update data kelas. Kirim hanya field yang ingin diubah (selain `idKelas` yang wajib).\n\n**Field:**\n- `idKelas` (wajib) – ID kelas yang akan diupdate\n- `noKelas` (opsional, numeric ≥ 1)\n- `tingkat` (opsional, enum: `1`, `2`, `3`)\n- `jurusan` (opsional, enum: `MIPA`, `IPS`)\n- `limitSiswa` (opsional, numeric 1–62)\n- `namaKelas` (opsional) – override nama kelas secara manual"
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Kelas",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/class/1",
+              "host": ["{{baseURL}}"],
+              "path": ["class", "1"]
+            },
+            "description": "Hapus (soft delete) kelas berdasarkan ID.\n\nGanti `1` di URL dengan ID kelas yang ingin dihapus."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Guru",
+      "description": "CRUD Data Guru melalui Gateway → GuruService.\n\n**Akses read (GET):** Semua role.\n**Akses write (POST/DELETE):** SuperAdmin, Admin.\n\n**Foto:** JPEG/PNG/JPG, max 2 MB, min 360×480 px — dikonversi otomatis ke **3:4 portrait (360×480 px)** WebP kualitas 85.\n**NIK & NIP:** Maksimal 16 digit angka.",
+      "item": [
+        {
+          "name": "GET Semua Guru",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/guru/all?page=1&per_page=5",
+              "host": ["{{baseURL}}"],
+              "path": ["guru", "all"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Nomor halaman (default: 1)" },
+                { "key": "per_page", "value": "5", "description": "Jumlah item per halaman (default: 5)" }
+              ]
+            },
+            "description": "Ambil daftar semua guru dengan pagination. Foto dikembalikan sebagai base64 WebP."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Guru by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/guru?idGuru=1",
+              "host": ["{{baseURL}}"],
+              "path": ["guru"],
+              "query": [
+                { "key": "idGuru", "value": "1", "description": "ID guru yang dicari" }
+              ]
+            },
+            "description": "Ambil detail lengkap satu guru berdasarkan ID. Foto dikembalikan sebagai base64 WebP."
+          },
+          "response": []
+        },
+        {
+          "name": "Tambah Guru",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "namaLengkap", "value": "Budi Santoso", "type": "text", "description": "Wajib" },
+                { "key": "email", "value": "budi.guru@sekolah.com", "type": "text", "description": "Wajib, unik" },
+                { "key": "nik", "value": "1234567890123456", "type": "text", "description": "Wajib, max 16 digit angka, unik" },
+                { "key": "nip", "value": "9876543210123456", "type": "text", "description": "Wajib, max 16 digit angka, unik" },
+                { "key": "telephone", "value": "081234567890", "type": "text", "description": "Wajib, angka" },
+                { "key": "jenisKelamin", "value": "Laki-Laki", "type": "text", "description": "Wajib: Laki-Laki / Perempuan" },
+                { "key": "tempatLahir", "value": "Jakarta", "type": "text", "description": "Wajib" },
+                { "key": "tanggalLahir", "value": "1985-03-15", "type": "text", "description": "Wajib, format YYYY-MM-DD" },
+                { "key": "alamat", "value": "Jl. Merdeka No. 1, Jakarta", "type": "text", "description": "Wajib" },
+                { "key": "statusKepegawaian", "value": "PNS", "type": "text", "description": "Wajib" },
+                { "key": "tanggalMasuk", "value": "2010-01-15", "type": "text", "description": "Wajib, format YYYY-MM-DD" },
+                { "key": "jabatan", "value": "Guru Tetap", "type": "text", "description": "Wajib" },
+                { "key": "pendidikanTerakhir", "value": "S1", "type": "text", "description": "Wajib" },
+                { "key": "jurusan", "value": "Pendidikan Matematika", "type": "text", "description": "Wajib" },
+                { "key": "universitas", "value": "Universitas Indonesia", "type": "text", "description": "Wajib" },
+                { "key": "tahunLulus", "value": "2008", "type": "text", "description": "Wajib" },
+                { "key": "foto", "type": "file", "src": [], "description": "Wajib – JPEG/PNG/JPG, max 2 MB, min 360×480 px – dikonversi ke 3:4 portrait (360×480 px) WebP q85" },
+                { "key": "agama", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "statusPernikahan", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "nomorSKPengangkatan", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
+                { "key": "nomorSertifikasi", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
+                { "key": "pelatihan", "value": "", "type": "text", "description": "Opsional", "disabled": true }
+              ]
+            },
+            "url": {
+              "raw": "{{baseURL}}/guru",
+              "host": ["{{baseURL}}"],
+              "path": ["guru"]
+            },
+            "description": "Tambah data guru baru dengan upload foto.\n\nFoto akan dikonversi otomatis ke format WebP dan disimpan di storage private.\n\n**Catatan NIK/NIP:** Maksimal 16 digit."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Guru",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "idGuru", "value": "1", "type": "text", "description": "Wajib – ID guru yang akan diupdate" },
+                { "key": "namaLengkap", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "email", "value": "", "type": "text", "description": "Opsional, unik", "disabled": true },
+                { "key": "nik", "value": "", "type": "text", "description": "Opsional, max 16 digit, unik", "disabled": true },
+                { "key": "nip", "value": "", "type": "text", "description": "Opsional, max 16 digit, unik", "disabled": true },
+                { "key": "telephone", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
+                { "key": "jenisKelamin", "value": "", "type": "text", "description": "Opsional: Laki-Laki / Perempuan", "disabled": true },
+                { "key": "tempatLahir", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "tanggalLahir", "value": "", "type": "text", "description": "Opsional, format YYYY-MM-DD", "disabled": true },
+                { "key": "alamat", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "statusKepegawaian", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "tanggalMasuk", "value": "", "type": "text", "description": "Opsional, format YYYY-MM-DD", "disabled": true },
+                { "key": "jabatan", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "pendidikanTerakhir", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "jurusan", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "universitas", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "tahunLulus", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "foto", "type": "file", "src": [], "description": "Opsional – ganti foto, JPEG/PNG/JPG, max 2 MB, min 360×480 px – dikonversi ke 3:4 portrait (360×480 px) WebP q85", "disabled": true },
+                { "key": "agama", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "statusPernikahan", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "nomorSKPengangkatan", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
+                { "key": "nomorSertifikasi", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
+                { "key": "pelatihan", "value": "", "type": "text", "description": "Opsional", "disabled": true }
+              ]
+            },
+            "url": {
+              "raw": "{{baseURL}}/guru/update",
+              "host": ["{{baseURL}}"],
+              "path": ["guru", "update"]
+            },
+            "description": "Update data guru. Aktifkan (enable) hanya field yang ingin diubah.\n\nJika `foto` dikirim, foto lama akan dihapus dan diganti otomatis."
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Guru",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/guru/1",
+              "host": ["{{baseURL}}"],
+              "path": ["guru", "1"]
+            },
+            "description": "Hapus (soft delete) data guru berdasarkan ID.\n\nGanti `1` di URL dengan ID guru yang ingin dihapus."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Siswa",
+      "description": "CRUD Data Siswa melalui Gateway → SiswaService.\n\n**Akses read (GET):** Semua role.\n**Akses write (POST/DELETE):** SuperAdmin, Admin.\n\nSaat CREATE berhasil, akun login untuk siswa dibuat otomatis di Gateway.\n\n**Foto:** JPEG/PNG/JPG, max 2 MB, min 360×480 px — dikonversi otomatis ke **3:4 portrait (360×480 px)** WebP kualitas 85.",
+      "item": [
+        {
+          "name": "GET Semua Siswa",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/siswa/all?page=1&per_page=5",
+              "host": ["{{baseURL}}"],
+              "path": ["siswa", "all"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Nomor halaman (default: 1)" },
+                { "key": "per_page", "value": "5", "description": "Jumlah item per halaman (default: 5)" }
+              ]
+            },
+            "description": "Ambil daftar semua siswa dengan pagination. Foto dikembalikan sebagai base64 WebP."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Siswa by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/siswa?idSiswa=1",
+              "host": ["{{baseURL}}"],
+              "path": ["siswa"],
+              "query": [
+                { "key": "idSiswa", "value": "1", "description": "ID siswa yang dicari" }
+              ]
+            },
+            "description": "Ambil detail lengkap satu siswa berdasarkan ID. Foto dikembalikan sebagai base64 WebP."
+          },
+          "response": []
+        },
+        {
+          "name": "Tambah Siswa",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "namaLengkap", "value": "Andi Wijaya", "type": "text", "description": "Wajib" },
+                { "key": "email", "value": "andi.siswa@sekolah.com", "type": "text", "description": "Wajib, unik – dipakai untuk akun login siswa" },
+                { "key": "nisn", "value": "0123456789", "type": "text", "description": "Wajib, angka, max 16 digit, unik" },
+                { "key": "telephone", "value": "081298765432", "type": "text", "description": "Wajib, angka" },
+                { "key": "jenisKelamin", "value": "Laki-Laki", "type": "text", "description": "Wajib: Laki-Laki / Perempuan" },
+                { "key": "tempatLahir", "value": "Bandung", "type": "text", "description": "Wajib" },
+                { "key": "tanggalLahir", "value": "2008-05-20", "type": "text", "description": "Wajib, format YYYY-MM-DD" },
+                { "key": "tanggalMasuk", "value": "2023-07-10", "type": "text", "description": "Wajib, format YYYY-MM-DD" },
+                { "key": "alamat", "value": "Jl. Bandung No. 10", "type": "text", "description": "Wajib" },
+                { "key": "namaIbu", "value": "Siti Aminah", "type": "text", "description": "Wajib" },
+                { "key": "foto", "type": "file", "src": [], "description": "Wajib – JPEG/PNG/JPG, max 2 MB, min 360×480 px – dikonversi ke 3:4 portrait (360×480 px) WebP q85" },
+                { "key": "agama", "value": "", "type": "text", "description": "Opsional: Islam / Budha / Kristen Protestan / Katolik / Hindu", "disabled": true },
+                { "key": "namaAyah", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "pekerjaanAyah", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "pekerjaanIbu", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "noTelpAyah", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
+                { "key": "noTelpIbu", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
+                { "key": "namaWali", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "hubunganWali", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "noTelpWali", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true }
+              ]
+            },
+            "url": {
+              "raw": "{{baseURL}}/siswa",
+              "host": ["{{baseURL}}"],
+              "path": ["siswa"]
+            },
+            "description": "Tambah data siswa baru dengan upload foto.\n\nSetelah berhasil, akun login (email + password default) untuk siswa otomatis dibuat di Gateway."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Siswa",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "idSiswa", "value": "1", "type": "text", "description": "Wajib – ID siswa yang akan diupdate" },
+                { "key": "namaLengkap", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "nisn", "value": "", "type": "text", "description": "Opsional, angka, unik", "disabled": true },
+                { "key": "telephone", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
+                { "key": "jenisKelamin", "value": "", "type": "text", "description": "Opsional: Laki-Laki / Perempuan", "disabled": true },
+                { "key": "status", "value": "", "type": "text", "description": "Opsional: Aktif / Lulus / Berhenti / Pindah", "disabled": true },
+                { "key": "statusDate", "value": "", "type": "text", "description": "Opsional, format YYYY-MM-DD – tanggal perubahan status", "disabled": true },
+                { "key": "tempatLahir", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "tanggalLahir", "value": "", "type": "text", "description": "Opsional, format YYYY-MM-DD", "disabled": true },
+                { "key": "tanggalMasuk", "value": "", "type": "text", "description": "Opsional, format YYYY-MM-DD", "disabled": true },
+                { "key": "alamat", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "foto", "type": "file", "src": [], "description": "Opsional – ganti foto, JPEG/PNG/JPG, max 2 MB, min 360×480 px – dikonversi ke 3:4 portrait (360×480 px) WebP q85", "disabled": true },
+                { "key": "agama", "value": "", "type": "text", "description": "Opsional: Islam / Budha / Kristen Protestan / Katolik / Hindu", "disabled": true },
+                { "key": "namaAyah", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "namaIbu", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "pekerjaanAyah", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "pekerjaanIbu", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "noTelpAyah", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
+                { "key": "noTelpIbu", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
+                { "key": "namaWali", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "hubunganWali", "value": "", "type": "text", "description": "Opsional", "disabled": true },
+                { "key": "noTelpWali", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true }
+              ]
+            },
+            "url": {
+              "raw": "{{baseURL}}/siswa/update",
+              "host": ["{{baseURL}}"],
+              "path": ["siswa", "update"]
+            },
+            "description": "Update data siswa. Aktifkan (enable) hanya field yang ingin diubah.\n\nJika `namaLengkap` diubah, nama di akun login juga ikut terupdate.\nJika `foto` dikirim, foto lama akan dihapus dan diganti otomatis."
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Siswa",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/siswa/1",
+              "host": ["{{baseURL}}"],
+              "path": ["siswa", "1"]
+            },
+            "description": "Hapus (soft delete) data siswa berdasarkan ID. Akun login siswa juga dihapus (soft delete).\n\nGanti `1` di URL dengan ID siswa yang ingin dihapus."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseURL",
+      "value": "https://gateway.test/api",
+      "description": "Base URL Gateway. Ganti sesuai environment (lokal/staging/production)."
+    },
+    {
+      "key": "token",
+      "value": "",
+      "description": "Bearer token – terisi otomatis setelah request Login berhasil."
+    },
+    {
+      "key": "superadmin_email",
+      "value": "",
+      "description": "Email SuperAdmin sesuai SUPERADMIN_EMAIL di .env Gateway. Isi manual sebelum Login."
+    },
+    {
+      "key": "superadmin_password",
+      "value": "",
+      "description": "Password SuperAdmin sesuai SUPERADMIN_PASSWORD di .env Gateway. Isi manual sebelum Login."
+    }
+  ]
 }

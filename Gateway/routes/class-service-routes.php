@@ -8,5 +8,5 @@ Route::middleware('auth:api')->prefix(config('gateway.class_prefix'))->group(fun
     Route::get('/', [ClassController::class, 'show']);
     Route::post('/', [ClassController::class, 'store'])->middleware('check.role:SuperAdmin,Admin');
     Route::post('update', [ClassController::class, 'update'])->middleware('check.role:SuperAdmin,Admin');
-    Route::delete('/', [ClassController::class, 'destroy'])->middleware('check.role:SuperAdmin,Admin');
+    Route::delete('/{id}', [ClassController::class, 'destroy'])->middleware('check.role:SuperAdmin,Admin');
 });

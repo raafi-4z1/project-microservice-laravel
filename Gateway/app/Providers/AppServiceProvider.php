@@ -8,19 +8,18 @@ use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
-    public function register(): void
-    {
-        //
-    }
+    public function register(): void {}
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        Passport::personalAccessTokensExpireIn(CarbonInterval::days(1));
+        // Access token: 8 jam (satu hari kerja)
+        Passport::tokensExpireIn(CarbonInterval::hours(8));
+
+        // Personal access token (dipakai createToken()): 8 jam
+        Passport::personalAccessTokensExpireIn(CarbonInterval::hours(8));
+
+        // Refresh token: 30 hari — user re-login setelah sebulan idle
+        Passport::refreshTokensExpireIn(CarbonInterval::days(30));
     }
 }
+

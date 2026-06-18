@@ -52,4 +52,10 @@ return [
         'base_uri'  =>  env('GURU_SERVICE_BASE_URL'),
         'secret'  =>  env('GURU_SERVICE_SECRET'),
     ],
+    
+    // Siswa API Service
+    'siswa'  =>  [
+        'base_uri'  =>  env('SISWA_SERVICE_BASE_URL'),
+        'secret'  =>  env('SISWA_SERVICE_SECRET'),
+    ],
 ];
