@@ -129,7 +129,7 @@ Perintah di atas menghasilkan dua file:
 
 # ─── SERVICE INTERNAL: hanya localhost (127.0.0.1), tidak bisa diakses dari LAN ──
 <VirtualHost 127.0.0.1:80>
-    ServerName classservices.test
+    ServerName classmicroservices.test
     DocumentRoot "C:/path/to/project-microservice-laravel/ClassMicroservices/public"
     <Directory "C:/path/to/project-microservice-laravel/ClassMicroservices/public">
         AllowOverride All
@@ -206,7 +206,7 @@ DB_USERNAME=root
 DB_PASSWORD=
 
 # Secret HMAC per service (nilai di bawah adalah default)
-CLASS_SERVICE_BASE_URL=http://classservice.test
+CLASS_SERVICE_BASE_URL=http://classmicroservices.test
 CLASS_SERVICE_SECRET=base64:uUTtmBL1ZmUdIOtGSx+2uWQuYg1MdGWnyZb1AC4W/go=
 
 MAPEL_SERVICE_BASE_URL=http://mapelservice.test
@@ -236,14 +236,11 @@ Jalankan setup:
 ```sh
 php artisan key:generate
 php artisan migrate
-php artisan passport:install
+php artisan passport:keys
+php artisan passport:client --personal
 php artisan db:seed
 ```
 
-> **Jika `passport:install` gagal** karena sudah pernah dijalankan, jalankan:
-> ```sh
-> php artisan passport:client --personal
-> ```
 
 ---
 
@@ -258,7 +255,7 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-APP_URL=http://classservice.test
+APP_URL=http://classmicroservices.test
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -457,6 +454,7 @@ Buka browser dan akses:
 - Token OAuth2 (Bearer) berlaku selama **8 jam**, refresh token **30 hari**
 - Login baru **mencabut semua token lama** — tidak ada concurrent session
 - Endpoint `/login` dibatasi **5 percobaan per menit** (throttle)
+- Endpoint `/oauth/token` (Passport token issuance) juga dibatasi **5 percobaan per menit** — mencegah bypass brute force melalui OAuth endpoint langsung
 
 ### Audit Log
 

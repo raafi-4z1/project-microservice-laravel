@@ -1,9 +1,14 @@
+# ─── Blokir TRACE (Cross-Site Tracing / XST) ─────────────────────────────────
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
     </IfModule>
 
     RewriteEngine On
+
+    # Tolak metode TRACE dan TRACK
+    RewriteCond %{REQUEST_METHOD} ^(TRACE|TRACK)
+    RewriteRule .* - [F,L]
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
@@ -22,4 +27,29 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
+</IfModule>
+
+# ─── Security Headers ─────────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+    # Paksa koneksi HTTPS selama 1 tahun (HSTS)
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+    # Cegah browser menebak Content-Type
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Larang halaman dimuat dalam iframe (clickjacking)
+    Header always set X-Frame-Options "DENY"
+
+    # Aktifkan XSS filter browser
+    Header always set X-XSS-Protection "1; mode=block"
+
+    # Batasi info referrer saat keluar dari domain
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Izin fitur browser — batasi hanya yang perlu
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+
+    # Sembunyikan versi PHP
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
 </IfModule>
