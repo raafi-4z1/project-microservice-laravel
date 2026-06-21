@@ -31,16 +31,38 @@ class SiswaKelasController extends Controller
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
             }
 
-            // Cek siswa sudah terdaftar di kelas lain pada semester ini
-            $existing = SiswaKelas::where('siswa_id', $request->siswa_id)
+            // Cek siswa sudah terdaftar di kelas lain pada semester ini.
+            // withTrashed() diperlukan agar soft-deleted record tidak memicu SQL unique constraint error.
+            $existing = SiswaKelas::withTrashed()
+                ->where('siswa_id', $request->siswa_id)
                 ->where('tahun_ajaran', $request->tahun_ajaran)
                 ->where('semester', $request->semester)
                 ->first();
 
             if ($existing) {
+                if (!$existing->trashed()) {
+                    return $this->response(
+                        "Siswa sudah terdaftar di kelas lain pada semester {$request->semester} tahun ajaran {$request->tahun_ajaran}.",
+                        Response::HTTP_CONFLICT
+                    );
+                }
+                // Record pernah dihapus: cek kapasitas kelas tujuan, lalu restore dengan kelas baru
+                $jumlahSiswa = SiswaKelas::where('kelas_id', $request->kelas_id)
+                    ->where('tahun_ajaran', $request->tahun_ajaran)
+                    ->where('semester', $request->semester)
+                    ->count();
+                if ($jumlahSiswa >= $request->limit_siswa) {
+                    return $this->response(
+                        "Kelas sudah penuh. Kapasitas maksimal: {$request->limit_siswa} siswa.",
+                        Response::HTTP_CONFLICT
+                    );
+                }
+                $existing->restore();
+                $existing->update(['kelas_id' => $request->kelas_id]);
                 return $this->response(
-                    "Siswa sudah terdaftar di kelas lain pada semester {$request->semester} tahun ajaran {$request->tahun_ajaran}.",
-                    Response::HTTP_CONFLICT
+                    "Siswa berhasil ditambahkan ke kelas.",
+                    Response::HTTP_CREATED,
+                    $this->toApiArray($existing->fresh()->toArray())
                 );
             }
 

@@ -31,17 +31,29 @@ class PengampuMapelController extends Controller
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
             }
 
-            // Cek satu mapel di satu kelas hanya boleh satu pengampu per semester
-            $existing = PengampuMapel::where('mapel_id', $request->mapel_id)
+            // Cek satu mapel di satu kelas hanya boleh satu pengampu per semester.
+            // withTrashed() diperlukan agar soft-deleted record tidak memicu SQL unique constraint error.
+            $existing = PengampuMapel::withTrashed()
+                ->where('mapel_id', $request->mapel_id)
                 ->where('kelas_id', $request->kelas_id)
                 ->where('tahun_ajaran', $request->tahun_ajaran)
                 ->where('semester', $request->semester)
                 ->first();
 
             if ($existing) {
+                if (!$existing->trashed()) {
+                    return $this->response(
+                        "Mapel ini di kelas yang sama sudah memiliki pengampu pada semester {$request->semester} tahun ajaran {$request->tahun_ajaran}.",
+                        Response::HTTP_CONFLICT
+                    );
+                }
+                // Record pernah dihapus: restore dan ganti guru jika berbeda
+                $existing->restore();
+                $existing->update(['guru_id' => $request->guru_id]);
                 return $this->response(
-                    "Mapel ini di kelas yang sama sudah memiliki pengampu pada semester {$request->semester} tahun ajaran {$request->tahun_ajaran}.",
-                    Response::HTTP_CONFLICT
+                    "Guru berhasil ditetapkan sebagai pengampu mapel.",
+                    Response::HTTP_CREATED,
+                    $this->toApiArray($existing->fresh()->toArray())
                 );
             }
 
