@@ -58,4 +58,10 @@ return [
         'base_uri'  =>  env('SISWA_SERVICE_BASE_URL'),
         'secret'  =>  env('SISWA_SERVICE_SECRET'),
     ],
+
+    // Akademik API Service
+    'akademik'  =>  [
+        'base_uri'  =>  env('AKADEMIK_SERVICE_BASE_URL'),
+        'secret'  =>  env('AKADEMIK_SERVICE_SECRET'),
+    ],
 ];

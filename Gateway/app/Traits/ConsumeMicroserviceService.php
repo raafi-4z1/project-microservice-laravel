@@ -25,10 +25,10 @@ trait ConsumeMicroserviceService
         );
 
         // Body yang akan dikirim menentukan HMAC yang ditandatangani:
-        // - POST JSON  : sign json_encode (cocok dengan $request->getContent() di service)
-        // - POST multipart: sign "" (binary boundary tidak bisa di-hash deterministik)
-        // - GET/DELETE : sign "" (tidak ada body, params via query string)
-        if ($method === 'POST') {
+        // - POST/PATCH JSON  : sign json_encode (cocok dengan $request->getContent() di service)
+        // - POST multipart   : sign "" (binary boundary tidak bisa di-hash deterministik)
+        // - GET/DELETE       : sign http_build_query (params via query string)
+        if (in_array($method, ['POST', 'PATCH'])) {
             if ($hasFile) {
                 $hmacBody = '';
                 $options['multipart'] = $this->buildMultipart($formParams);

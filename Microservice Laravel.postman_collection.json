@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "fa1ef22d-c0df-47ab-9e0e-d6b01000f670",
     "name": "Microservice Laravel",
-    "description": "Koleksi API Gateway untuk project microservice Laravel.\n\n**Base URL:** `http://gateway.test/api`\n\n**Cara Pakai:**\n1. Jalankan **Login** → token otomatis tersimpan ke variabel `token`\n2. Semua request (termasuk Register) sudah menggunakan Bearer `token` secara otomatis\n3. Endpoint CREATE / UPDATE / DELETE butuh role **SuperAdmin** atau **Admin**\n\n**Keamanan:**\n- `/register` hanya bisa diakses oleh SuperAdmin atau Admin (wajib login terlebih dahulu)\n- SuperAdmin dapat membuat: Admin, Guru, Siswa, Karyawan\n- Admin hanya dapat membuat: Guru, Siswa, Karyawan\n- SuperAdmin tidak dapat dibuat melalui API — hanya via seeder/database\n- Admin tidak dapat menghapus users Admin atau SuperAdmin\n- Semua aksi tulis (create/update/delete/register) dicatat di audit log database\n\n**Foto (Guru & Siswa):**\n- Format: JPEG / PNG / JPG\n- Ukuran maksimal: 2 MB\n- Dimensi sumber: min 360×480 px (tidak ada batas maksimal)\n- Output: dikonversi otomatis ke **3:4 portrait (360×480 px)** WebP kualitas 85",
+    "description": "Koleksi API Gateway untuk project microservice Laravel.\n\n**Base URL:** `https://gateway.test/api`\n\n**Cara Pakai:**\n1. Jalankan **Login** → token otomatis tersimpan ke variabel `token`\n2. Semua request sudah menggunakan Bearer `token` secara otomatis\n3. Endpoint write (CREATE / PATCH / UPDATE / DELETE) butuh role **SuperAdmin** atau **Admin**\n4. Endpoint riwayat akademik (`/riwayat`) butuh role **SuperAdmin** atau **Admin**\n\n**Keamanan:**\n- `/register` hanya bisa diakses oleh SuperAdmin atau Admin (wajib login terlebih dahulu)\n- SuperAdmin dapat membuat: Admin, Guru, Siswa, Karyawan\n- Admin hanya dapat membuat: Guru, Siswa, Karyawan\n- SuperAdmin tidak dapat dibuat melalui API — hanya via seeder/database\n- Semua aksi tulis (create/update/delete/register) dicatat di audit log database\n\n**Retensi Data Akademik:**\n- Semua tabel akademik menggunakan soft delete — data tidak pernah hilang\n- Endpoint `/riwayat` menampilkan data aktif + yang sudah dihapus (field `deletedAt`)\n- Semester aktif diset via POST `/akademik/semester/aktif` — otomatis menutup semester sebelumnya\n\n**Foto (Guru & Siswa):**\n- Format: JPEG / PNG / JPG\n- Ukuran maksimal: 2 MB\n- Dimensi sumber: min 360×480 px\n- Output: dikonversi otomatis ke **3:4 portrait (360×480 px)** WebP kualitas 85",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "14041935"
   },
@@ -722,6 +722,363 @@
             "description": "Hapus (soft delete) data siswa berdasarkan ID. Akun login siswa juga dihapus (soft delete).\n\nGanti `1` di URL dengan ID siswa yang ingin dihapus."
           },
           "response": []
+        }
+      ]
+    },
+    {
+      "name": "Akademik",
+      "description": "Pembagian Kelas, Pengampu Mapel, Riwayat Akademik, dan Semester Aktif.\n\n**Akses write (POST/PATCH/DELETE):** SuperAdmin, Admin.\n**Akses read GET aktif:** Semua role yang sudah login.\n**Akses read GET riwayat:** SuperAdmin, Admin saja.\n\n**Format tahun_ajaran:** `2024/2025`\n**Semester:** `1` atau `2`\n\n**Retensi data:** Semua tabel menggunakan soft delete. Endpoint `/riwayat` mengembalikan data aktif + yang sudah dihapus, disertai field `deletedAt`.",
+      "item": [
+        {
+          "name": "--- SEMESTER AKTIF ---",
+          "item": [
+            {
+              "name": "GET Semester Aktif",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Accept", "value": "application/json", "type": "text" }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/semester/aktif",
+                  "host": ["{{baseURL}}"],
+                  "path": ["akademik", "semester", "aktif"]
+                },
+                "description": "Ambil tahun ajaran dan semester yang sedang berlangsung.\n\n**Akses:** Semua role.\n\nDigunakan sebagai acuan sistem untuk pelaporan dan UI frontend.\n\n**Response fields:** `idSemesterAktif`, `tahunAjaran`, `semester`, `tanggalMulai`, `tanggalSelesai`, `isAktif`"
+              },
+              "response": []
+            },
+            {
+              "name": "Set Semester Aktif",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Accept", "value": "application/json", "type": "text" },
+                  { "key": "Content-Type", "value": "application/json", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": \"2\",\n  \"tanggal_mulai\": \"2025-01-06\",\n  \"tanggal_selesai\": \"2025-06-20\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/akademik/semester/aktif",
+                  "host": ["{{baseURL}}"],
+                  "path": ["akademik", "semester", "aktif"]
+                },
+                "description": "Set semester aktif baru. Semester sebelumnya otomatis ditutup (`is_aktif = false`) dalam satu DB transaction.\n\n**Akses:** SuperAdmin, Admin.\n\n**Field:**\n- `tahun_ajaran` (wajib) – format `YYYY/YYYY`, contoh: `2024/2025`\n- `semester` (wajib) – `1` atau `2`\n- `tanggal_mulai` (wajib) – format `YYYY-MM-DD`\n- `tanggal_selesai` (wajib) – format `YYYY-MM-DD`, harus setelah `tanggal_mulai`\n\n**Catatan:** Hanya satu semester yang bisa aktif di waktu yang sama."
+              },
+              "response": []
+            },
+            {
+              "name": "GET Riwayat Semester",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Accept", "value": "application/json", "type": "text" }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/semester/riwayat",
+                  "host": ["{{baseURL}}"],
+                  "path": ["akademik", "semester", "riwayat"]
+                },
+                "description": "Ambil semua semester yang pernah diset, diurutkan dari terbaru.\n\n**Akses:** Semua role.\n\nField `isAktif` menunjukkan semester mana yang sedang berjalan (`true`) dan yang sudah selesai (`false`)."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "--- PEMBAGIAN KELAS ---",
+          "item": [
+            {
+              "name": "Assign Siswa ke Kelas",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"siswa_id\": 1,\n  \"kelas_id\": 1,\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": \"1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/kelas/assign",
+              "host": ["{{baseURL}}"],
+              "path": ["akademik", "kelas", "assign"]
+            },
+            "description": "Masukkan siswa ke dalam kelas untuk semester tertentu.\n\nGateway otomatis mengambil `limit_siswa` dari ClassMicroservices — tidak perlu dikirim manual.\n\n**Field:**\n- `siswa_id` (wajib) – ID siswa dari SiswaService\n- `kelas_id` (wajib) – ID kelas dari ClassMicroservices\n- `tahun_ajaran` (wajib) – format `2024/2025`\n- `semester` (wajib) – `1` atau `2`\n\n**Validasi:**\n- Satu siswa hanya bisa masuk satu kelas per semester\n- Kelas tidak boleh melebihi kapasitas (`limitSiswa`)"
+          },
+          "response": []
+        },
+        {
+          "name": "Pindah Kelas Siswa",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kelas_id\": 2\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/kelas/assign/1",
+              "host": ["{{baseURL}}"],
+              "path": ["akademik", "kelas", "assign", "1"]
+            },
+            "description": "Pindahkan siswa ke kelas lain dalam semester yang sama. Record lama di-soft-delete dan record baru dibuat.\n\n**Akses:** SuperAdmin, Admin.\n\n**Field:**\n- `kelas_id` (wajib) – ID kelas tujuan\n\nGanti `1` di URL dengan ID record `siswa_kelas` (bukan ID siswa).\n\nGateway otomatis mengambil `limit_siswa` dari ClassMicroservices untuk memvalidasi kapasitas kelas tujuan.\n\n**Validasi:**\n- Tidak bisa pindah ke kelas yang sama (409)\n- Kelas tujuan tidak boleh melebihi kapasitas"
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Siswa dari Kelas",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/kelas/assign/1",
+              "host": ["{{baseURL}}"],
+              "path": ["akademik", "kelas", "assign", "1"]
+            },
+            "description": "Hapus (soft delete) data pembagian kelas berdasarkan ID record.\n\nGanti `1` di URL dengan ID record `siswa_kelas` (bukan ID siswa)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Siswa di Kelas",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/kelas/1/siswa?tahun_ajaran=2024/2025&semester=1",
+              "host": ["{{baseURL}}"],
+              "path": ["akademik", "kelas", "1", "siswa"],
+              "query": [
+                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)" },
+                { "key": "semester", "value": "1", "description": "Filter semester: 1 atau 2 (opsional)" }
+              ]
+            },
+            "description": "Ambil daftar siswa yang **aktif** terdaftar di kelas tertentu (tidak termasuk yang sudah dipindah).\n\n**Akses:** Semua role.\n\nGanti `1` di URL dengan ID kelas. Filter `tahun_ajaran` dan `semester` opsional."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Kelas Siswa",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/siswa/1/kelas?tahun_ajaran=2024/2025&semester=1",
+              "host": ["{{baseURL}}"],
+              "path": ["akademik", "siswa", "1", "kelas"],
+              "query": [
+                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)" },
+                { "key": "semester", "value": "1", "description": "Filter semester: 1 atau 2 (opsional)" }
+              ]
+            },
+            "description": "Ambil kelas **aktif** seorang siswa per semester.\n\n**Akses:** Semua role.\n\nGanti `1` di URL dengan ID siswa. Filter `tahun_ajaran` dan `semester` opsional."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Riwayat Siswa di Kelas",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/siswa/1/kelas/riwayat",
+              "host": ["{{baseURL}}"],
+              "path": ["akademik", "siswa", "1", "kelas", "riwayat"],
+              "query": [
+                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)", "disabled": true },
+                { "key": "semester", "value": "1", "description": "Filter semester (opsional)", "disabled": true }
+              ]
+            },
+            "description": "Ambil **semua** kelas yang pernah diikuti siswa — termasuk yang sudah dipindah (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nField `deletedAt` menunjukkan kapan siswa dipindah dari kelas tersebut (`null` = masih aktif di kelas itu).\n\nGanti `1` di URL dengan ID siswa."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Riwayat Kelas (semua siswa)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/kelas/1/siswa/riwayat",
+              "host": ["{{baseURL}}"],
+              "path": ["akademik", "kelas", "1", "siswa", "riwayat"],
+              "query": [
+                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)", "disabled": true },
+                { "key": "semester", "value": "1", "description": "Filter semester (opsional)", "disabled": true }
+              ]
+            },
+            "description": "Ambil **semua** siswa yang pernah masuk kelas ini — termasuk yang sudah dipindah (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nGanti `1` di URL dengan ID kelas."
+          },
+          "response": []
+        }
+          ]
+        },
+        {
+          "name": "--- PENGAMPU MAPEL ---",
+          "item": [
+            {
+              "name": "Assign Guru sebagai Pengampu Mapel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guru_id\": 1,\n  \"mapel_id\": 1,\n  \"kelas_id\": 1,\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": \"1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/pengampu",
+              "host": ["{{baseURL}}"],
+              "path": ["akademik", "pengampu"]
+            },
+            "description": "Tetapkan guru sebagai pengampu (pengajar) sebuah mata pelajaran di kelas tertentu.\n\n**Field:**\n- `guru_id` (wajib) – ID guru dari GuruService\n- `mapel_id` (wajib) – ID mata pelajaran dari MapelService\n- `kelas_id` (wajib) – ID kelas dari ClassMicroservices\n- `tahun_ajaran` (wajib) – format `2024/2025`\n- `semester` (wajib) – `1` atau `2`\n\n**Validasi:** Satu mapel di satu kelas hanya boleh diampu satu guru per semester."
+          },
+          "response": []
+        },
+        {
+          "name": "Ganti Guru Pengampu",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guru_id\": 2\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/pengampu/1",
+              "host": ["{{baseURL}}"],
+              "path": ["akademik", "pengampu", "1"]
+            },
+            "description": "Ganti guru yang mengampu mapel di kelas tertentu. Update dilakukan in-place (bukan delete+create) untuk mempertahankan unique constraint.\n\n**Akses:** SuperAdmin, Admin.\n\n**Field:**\n- `guru_id` (wajib) – ID guru pengganti\n\nGanti `1` di URL dengan ID record `pengampu_mapel` (bukan ID guru).\n\n**Validasi:** Tidak bisa diganti ke guru yang sama (409)."
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Pengampu Mapel",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/pengampu/1",
+              "host": ["{{baseURL}}"],
+              "path": ["akademik", "pengampu", "1"]
+            },
+            "description": "Hapus (soft delete) penugasan pengampu mapel berdasarkan ID record.\n\nGanti `1` di URL dengan ID record `pengampu_mapel` (bukan ID guru)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Mapel yang Diampu Guru",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/guru/1/mapel?tahun_ajaran=2024/2025&semester=1",
+              "host": ["{{baseURL}}"],
+              "path": ["akademik", "guru", "1", "mapel"],
+              "query": [
+                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)" },
+                { "key": "semester", "value": "1", "description": "Filter semester: 1 atau 2 (opsional)" }
+              ]
+            },
+            "description": "Ambil daftar mapel yang diampu oleh guru tertentu.\n\nGanti `1` di URL dengan ID guru."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Guru Pengampu Mapel",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/mapel/1/guru?kelas_id=1&tahun_ajaran=2024/2025&semester=1",
+              "host": ["{{baseURL}}"],
+              "path": ["akademik", "mapel", "1", "guru"],
+              "query": [
+                { "key": "kelas_id", "value": "1", "description": "Filter per kelas (opsional)" },
+                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)" },
+                { "key": "semester", "value": "1", "description": "Filter semester: 1 atau 2 (opsional)" }
+              ]
+            },
+            "description": "Ambil daftar guru **aktif** yang mengampu mapel tertentu.\n\n**Akses:** Semua role.\n\nGanti `1` di URL dengan ID mapel. Bisa filter per kelas, tahun ajaran, dan semester."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Riwayat Mapel Guru",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/guru/1/mapel/riwayat",
+              "host": ["{{baseURL}}"],
+              "path": ["akademik", "guru", "1", "mapel", "riwayat"],
+              "query": [
+                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)", "disabled": true },
+                { "key": "semester", "value": "1", "description": "Filter semester (opsional)", "disabled": true }
+              ]
+            },
+            "description": "Ambil **semua** mapel yang pernah diampu guru — termasuk yang sudah diganti guru lain (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nField `deletedAt` menunjukkan kapan penugasan diakhiri (`null` = masih aktif).\n\nGanti `1` di URL dengan ID guru."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Riwayat Guru Pengampu Mapel",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/mapel/1/guru/riwayat",
+              "host": ["{{baseURL}}"],
+              "path": ["akademik", "mapel", "1", "guru", "riwayat"],
+              "query": [
+                { "key": "kelas_id", "value": "1", "description": "Filter per kelas (opsional)", "disabled": true },
+                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)", "disabled": true },
+                { "key": "semester", "value": "1", "description": "Filter semester (opsional)", "disabled": true }
+              ]
+            },
+            "description": "Ambil **semua** guru yang pernah mengampu mapel ini — termasuk yang sudah diganti (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nGanti `1` di URL dengan ID mapel."
+          },
+          "response": []
+        }
+          ]
         }
       ]
     }

@@ -15,7 +15,8 @@ Klien / Frontend
       ├──────────────► ClassMicroservices  http://classmicroservices.test
       ├──────────────► MapelService        http://mapelservice.test
       ├──────────────► GuruService         http://guruservice.test
-      └──────────────► SiswaService        http://siswaservice.test
+      ├──────────────► SiswaService        http://siswaservice.test
+      └──────────────► AkademikService     http://akademikservice.test
 ```
 
 | Folder | Domain lokal | Fungsi |
@@ -25,6 +26,7 @@ Klien / Frontend
 | `MapelService` | `mapelservice.test` | Manajemen mata pelajaran |
 | `GuruService` | `guruservice.test` | Manajemen data guru + foto |
 | `SiswaService` | `siswaservice.test` | Manajemen data siswa + foto |
+| `AkademikService` | `akademikservice.test` | Pembagian kelas, pengampu mapel, riwayat akademik, semester aktif |
 
 ---
 
@@ -127,7 +129,7 @@ Perintah di atas menghasilkan dua file:
 
 # ─── SERVICE INTERNAL: hanya localhost (127.0.0.1), tidak bisa diakses dari LAN ──
 <VirtualHost 127.0.0.1:80>
-    ServerName classmicroservices.test
+    ServerName classservices.test
     DocumentRoot "C:/path/to/project-microservice-laravel/ClassMicroservices/public"
     <Directory "C:/path/to/project-microservice-laravel/ClassMicroservices/public">
         AllowOverride All
@@ -157,6 +159,15 @@ Perintah di atas menghasilkan dua file:
     ServerName siswaservice.test
     DocumentRoot "C:/path/to/project-microservice-laravel/SiswaService/public"
     <Directory "C:/path/to/project-microservice-laravel/SiswaService/public">
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+
+<VirtualHost 127.0.0.1:80>
+    ServerName akademikservice.test
+    DocumentRoot "C:/path/to/project-microservice-laravel/AkademikService/public"
+    <Directory "C:/path/to/project-microservice-laravel/AkademikService/public">
         AllowOverride All
         Require all granted
     </Directory>
@@ -195,7 +206,7 @@ DB_USERNAME=root
 DB_PASSWORD=
 
 # Secret HMAC per service (nilai di bawah adalah default)
-CLASS_SERVICE_BASE_URL=http://classmicroservices.test
+CLASS_SERVICE_BASE_URL=http://classservice.test
 CLASS_SERVICE_SECRET=base64:uUTtmBL1ZmUdIOtGSx+2uWQuYg1MdGWnyZb1AC4W/go=
 
 MAPEL_SERVICE_BASE_URL=http://mapelservice.test
@@ -206,6 +217,9 @@ GURU_SERVICE_SECRET=base64:bIah+HgRXoDF2xOZx6VqQHwPAi9Qn8EL+odWRRAC4LA=
 
 SISWA_SERVICE_BASE_URL=http://siswaservice.test
 SISWA_SERVICE_SECRET=base64:9sFQ/3POZdTj36SAka4tl76ZOBEw28KCqbUGFch/iPw=
+
+AKADEMIK_SERVICE_BASE_URL=http://akademikservice.test
+AKADEMIK_SERVICE_SECRET=base64:+ZnOcffL/GId4hrnVT4YCWG8f/E8woMi8lSlRsOiZBQ=
 
 # Kredensial akun SuperAdmin pertama (dipakai oleh seeder)
 SUPERADMIN_NAME="Nama Admin Kamu"
@@ -244,7 +258,7 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-APP_URL=http://classmicroservices.test
+APP_URL=http://classservice.test
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -361,7 +375,38 @@ php artisan migrate
 
 ---
 
-### 8. Verifikasi
+### 8. Setup AkademikService
+
+```sh
+cd ../AkademikService
+composer install
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```env
+APP_URL=http://akademikservice.test
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=akademik_db
+DB_USERNAME=root
+DB_PASSWORD=
+
+# Harus sama persis dengan AKADEMIK_SERVICE_SECRET di Gateway
+ACCEPTED_SECRETS=base64:+ZnOcffL/GId4hrnVT4YCWG8f/E8woMi8lSlRsOiZBQ=
+```
+
+```sh
+php artisan key:generate
+php artisan migrate
+```
+
+---
+
+### 9. Verifikasi
 
 Buka browser dan akses:
 - `https://gateway.test/api/login` — harus memunculkan respons JSON (bukan halaman error 404/500)
@@ -463,24 +508,29 @@ php artisan tinker
 ### Urutan test yang direkomendasikan
 
 ```
-1. Auth → Login (isi variabel superadmin_email & superadmin_password di tab Variables)
-2. Auth → Register (buat akun Admin / Guru / Siswa baru)
-3. Auth → Ganti Password Sendiri
-4. Manajemen User → GET Semua User → GET User by ID → Reset Password User → Hapus User
-5. Mata Pelajaran → Tambah → GET All → GET by ID → Update → Hapus
-6. Kelas → Tambah → GET All → GET by ID → Update → Hapus
-7. Guru → Tambah (dengan foto) → GET All → GET by ID → Update → Hapus
-8. Siswa → Tambah (dengan foto) → GET All → GET by ID → Update → Hapus
-9. Auth → Logout
+1.  Auth → Login (isi variabel superadmin_email & superadmin_password di tab Variables)
+2.  Auth → Register (buat akun Admin / Guru / Siswa baru)
+3.  Auth → Ganti Password Sendiri
+4.  Manajemen User → GET Semua User → GET User by ID → Reset Password User → Hapus User
+5.  Mata Pelajaran → Tambah → GET All → GET by ID → Update → Hapus
+6.  Kelas → Tambah → GET All → GET by ID → Update → Hapus
+7.  Guru → Tambah (dengan foto) → GET All → GET by ID → Update → Hapus
+8.  Siswa → Tambah (dengan foto) → GET All → GET by ID → Update → Hapus
+9.  Akademik (Semester) → GET Semester Aktif → Set Semester Aktif → GET Riwayat Semester
+10. Akademik (Kelas) → Assign Siswa ke Kelas → GET Siswa di Kelas → Pindah Kelas → GET Riwayat Kelas Siswa → GET Riwayat Kelas
+11. Akademik (Pengampu) → Assign Guru Pengampu → GET Mapel Guru → Ganti Guru Pengampu → GET Riwayat Mapel Guru → Hapus Pengampu
+12. Auth → Logout
 ```
 
 ### Role & Akses
 
-| Role | GET | POST (CREATE/UPDATE) | DELETE | Register |
-|------|-----|----------------------|--------|----------|
-| SuperAdmin | ✅ | ✅ | ✅ | ✅ (Admin/Guru/Siswa/Karyawan) |
-| Admin | ✅ | ✅ | ✅* | ✅ (Guru/Siswa/Karyawan) |
-| Guru / Siswa / Karyawan | ✅ | ❌ 403 | ❌ 403 | ❌ 403 |
+| Role | GET aktif | GET riwayat† | POST / PATCH (write) | DELETE | Register |
+|------|-----------|--------------|----------------------|--------|----------|
+| SuperAdmin | ✅ | ✅ | ✅ | ✅ | ✅ (Admin/Guru/Siswa/Karyawan) |
+| Admin | ✅ | ✅ | ✅ | ✅* | ✅ (Guru/Siswa/Karyawan) |
+| Guru / Siswa / Karyawan | ✅ | ❌ 403 | ❌ 403 | ❌ 403 | ❌ 403 |
+
+> † Endpoint riwayat (`/akademik/siswa/{id}/kelas/riwayat`, `/akademik/kelas/{id}/siswa/riwayat`, `/akademik/guru/{id}/mapel/riwayat`, `/akademik/mapel/{id}/guru/riwayat`) hanya dapat diakses oleh **SuperAdmin** dan **Admin** — berisi data soft-deleted yang merupakan catatan historis sekolah.
 
 > \* Proteksi DELETE untuk Admin berlaku pada:
 > - **`/users/{id}`** — Admin tidak dapat menghapus **akun user** (hasil `/register`) yang memiliki role Admin atau SuperAdmin
@@ -532,6 +582,68 @@ Base URL: `https://gateway.test/api`
 | POST | `/siswa` | SuperAdmin, Admin | Tambah siswa + foto |
 | POST | `/siswa/update` | SuperAdmin, Admin | Update siswa + foto opsional |
 | DELETE | `/siswa/{id}` | SuperAdmin, Admin | Hapus siswa |
+| GET | `/akademik/semester/aktif` | Semua | Tahun ajaran & semester yang sedang berlangsung |
+| POST | `/akademik/semester/aktif` | SuperAdmin, Admin | Set semester aktif baru (semester lama otomatis ditutup) |
+| GET | `/akademik/semester/riwayat` | Semua | Riwayat semua semester akademik |
+| POST | `/akademik/kelas/assign` | SuperAdmin, Admin | Daftarkan siswa ke kelas |
+| PATCH | `/akademik/kelas/assign/{id}` | SuperAdmin, Admin | Pindah kelas siswa (dalam semester yang sama) |
+| DELETE | `/akademik/kelas/assign/{id}` | SuperAdmin, Admin | Keluarkan siswa dari kelas |
+| GET | `/akademik/kelas/{id}/siswa` | Semua | List siswa aktif dalam kelas |
+| GET | `/akademik/siswa/{id}/kelas` | Semua | Kelas aktif siswa per semester |
+| GET | `/akademik/kelas/{id}/siswa/riwayat` | SuperAdmin, Admin | Semua siswa pernah di kelas (termasuk yang dipindah) |
+| GET | `/akademik/siswa/{id}/kelas/riwayat` | SuperAdmin, Admin | Semua kelas pernah diikuti siswa |
+| POST | `/akademik/pengampu` | SuperAdmin, Admin | Tetapkan guru pengampu mapel di kelas |
+| PATCH | `/akademik/pengampu/{id}` | SuperAdmin, Admin | Ganti guru pengampu mapel |
+| DELETE | `/akademik/pengampu/{id}` | SuperAdmin, Admin | Hapus penugasan pengampu |
+| GET | `/akademik/guru/{id}/mapel` | Semua | Mapel aktif yang diampu guru |
+| GET | `/akademik/mapel/{id}/guru` | Semua | Guru aktif pengampu mapel |
+| GET | `/akademik/guru/{id}/mapel/riwayat` | SuperAdmin, Admin | Semua mapel pernah diampu guru |
+| GET | `/akademik/mapel/{id}/guru/riwayat` | SuperAdmin, Admin | Semua guru pernah mengampu mapel |
+
+---
+
+## Retensi Data & Riwayat Akademik
+
+Data akademik dirancang agar **tidak ada yang hilang** saat siswa naik kelas/semester atau guru berganti penugasan.
+
+### Bagaimana data dipertahankan
+
+| Skenario | Mekanisme | Akses historis |
+|----------|-----------|---------------|
+| Siswa naik semester/kelas | Record baru dibuat untuk semester baru, record lama tetap ada | `GET /akademik/siswa/{id}/kelas/riwayat` |
+| Siswa pindah kelas dalam semester | Record lama di-soft-delete, record baru dibuat | `GET /akademik/siswa/{id}/kelas/riwayat` |
+| Guru berganti mapel/kelas | Record lama di-soft-delete via PATCH (guru_id diganti) | `GET /akademik/guru/{id}/mapel/riwayat` |
+| Siswa / Guru dihapus dari sistem | Soft delete — data tetap, token dicabut | Tabel `siswa_kelas` / `pengampu_mapels` tetap ada |
+
+### Response riwayat
+
+Endpoint `/riwayat` mengembalikan field tambahan:
+- `deletedAt` — `null` jika record masih aktif, timestamp jika sudah di-soft-delete
+
+### Semester Aktif
+
+Sistem memiliki satu baris "semester aktif" yang menjadi acuan seluruh operasi akademik:
+- `POST /akademik/semester/aktif` — set semester baru; semester sebelumnya otomatis ditutup (via DB transaction)
+- `GET /akademik/semester/aktif` — ambil semester yang sedang berjalan
+- `GET /akademik/semester/riwayat` — semua semester (urut terbaru)
+
+Format `tahun_ajaran`: `YYYY/YYYY` (contoh: `2024/2025`). Semester: `1` atau `2`.
+
+---
+
+## Performa & Database Index
+
+Index database ditambahkan pada tabel yang datanya akan tumbuh besar. Tabel master kecil (ruang_kelas ≤ 30 baris, mapels ≤ 100 baris) tidak diberi index.
+
+| Service | Tabel | Index |
+|---------|-------|-------|
+| Gateway | `users` | `role`, `deleted_at` |
+| Gateway | `audit_logs` | `(resource, resource_id)`, `performed_by`, `created_at` |
+| SiswaService | `siswas` | `status`, `tanggal_masuk`, `deleted_at` |
+| GuruService | `gurus` | `status_kepegawaian`, `jabatan`, `deleted_at` |
+| AkademikService | `siswa_kelas` | `(kelas_id, tahun_ajaran, semester)`, `deleted_at` |
+| AkademikService | `pengampu_mapels` | `(guru_id, tahun_ajaran, semester)`, `(kelas_id, tahun_ajaran, semester)`, `deleted_at` |
+| AkademikService | `semester_aktif` | `is_aktif`, `(tahun_ajaran, semester)` |
 
 ---
 
@@ -578,6 +690,44 @@ Base URL: `https://gateway.test/api`
 **List:** `idSiswa`, `foto`, `namaLengkap`, `nisn`, `jenisKelamin`, `tempatLahir`, `tanggalLahir`, `tanggalMasuk`, `status`
 
 **Detail:** seluruh field list + `email`, `alamat`, `agama`, `statusDate`, `namaAyah`, `namaIbu`, `pekerjaanAyah`, `pekerjaanIbu`, `noTelpAyah`, `noTelpIbu`, `namaWali`, `hubunganWali`, `noTelpWali`
+
+### Request Fields — Akademik Kelas (`/akademik/kelas/assign`)
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `siswa_id` | ✅ store | ID siswa dari SiswaService |
+| `kelas_id` | ✅ store/patch | ID kelas dari ClassMicroservices |
+| `tahun_ajaran` | ✅ store | Format `YYYY/YYYY`, contoh `2024/2025` |
+| `semester` | ✅ store | `1` atau `2` |
+
+**Response siswa_kelas:** `idSiswaKelas`, `siswaId`, `kelasId`, `tahunAjaran`, `semester`
+
+**Response riwayat** (tambahan): `deletedAt` — `null` jika aktif, timestamp jika sudah dipindah
+
+### Request Fields — Akademik Pengampu (`/akademik/pengampu`)
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `guru_id` | ✅ store/patch | ID guru dari GuruService |
+| `mapel_id` | ✅ store | ID mapel dari MapelService |
+| `kelas_id` | ✅ store | ID kelas dari ClassMicroservices |
+| `tahun_ajaran` | ✅ store | Format `YYYY/YYYY` |
+| `semester` | ✅ store | `1` atau `2` |
+
+**Response pengampu_mapel:** `idPengampuMapel`, `guruId`, `mapelId`, `kelasId`, `tahunAjaran`, `semester`
+
+**Response riwayat** (tambahan): `deletedAt` — `null` jika aktif, timestamp jika sudah diganti gurunya
+
+### Request Fields — Semester Aktif (`/akademik/semester/aktif`)
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `tahun_ajaran` | ✅ | Format `YYYY/YYYY`, contoh `2024/2025` |
+| `semester` | ✅ | `1` atau `2` |
+| `tanggal_mulai` | ✅ | Format `YYYY-MM-DD` |
+| `tanggal_selesai` | ✅ | Format `YYYY-MM-DD`, harus setelah `tanggal_mulai` |
+
+**Response semester_aktif:** `idSemesterAktif`, `tahunAjaran`, `semester`, `tanggalMulai`, `tanggalSelesai`, `isAktif`
 
 ---
 

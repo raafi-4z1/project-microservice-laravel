@@ -25,12 +25,17 @@ class UserService
     }
 
     public function update($email, string $nama) {
-        $user = User::where('email', $email)->firstOrFail();
-        $user->update(['name' => $nama]);
+        $user = User::where('email', $email)->first();
+        if ($user) {
+            $user->update(['name' => $nama]);
+        }
     }
 
     public function delete($email) {
-        $user = User::where('email', $email)->firstOrFail();
-        $user->delete();
+        $user = User::where('email', $email)->first();
+        if ($user) {
+            $user->tokens()->where('revoked', false)->each(fn($t) => $t->revoke());
+            $user->delete();
+        }
     }
 }
