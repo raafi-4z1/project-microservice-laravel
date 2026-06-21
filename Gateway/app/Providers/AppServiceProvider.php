@@ -8,7 +8,12 @@ use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        // Mencegah Passport mendaftarkan /oauth/token dengan throttle default (60/menit).
+        // RouteServiceProvider mendaftarkan ulang rute ini dengan throttle:5,1.
+        Passport::ignoreRoutes();
+    }
 
     public function boot(): void
     {

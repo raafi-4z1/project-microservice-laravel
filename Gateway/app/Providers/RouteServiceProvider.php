@@ -29,6 +29,12 @@ class RouteServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
 
         $this->routes(function () {
+            // /oauth/token didaftarkan manual karena Passport::ignoreRoutes() aktif.
+            // 'throttle:5,1' = 5 request/menit per IP — sama dengan /api/login.
+            Route::post('/oauth/token', [\Laravel\Passport\Http\Controllers\AccessTokenController::class, 'issueToken'])
+                ->name('passport.token')
+                ->middleware(['throttle:5,1']);
+
                 //API Gateway specific routes registration
             Route::prefix('api')
                 ->middleware('api')
@@ -71,21 +77,6 @@ class RouteServiceProvider extends ServiceProvider
     {
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by(optional($request->user())->id ?: $request->ip());
-        });
-
-        // Rate limiter 'throttle' dipakai oleh Passport di POST /oauth/token dan /oauth/device/code.
-        // Tanpa definisi ini, Passport tidak membatasi request sama sekali → bypass brute force.
-        RateLimiter::for('throttle', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip())
-                ->response(function () {
-                    return response()->json([
-                        'resCode'    => 429,
-                        'resPhrase'  => 'Too Many Requests',
-                        'resStatus'  => 'fail',
-                        'resMsg'     => 'Terlalu banyak percobaan. Coba lagi dalam 1 menit.',
-                        'data'       => [],
-                    ], 429);
-                });
         });
     }
 }
