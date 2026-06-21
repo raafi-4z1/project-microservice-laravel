@@ -4,7 +4,6 @@ namespace App\Traits;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use Illuminate\Http\Response;
 
 trait ConsumeMicroserviceService
 {
@@ -78,9 +77,10 @@ trait ConsumeMicroserviceService
 
         foreach ($params as $name => $value) {
             if ($value instanceof \Illuminate\Http\UploadedFile) {
+                $path = $value->getRealPath() ?: $value->getPathname();
                 $multipart[] = [
                     'name'     => $name,
-                    'contents' => fopen($value->getRealPath(), 'r'),
+                    'contents' => fopen($path, 'r'),
                     'filename' => $value->getClientOriginalName(),
                     'headers'  => ['Content-Type' => $value->getMimeType()],
                 ];
