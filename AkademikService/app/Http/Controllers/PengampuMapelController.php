@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Validator;
 use App\Models\PengampuMapel;
+use App\Models\JadwalPelajaran;
 use App\Traits\ApiResponser;
 
 class PengampuMapelController extends Controller
@@ -108,7 +109,8 @@ class PengampuMapelController extends Controller
         }
     }
 
-    // Batalkan penugasan — data disimpan (soft delete) untuk keperluan pencatatan
+    // Batalkan penugasan — data disimpan (soft delete) untuk keperluan pencatatan.
+    // Jadwal terkait ikut di-soft-delete agar tidak muncul sebagai jadwal aktif.
     public function removeGuru(Request $request, $id)
     {
         try {
@@ -117,6 +119,7 @@ class PengampuMapelController extends Controller
                 return $this->response("Data pengampu mapel dengan id:{$id} tidak ditemukan.", Response::HTTP_NOT_FOUND);
             }
 
+            JadwalPelajaran::where('pengampu_mapel_id', $id)->delete();
             $record->delete();
 
             return $this->response("Penugasan pengampu mapel berhasil dihapus.", Response::HTTP_ACCEPTED);

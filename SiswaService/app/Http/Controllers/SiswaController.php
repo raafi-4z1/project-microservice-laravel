@@ -34,7 +34,7 @@ class SiswaController extends Controller
             }
 
             $columns = [
-                'id', 'foto', 'nama_lengkap', 'nisn', 'jenis_kelamin',
+                'id', 'nama_lengkap', 'nisn', 'jenis_kelamin',
                 'tempat_lahir', 'tanggal_lahir', 'tanggal_masuk', 'status',
             ];
 

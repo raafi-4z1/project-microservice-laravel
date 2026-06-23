@@ -264,6 +264,153 @@ class AkademikController extends Controller
         return $this->performRequest('GET', "{$this->reqUrl}/semester/riwayat");
     }
 
+    // GET /akademik/jam — semua role
+    public function getJamPelajaran()
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/jam");
+    }
+
+    // POST /akademik/jam — SuperAdmin, Admin
+    public function storeJam(Request $request)
+    {
+        try {
+            $response = $this->performRequest('POST', "{$this->reqUrl}/jam", $request->all());
+            $decode   = $this->decode($response);
+
+            if (($decode['resCode'] ?? null) === Response::HTTP_CREATED) {
+                $this->auditLog('created', 'jam_pelajaran', $decode['data']['idJam'] ?? null, $request->only(['ke', 'jam_mulai', 'jam_selesai']));
+            }
+
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // PATCH /akademik/jam/{id} — SuperAdmin, Admin
+    public function updateJam(Request $request, $id)
+    {
+        try {
+            $response = $this->performRequest('PATCH', "{$this->reqUrl}/jam/{$id}", $request->all());
+            $decode   = $this->decode($response);
+
+            if (($decode['resCode'] ?? null) === Response::HTTP_OK) {
+                $this->auditLog('updated', 'jam_pelajaran', $id, $request->only(['ke', 'jam_mulai', 'jam_selesai']));
+            }
+
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // DELETE /akademik/jam/{id} — SuperAdmin, Admin
+    public function destroyJam($id)
+    {
+        try {
+            $response = $this->performRequest('DELETE', "{$this->reqUrl}/jam/{$id}");
+            $decode   = $this->decode($response);
+
+            if (($decode['resCode'] ?? null) === Response::HTTP_ACCEPTED) {
+                $this->auditLog('deleted', 'jam_pelajaran', $id, []);
+            }
+
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // POST /akademik/jadwal — SuperAdmin, Admin
+    public function storeJadwal(Request $request)
+    {
+        try {
+            $response = $this->performRequest('POST', "{$this->reqUrl}/jadwal", $request->all());
+            $decode   = $this->decode($response);
+
+            if (($decode['resCode'] ?? null) === Response::HTTP_CREATED) {
+                $this->auditLog('created', 'jadwal_pelajaran', $decode['data']['idJadwal'] ?? null, [
+                    'pengampu_mapel_id' => $request->pengampu_mapel_id,
+                    'hari'              => $request->hari,
+                ]);
+            }
+
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // PATCH /akademik/jadwal/{id} — SuperAdmin, Admin
+    public function updateJadwal(Request $request, $id)
+    {
+        try {
+            $response = $this->performRequest('PATCH', "{$this->reqUrl}/jadwal/{$id}", $request->all());
+            $decode   = $this->decode($response);
+
+            if (($decode['resCode'] ?? null) === Response::HTTP_OK) {
+                $this->auditLog('updated', 'jadwal_pelajaran', $id, $request->only(['hari', 'jam_mulai_id', 'jam_selesai_id', 'ruangan', 'catatan']));
+            }
+
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // DELETE /akademik/jadwal/{id} — SuperAdmin, Admin
+    public function removeJadwal($id)
+    {
+        try {
+            $response = $this->performRequest('DELETE', "{$this->reqUrl}/jadwal/{$id}");
+            $decode   = $this->decode($response);
+
+            if (($decode['resCode'] ?? null) === Response::HTTP_ACCEPTED) {
+                $this->auditLog('deleted', 'jadwal_pelajaran', $id, []);
+            }
+
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // GET /akademik/jadwal/pengampu/{id} — semua role
+    public function getJadwalByPengampu($pengampuId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/pengampu/{$pengampuId}");
+    }
+
+    // GET /akademik/jadwal/kelas/{id} — semua role
+    public function getJadwalByKelas(Request $request, $kelasId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']));
+    }
+
+    // GET /akademik/jadwal/guru/{id} — semua role
+    public function getJadwalByGuru(Request $request, $guruId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}", $request->only(['tahun_ajaran', 'semester']));
+    }
+
+    // GET /akademik/jadwal/pengampu/{id}/riwayat — SuperAdmin, Admin
+    public function getRiwayatJadwalByPengampu($pengampuId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/pengampu/{$pengampuId}/riwayat");
+    }
+
+    // GET /akademik/jadwal/kelas/{id}/riwayat — SuperAdmin, Admin
+    public function getRiwayatJadwalByKelas(Request $request, $kelasId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/kelas/{$kelasId}/riwayat", $request->only(['tahun_ajaran', 'semester']));
+    }
+
+    // GET /akademik/jadwal/guru/{id}/riwayat — SuperAdmin, Admin
+    public function getRiwayatJadwalByGuru(Request $request, $guruId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}/riwayat", $request->only(['tahun_ajaran', 'semester']));
+    }
+
     // Panggil ClassMicroservices dengan swap baseUri/secret sementara
     private function callClassService(string $method, string $url, array $params = [])
     {

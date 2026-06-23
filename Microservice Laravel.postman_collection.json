@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "fa1ef22d-c0df-47ab-9e0e-d6b01000f670",
     "name": "Microservice Laravel",
-    "description": "Koleksi API Gateway untuk project microservice Laravel.\n\n**Base URL:** `https://gateway.test/api`\n\n**Cara Pakai:**\n1. Jalankan **Login** → token otomatis tersimpan ke variabel `token`\n2. Semua request sudah menggunakan Bearer `token` secara otomatis\n3. Endpoint write (CREATE / PATCH / UPDATE / DELETE) butuh role **SuperAdmin** atau **Admin**\n4. Endpoint riwayat akademik (`/riwayat`) butuh role **SuperAdmin** atau **Admin**\n\n**Keamanan:**\n- `/register` hanya bisa diakses oleh SuperAdmin atau Admin (wajib login terlebih dahulu)\n- SuperAdmin dapat membuat: Admin, Guru, Siswa, Karyawan\n- Admin hanya dapat membuat: Guru, Siswa, Karyawan\n- SuperAdmin tidak dapat dibuat melalui API — hanya via seeder/database\n- Semua aksi tulis (create/update/delete/register) dicatat di audit log database\n\n**Retensi Data Akademik:**\n- Semua tabel akademik menggunakan soft delete — data tidak pernah hilang\n- Endpoint `/riwayat` menampilkan data aktif + yang sudah dihapus (field `deletedAt`)\n- Semester aktif diset via POST `/akademik/semester/aktif` — otomatis menutup semester sebelumnya\n\n**Foto (Guru & Siswa):**\n- Format: JPEG / PNG / JPG\n- Ukuran maksimal: 2 MB\n- Dimensi sumber: min 360×480 px\n- Output: dikonversi otomatis ke **3:4 portrait (360×480 px)** WebP kualitas 85",
+    "description": "Koleksi API Gateway untuk project microservice Laravel.\n\n**Base URL:** `https://gateway.test/api`\n\n**Cara Pakai:**\n1. Jalankan **Login** → token otomatis tersimpan ke variabel `token`\n2. Semua request sudah menggunakan Bearer `token` secara otomatis\n3. Endpoint write (CREATE / PATCH / UPDATE / DELETE) butuh role **SuperAdmin** atau **Admin**\n4. Endpoint riwayat akademik (`/riwayat`) butuh role **SuperAdmin** atau **Admin**\n\n**Keamanan:**\n- `/register` hanya bisa diakses oleh SuperAdmin atau Admin (wajib login terlebih dahulu)\n- SuperAdmin dapat membuat: Admin, Guru, Siswa, Karyawan\n- Admin hanya dapat membuat: Guru, Siswa, Karyawan\n- SuperAdmin tidak dapat dibuat melalui API — hanya via seeder/database\n- Semua aksi tulis (create/update/delete/register) dicatat di audit log database\n\n**Retensi Data Akademik:**\n- Semua tabel akademik menggunakan soft delete — data tidak pernah hilang\n- Endpoint `/riwayat` menampilkan data aktif + yang sudah dihapus (field `deletedAt`)\n- Semester aktif diset via POST `/akademik/semester/aktif` — otomatis menutup semester sebelumnya\n\n**Foto (Guru & Siswa):**\n- Format: JPEG / PNG / JPG\n- Ukuran maksimal: 2 MB\n- Dimensi sumber: min 360×480 px\n- Output: dikonversi otomatis ke **3:4 portrait (360×480 px)** WebP kualitas 85\n- **GET /all**: foto **tidak disertakan** (respon ringan)\n- **GET by ID**: foto dikembalikan sebagai `data:image/webp;base64,...`",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "14041935"
   },
@@ -26,18 +26,34 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Nama Pengguna\",\n  \"email\": \"user@example.com\",\n  \"password\": \"Pass1234\",\n  \"confirm_password\": \"Pass1234\",\n  \"role\": \"Guru\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseURL}}/register",
-              "host": ["{{baseURL}}"],
-              "path": ["register"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "register"
+              ]
             },
             "description": "Daftarkan akun baru. **Wajib login terlebih dahulu** (SuperAdmin atau Admin).\n\n**Field:**\n- `name` (wajib) – nama lengkap\n- `email` (wajib) – email unik\n- `password` (wajib) – minimal 8 karakter, harus mengandung huruf dan angka\n- `confirm_password` (wajib) – harus sama dengan `password`\n- `role` (wajib) – role yang akan dibuat\n\n**Role yang diizinkan:**\n- SuperAdmin → dapat membuat: `Admin`, `Guru`, `Siswa`, `Karyawan`\n- Admin → hanya dapat membuat: `Guru`, `Siswa`, `Karyawan`\n\n**Catatan:** Role `SuperAdmin` tidak dapat dibuat melalui API. Akun SuperAdmin hanya dibuat saat setup pertama via `php artisan db:seed`."
           },
@@ -61,20 +77,34 @@
             }
           ],
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{superadmin_email}}\",\n  \"password\": \"{{superadmin_password}}\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseURL}}/login",
-              "host": ["{{baseURL}}"],
-              "path": ["login"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "login"
+              ]
             },
             "description": "Login dan dapatkan Bearer token.\n\nSebelum menjalankan request ini, isi variabel collection:\n- `superadmin_email` → email SuperAdmin kamu (dari `SUPERADMIN_EMAIL` di `.env` Gateway)\n- `superadmin_password` → password SuperAdmin kamu (dari `SUPERADMIN_PASSWORD` di `.env` Gateway)\n\nTab **Variables** di collection → isi kolom **Current Value** (bukan Initial Value) agar tidak ter-sync ke cloud.\n\nToken otomatis tersimpan ke variabel `token` setelah login berhasil.\n\n**Throttle:** Dibatasi 5 percobaan per menit. Setelah itu akan mendapat resCode 429."
           },
@@ -85,12 +115,20 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/user",
-              "host": ["{{baseURL}}"],
-              "path": ["user"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "user"
+              ]
             },
             "description": "Lihat informasi pengguna yang sedang login (id, nama, email, role)."
           },
@@ -101,18 +139,34 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"current_password\": \"PasswordLama123\",\n  \"new_password\": \"PasswordBaru456\",\n  \"confirm_password\": \"PasswordBaru456\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseURL}}/password",
-              "host": ["{{baseURL}}"],
-              "path": ["password"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "password"
+              ]
             },
             "description": "Ganti password akun yang sedang login.\n\n**Field:**\n- `current_password` (wajib) – password yang sekarang aktif\n- `new_password` (wajib) – min 8 karakter, harus mengandung huruf dan angka, tidak boleh sama dengan `current_password`\n- `confirm_password` (wajib) – harus sama dengan `new_password`\n\n**Catatan:** Token yang sedang dipakai tetap aktif setelah ganti password. Logout manual jika ingin mencabut sesi."
           },
@@ -123,17 +177,29 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseURL}}/logout",
-              "host": ["{{baseURL}}"],
-              "path": ["logout"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "logout"
+              ]
             },
             "description": "Cabut (revoke) token yang sedang aktif. Setelah logout, token tidak bisa digunakan lagi."
           },
@@ -150,16 +216,37 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/users?page=1&per_page=10",
-              "host": ["{{baseURL}}"],
-              "path": ["users"],
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "users"
+              ],
               "query": [
-                { "key": "page", "value": "1", "description": "Nomor halaman (default: 1)" },
-                { "key": "per_page", "value": "10", "description": "Jumlah item per halaman (default: 10)" },
-                { "key": "role", "value": "", "description": "Filter berdasarkan role: SuperAdmin / Admin / Guru / Siswa / Karyawan", "disabled": true }
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Nomor halaman (default: 1)"
+                },
+                {
+                  "key": "per_page",
+                  "value": "10",
+                  "description": "Jumlah item per halaman (default: 10)"
+                },
+                {
+                  "key": "role",
+                  "value": "",
+                  "description": "Filter berdasarkan role: SuperAdmin / Admin / Guru / Siswa / Karyawan",
+                  "disabled": true
+                }
               ]
             },
             "description": "Ambil daftar semua akun user yang terdaftar di Gateway (hasil /register), dengan pagination.\n\nParameter opsional:\n- `page` – nomor halaman (default: 1)\n- `per_page` – jumlah item per halaman (default: 10)\n- `role` – filter by role\n\nResponse pagination:\n- `current_page` – halaman saat ini\n- `last_page` – total halaman\n- `total` – total seluruh data\n- `next_page_url` – URL halaman berikutnya (null jika sudah halaman terakhir)\n- `prev_page_url` – URL halaman sebelumnya (null jika halaman pertama)"
@@ -171,12 +258,21 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/users/1",
-              "host": ["{{baseURL}}"],
-              "path": ["users", "1"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "users",
+                "1"
+              ]
             },
             "description": "Ambil detail satu akun user berdasarkan ID."
           },
@@ -187,18 +283,36 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"new_password\": \"PasswordBaru456\",\n  \"confirm_password\": \"PasswordBaru456\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseURL}}/users/1/password",
-              "host": ["{{baseURL}}"],
-              "path": ["users", "1", "password"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "users",
+                "1",
+                "password"
+              ]
             },
             "description": "Reset password akun user lain. Tidak memerlukan password lama.\n\n**Akses:** SuperAdmin, Admin.\n\n**Aturan:**\n- SuperAdmin → dapat reset password Admin, Guru, Siswa, Karyawan\n- Admin → hanya dapat reset password Guru, Siswa, Karyawan\n- Password SuperAdmin **tidak dapat** direset via API → resCode 403\n- Tidak dapat reset password akun sendiri lewat endpoint ini → gunakan POST /password\n- Semua token aktif milik user target **langsung dicabut** (paksa login ulang)\n\nGanti `1` di URL dengan ID user yang passwordnya ingin direset."
           },
@@ -209,12 +323,21 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/users/1",
-              "host": ["{{baseURL}}"],
-              "path": ["users", "1"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "users",
+                "1"
+              ]
             },
             "description": "Hapus akun user (soft delete). Token aktif milik user yang dihapus langsung dicabut.\n\n**Aturan:**\n- SuperAdmin → dapat menghapus Admin, Guru, Siswa, Karyawan\n- Admin → hanya dapat menghapus Guru, Siswa, Karyawan\n- SuperAdmin tidak dapat dihapus via API → resCode 403\n- Tidak dapat menghapus akun sendiri → resCode 403\n\nGanti `1` di URL dengan ID user yang ingin dihapus."
           },
@@ -231,15 +354,32 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/mapel/all?page=1&per_page=5",
-              "host": ["{{baseURL}}"],
-              "path": ["mapel", "all"],
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "mapel",
+                "all"
+              ],
               "query": [
-                { "key": "page", "value": "1", "description": "Nomor halaman (default: 1)" },
-                { "key": "per_page", "value": "5", "description": "Jumlah item per halaman (default: 5)" }
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Nomor halaman (default: 1)"
+                },
+                {
+                  "key": "per_page",
+                  "value": "5",
+                  "description": "Jumlah item per halaman (default: 5)"
+                }
               ]
             },
             "description": "Ambil daftar semua mata pelajaran dengan pagination."
@@ -251,14 +391,26 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/mapel?idPelajaran=1",
-              "host": ["{{baseURL}}"],
-              "path": ["mapel"],
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "mapel"
+              ],
               "query": [
-                { "key": "idPelajaran", "value": "1", "description": "ID mata pelajaran yang dicari" }
+                {
+                  "key": "idPelajaran",
+                  "value": "1",
+                  "description": "ID mata pelajaran yang dicari"
+                }
               ]
             },
             "description": "Ambil detail satu mata pelajaran berdasarkan ID."
@@ -270,18 +422,34 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"kode\": \"MTK\",\n  \"namaPelajaran\": \"Matematika\",\n  \"keterangan\": \"Mata pelajaran matematika wajib\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseURL}}/mapel",
-              "host": ["{{baseURL}}"],
-              "path": ["mapel"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "mapel"
+              ]
             },
             "description": "Tambah mata pelajaran baru.\n\n**Field:**\n- `kode` (wajib) – kode unik mapel, akan diubah ke UPPERCASE otomatis\n- `namaPelajaran` (wajib) – nama mata pelajaran\n- `keterangan` (opsional) – deskripsi tambahan\n\n**Response fields:** `idPelajaran`, `kode`, `namaPelajaran`, `keterangan`"
           },
@@ -292,18 +460,35 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"idPelajaran\": 1,\n  \"namaPelajaran\": \"Matematika Lanjutan\",\n  \"keterangan\": \"Mata pelajaran matematika tingkat lanjut\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseURL}}/mapel/update",
-              "host": ["{{baseURL}}"],
-              "path": ["mapel", "update"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "mapel",
+                "update"
+              ]
             },
             "description": "Update data mata pelajaran. Kirim hanya field yang ingin diubah (selain `idPelajaran` yang wajib).\n\n**Field:**\n- `idPelajaran` (wajib) – ID mata pelajaran yang akan diupdate\n- `kode` (opsional)\n- `namaPelajaran` (opsional)\n- `keterangan` (opsional)\n\n**Response fields:** `idPelajaran`, `kode`, `namaPelajaran`, `keterangan`"
           },
@@ -314,12 +499,21 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/mapel/1",
-              "host": ["{{baseURL}}"],
-              "path": ["mapel", "1"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "mapel",
+                "1"
+              ]
             },
             "description": "Hapus (soft delete) mata pelajaran berdasarkan ID.\n\nGanti `1` di URL dengan ID mata pelajaran yang ingin dihapus."
           },
@@ -336,15 +530,32 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/class/all?page=1&per_page=5",
-              "host": ["{{baseURL}}"],
-              "path": ["class", "all"],
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "class",
+                "all"
+              ],
               "query": [
-                { "key": "page", "value": "1", "description": "Nomor halaman (default: 1)" },
-                { "key": "per_page", "value": "5", "description": "Jumlah item per halaman (default: 5)" }
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Nomor halaman (default: 1)"
+                },
+                {
+                  "key": "per_page",
+                  "value": "5",
+                  "description": "Jumlah item per halaman (default: 5)"
+                }
               ]
             },
             "description": "Ambil daftar semua kelas dengan pagination."
@@ -356,14 +567,26 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/class?idKelas=1",
-              "host": ["{{baseURL}}"],
-              "path": ["class"],
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "class"
+              ],
               "query": [
-                { "key": "idKelas", "value": "1", "description": "ID kelas yang dicari" }
+                {
+                  "key": "idKelas",
+                  "value": "1",
+                  "description": "ID kelas yang dicari"
+                }
               ]
             },
             "description": "Ambil detail satu kelas berdasarkan ID."
@@ -375,18 +598,34 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"noKelas\": 1,\n  \"tingkat\": 1,\n  \"jurusan\": \"MIPA\",\n  \"limitSiswa\": 36\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseURL}}/class",
-              "host": ["{{baseURL}}"],
-              "path": ["class"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "class"
+              ]
             },
             "description": "Tambah kelas baru. Nama kelas dibuat otomatis.\n\n**Field:**\n- `noKelas` (wajib, numeric ≥ 1) – nomor urut kelas\n- `tingkat` (wajib, enum: `1`, `2`, `3`) – tingkat kelas\n- `jurusan` (wajib, enum: `MIPA`, `IPS`) – jurusan\n- `limitSiswa` (wajib, numeric 1–62) – kapasitas maksimal siswa\n\n**Contoh nama kelas yang dihasilkan:** tingkat=1, jurusan=MIPA, noKelas=1 → `X MIPA 1`\n(tingkat 1→X, 2→XI, 3→XII)"
           },
@@ -397,18 +636,35 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"idKelas\": 1,\n  \"noKelas\": 2,\n  \"tingkat\": 1,\n  \"jurusan\": \"IPS\",\n  \"limitSiswa\": 40\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseURL}}/class/update",
-              "host": ["{{baseURL}}"],
-              "path": ["class", "update"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "class",
+                "update"
+              ]
             },
             "description": "Update data kelas. Kirim hanya field yang ingin diubah (selain `idKelas` yang wajib).\n\n**Field:**\n- `idKelas` (wajib) – ID kelas yang akan diupdate\n- `noKelas` (opsional, numeric ≥ 1)\n- `tingkat` (opsional, enum: `1`, `2`, `3`)\n- `jurusan` (opsional, enum: `MIPA`, `IPS`)\n- `limitSiswa` (opsional, numeric 1–62)\n- `namaKelas` (opsional) – override nama kelas secara manual"
           },
@@ -419,12 +675,21 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/class/1",
-              "host": ["{{baseURL}}"],
-              "path": ["class", "1"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "class",
+                "1"
+              ]
             },
             "description": "Hapus (soft delete) kelas berdasarkan ID.\n\nGanti `1` di URL dengan ID kelas yang ingin dihapus."
           },
@@ -441,18 +706,35 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/guru/all?page=1&per_page=5",
-              "host": ["{{baseURL}}"],
-              "path": ["guru", "all"],
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "guru",
+                "all"
+              ],
               "query": [
-                { "key": "page", "value": "1", "description": "Nomor halaman (default: 1)" },
-                { "key": "per_page", "value": "5", "description": "Jumlah item per halaman (default: 5)" }
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Nomor halaman (default: 1)"
+                },
+                {
+                  "key": "per_page",
+                  "value": "5",
+                  "description": "Jumlah item per halaman (default: 5)"
+                }
               ]
             },
-            "description": "Ambil daftar semua guru dengan pagination. Foto dikembalikan sebagai base64 WebP."
+            "description": "Ambil daftar semua guru dengan pagination.\n\nFoto **tidak disertakan** di list untuk menjaga response tetap ringan. Gunakan **GET Guru by ID** untuk mendapatkan foto dalam format base64 WebP."
           },
           "response": []
         },
@@ -461,14 +743,26 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/guru?idGuru=1",
-              "host": ["{{baseURL}}"],
-              "path": ["guru"],
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "guru"
+              ],
               "query": [
-                { "key": "idGuru", "value": "1", "description": "ID guru yang dicari" }
+                {
+                  "key": "idGuru",
+                  "value": "1",
+                  "description": "ID guru yang dicari"
+                }
               ]
             },
             "description": "Ambil detail lengkap satu guru berdasarkan ID. Foto dikembalikan sebagai base64 WebP."
@@ -480,39 +774,162 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "namaLengkap", "value": "Budi Santoso", "type": "text", "description": "Wajib" },
-                { "key": "email", "value": "budi.guru@sekolah.com", "type": "text", "description": "Wajib, unik" },
-                { "key": "nik", "value": "1234567890123456", "type": "text", "description": "Wajib, max 16 digit angka, unik" },
-                { "key": "nip", "value": "9876543210123456", "type": "text", "description": "Wajib, max 16 digit angka, unik" },
-                { "key": "telephone", "value": "081234567890", "type": "text", "description": "Wajib, angka" },
-                { "key": "jenisKelamin", "value": "Laki-Laki", "type": "text", "description": "Wajib: Laki-Laki / Perempuan" },
-                { "key": "tempatLahir", "value": "Jakarta", "type": "text", "description": "Wajib" },
-                { "key": "tanggalLahir", "value": "1985-03-15", "type": "text", "description": "Wajib, format YYYY-MM-DD" },
-                { "key": "alamat", "value": "Jl. Merdeka No. 1, Jakarta", "type": "text", "description": "Wajib" },
-                { "key": "statusKepegawaian", "value": "PNS", "type": "text", "description": "Wajib" },
-                { "key": "tanggalMasuk", "value": "2010-01-15", "type": "text", "description": "Wajib, format YYYY-MM-DD" },
-                { "key": "jabatan", "value": "Guru Tetap", "type": "text", "description": "Wajib" },
-                { "key": "pendidikanTerakhir", "value": "S1", "type": "text", "description": "Wajib" },
-                { "key": "jurusan", "value": "Pendidikan Matematika", "type": "text", "description": "Wajib" },
-                { "key": "universitas", "value": "Universitas Indonesia", "type": "text", "description": "Wajib" },
-                { "key": "tahunLulus", "value": "2008", "type": "text", "description": "Wajib" },
-                { "key": "foto", "type": "file", "src": [], "description": "Wajib – JPEG/PNG/JPG, max 2 MB, min 360×480 px – dikonversi ke 3:4 portrait (360×480 px) WebP q85" },
-                { "key": "agama", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "statusPernikahan", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "nomorSKPengangkatan", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
-                { "key": "nomorSertifikasi", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
-                { "key": "pelatihan", "value": "", "type": "text", "description": "Opsional", "disabled": true }
+                {
+                  "key": "namaLengkap",
+                  "value": "Budi Santoso",
+                  "type": "text",
+                  "description": "Wajib"
+                },
+                {
+                  "key": "email",
+                  "value": "budi.guru@sekolah.com",
+                  "type": "text",
+                  "description": "Wajib, unik"
+                },
+                {
+                  "key": "nik",
+                  "value": "1234567890123456",
+                  "type": "text",
+                  "description": "Wajib, max 16 digit angka, unik"
+                },
+                {
+                  "key": "nip",
+                  "value": "9876543210123456",
+                  "type": "text",
+                  "description": "Wajib, max 16 digit angka, unik"
+                },
+                {
+                  "key": "telephone",
+                  "value": "081234567890",
+                  "type": "text",
+                  "description": "Wajib, angka"
+                },
+                {
+                  "key": "jenisKelamin",
+                  "value": "Laki-Laki",
+                  "type": "text",
+                  "description": "Wajib: Laki-Laki / Perempuan"
+                },
+                {
+                  "key": "tempatLahir",
+                  "value": "Jakarta",
+                  "type": "text",
+                  "description": "Wajib"
+                },
+                {
+                  "key": "tanggalLahir",
+                  "value": "1985-03-15",
+                  "type": "text",
+                  "description": "Wajib, format YYYY-MM-DD"
+                },
+                {
+                  "key": "alamat",
+                  "value": "Jl. Merdeka No. 1, Jakarta",
+                  "type": "text",
+                  "description": "Wajib"
+                },
+                {
+                  "key": "statusKepegawaian",
+                  "value": "PNS",
+                  "type": "text",
+                  "description": "Wajib"
+                },
+                {
+                  "key": "tanggalMasuk",
+                  "value": "2010-01-15",
+                  "type": "text",
+                  "description": "Wajib, format YYYY-MM-DD"
+                },
+                {
+                  "key": "jabatan",
+                  "value": "Guru Tetap",
+                  "type": "text",
+                  "description": "Wajib"
+                },
+                {
+                  "key": "pendidikanTerakhir",
+                  "value": "S1",
+                  "type": "text",
+                  "description": "Wajib"
+                },
+                {
+                  "key": "jurusan",
+                  "value": "Pendidikan Matematika",
+                  "type": "text",
+                  "description": "Wajib"
+                },
+                {
+                  "key": "universitas",
+                  "value": "Universitas Indonesia",
+                  "type": "text",
+                  "description": "Wajib"
+                },
+                {
+                  "key": "tahunLulus",
+                  "value": "2008",
+                  "type": "text",
+                  "description": "Wajib"
+                },
+                {
+                  "key": "foto",
+                  "type": "file",
+                  "src": [],
+                  "description": "Wajib – JPEG/PNG/JPG, max 2 MB, min 360×480 px – dikonversi ke 3:4 portrait (360×480 px) WebP q85"
+                },
+                {
+                  "key": "agama",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "statusPernikahan",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "nomorSKPengangkatan",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, angka",
+                  "disabled": true
+                },
+                {
+                  "key": "nomorSertifikasi",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, angka",
+                  "disabled": true
+                },
+                {
+                  "key": "pelatihan",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                }
               ]
             },
             "url": {
               "raw": "{{baseURL}}/guru",
-              "host": ["{{baseURL}}"],
-              "path": ["guru"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "guru"
+              ]
             },
             "description": "Tambah data guru baru dengan upload foto.\n\nFoto akan dikonversi otomatis ke format WebP dan disimpan di storage private.\n\n**Catatan NIK/NIP:** Maksimal 16 digit."
           },
@@ -523,40 +940,186 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "idGuru", "value": "1", "type": "text", "description": "Wajib – ID guru yang akan diupdate" },
-                { "key": "namaLengkap", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "email", "value": "", "type": "text", "description": "Opsional, unik", "disabled": true },
-                { "key": "nik", "value": "", "type": "text", "description": "Opsional, max 16 digit, unik", "disabled": true },
-                { "key": "nip", "value": "", "type": "text", "description": "Opsional, max 16 digit, unik", "disabled": true },
-                { "key": "telephone", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
-                { "key": "jenisKelamin", "value": "", "type": "text", "description": "Opsional: Laki-Laki / Perempuan", "disabled": true },
-                { "key": "tempatLahir", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "tanggalLahir", "value": "", "type": "text", "description": "Opsional, format YYYY-MM-DD", "disabled": true },
-                { "key": "alamat", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "statusKepegawaian", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "tanggalMasuk", "value": "", "type": "text", "description": "Opsional, format YYYY-MM-DD", "disabled": true },
-                { "key": "jabatan", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "pendidikanTerakhir", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "jurusan", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "universitas", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "tahunLulus", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "foto", "type": "file", "src": [], "description": "Opsional – ganti foto, JPEG/PNG/JPG, max 2 MB, min 360×480 px – dikonversi ke 3:4 portrait (360×480 px) WebP q85", "disabled": true },
-                { "key": "agama", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "statusPernikahan", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "nomorSKPengangkatan", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
-                { "key": "nomorSertifikasi", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
-                { "key": "pelatihan", "value": "", "type": "text", "description": "Opsional", "disabled": true }
+                {
+                  "key": "idGuru",
+                  "value": "1",
+                  "type": "text",
+                  "description": "Wajib – ID guru yang akan diupdate"
+                },
+                {
+                  "key": "namaLengkap",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "email",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, unik",
+                  "disabled": true
+                },
+                {
+                  "key": "nik",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, max 16 digit, unik",
+                  "disabled": true
+                },
+                {
+                  "key": "nip",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, max 16 digit, unik",
+                  "disabled": true
+                },
+                {
+                  "key": "telephone",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, angka",
+                  "disabled": true
+                },
+                {
+                  "key": "jenisKelamin",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional: Laki-Laki / Perempuan",
+                  "disabled": true
+                },
+                {
+                  "key": "tempatLahir",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "tanggalLahir",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, format YYYY-MM-DD",
+                  "disabled": true
+                },
+                {
+                  "key": "alamat",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "statusKepegawaian",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "tanggalMasuk",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, format YYYY-MM-DD",
+                  "disabled": true
+                },
+                {
+                  "key": "jabatan",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "pendidikanTerakhir",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "jurusan",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "universitas",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "tahunLulus",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "foto",
+                  "type": "file",
+                  "src": [],
+                  "description": "Opsional – ganti foto, JPEG/PNG/JPG, max 2 MB, min 360×480 px – dikonversi ke 3:4 portrait (360×480 px) WebP q85",
+                  "disabled": true
+                },
+                {
+                  "key": "agama",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "statusPernikahan",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "nomorSKPengangkatan",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, angka",
+                  "disabled": true
+                },
+                {
+                  "key": "nomorSertifikasi",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, angka",
+                  "disabled": true
+                },
+                {
+                  "key": "pelatihan",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                }
               ]
             },
             "url": {
               "raw": "{{baseURL}}/guru/update",
-              "host": ["{{baseURL}}"],
-              "path": ["guru", "update"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "guru",
+                "update"
+              ]
             },
             "description": "Update data guru. Aktifkan (enable) hanya field yang ingin diubah.\n\nJika `foto` dikirim, foto lama akan dihapus dan diganti otomatis."
           },
@@ -567,12 +1130,21 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/guru/1",
-              "host": ["{{baseURL}}"],
-              "path": ["guru", "1"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "guru",
+                "1"
+              ]
             },
             "description": "Hapus (soft delete) data guru berdasarkan ID.\n\nGanti `1` di URL dengan ID guru yang ingin dihapus."
           },
@@ -589,18 +1161,35 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/siswa/all?page=1&per_page=5",
-              "host": ["{{baseURL}}"],
-              "path": ["siswa", "all"],
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "siswa",
+                "all"
+              ],
               "query": [
-                { "key": "page", "value": "1", "description": "Nomor halaman (default: 1)" },
-                { "key": "per_page", "value": "5", "description": "Jumlah item per halaman (default: 5)" }
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Nomor halaman (default: 1)"
+                },
+                {
+                  "key": "per_page",
+                  "value": "5",
+                  "description": "Jumlah item per halaman (default: 5)"
+                }
               ]
             },
-            "description": "Ambil daftar semua siswa dengan pagination. Foto dikembalikan sebagai base64 WebP."
+            "description": "Ambil daftar semua siswa dengan pagination.\n\nFoto **tidak disertakan** di list untuk menjaga response tetap ringan. Gunakan **GET Siswa by ID** untuk mendapatkan foto dalam format base64 WebP."
           },
           "response": []
         },
@@ -609,14 +1198,26 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/siswa?idSiswa=1",
-              "host": ["{{baseURL}}"],
-              "path": ["siswa"],
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "siswa"
+              ],
               "query": [
-                { "key": "idSiswa", "value": "1", "description": "ID siswa yang dicari" }
+                {
+                  "key": "idSiswa",
+                  "value": "1",
+                  "description": "ID siswa yang dicari"
+                }
               ]
             },
             "description": "Ambil detail lengkap satu siswa berdasarkan ID. Foto dikembalikan sebagai base64 WebP."
@@ -628,37 +1229,154 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "namaLengkap", "value": "Andi Wijaya", "type": "text", "description": "Wajib" },
-                { "key": "email", "value": "andi.siswa@sekolah.com", "type": "text", "description": "Wajib, unik – dipakai untuk akun login siswa" },
-                { "key": "nisn", "value": "0123456789", "type": "text", "description": "Wajib, angka, max 16 digit, unik" },
-                { "key": "telephone", "value": "081298765432", "type": "text", "description": "Wajib, angka" },
-                { "key": "jenisKelamin", "value": "Laki-Laki", "type": "text", "description": "Wajib: Laki-Laki / Perempuan" },
-                { "key": "tempatLahir", "value": "Bandung", "type": "text", "description": "Wajib" },
-                { "key": "tanggalLahir", "value": "2008-05-20", "type": "text", "description": "Wajib, format YYYY-MM-DD" },
-                { "key": "tanggalMasuk", "value": "2023-07-10", "type": "text", "description": "Wajib, format YYYY-MM-DD" },
-                { "key": "alamat", "value": "Jl. Bandung No. 10", "type": "text", "description": "Wajib" },
-                { "key": "namaIbu", "value": "Siti Aminah", "type": "text", "description": "Wajib" },
-                { "key": "foto", "type": "file", "src": [], "description": "Wajib – JPEG/PNG/JPG, max 2 MB, min 360×480 px – dikonversi ke 3:4 portrait (360×480 px) WebP q85" },
-                { "key": "agama", "value": "", "type": "text", "description": "Opsional: Islam / Budha / Kristen Protestan / Katolik / Hindu", "disabled": true },
-                { "key": "namaAyah", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "pekerjaanAyah", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "pekerjaanIbu", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "noTelpAyah", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
-                { "key": "noTelpIbu", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
-                { "key": "namaWali", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "hubunganWali", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "noTelpWali", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true }
+                {
+                  "key": "namaLengkap",
+                  "value": "Andi Wijaya",
+                  "type": "text",
+                  "description": "Wajib"
+                },
+                {
+                  "key": "email",
+                  "value": "andi.siswa@sekolah.com",
+                  "type": "text",
+                  "description": "Wajib, unik – dipakai untuk akun login siswa"
+                },
+                {
+                  "key": "nisn",
+                  "value": "0123456789",
+                  "type": "text",
+                  "description": "Wajib, angka, max 16 digit, unik"
+                },
+                {
+                  "key": "telephone",
+                  "value": "081298765432",
+                  "type": "text",
+                  "description": "Wajib, angka"
+                },
+                {
+                  "key": "jenisKelamin",
+                  "value": "Laki-Laki",
+                  "type": "text",
+                  "description": "Wajib: Laki-Laki / Perempuan"
+                },
+                {
+                  "key": "tempatLahir",
+                  "value": "Bandung",
+                  "type": "text",
+                  "description": "Wajib"
+                },
+                {
+                  "key": "tanggalLahir",
+                  "value": "2008-05-20",
+                  "type": "text",
+                  "description": "Wajib, format YYYY-MM-DD"
+                },
+                {
+                  "key": "tanggalMasuk",
+                  "value": "2023-07-10",
+                  "type": "text",
+                  "description": "Wajib, format YYYY-MM-DD"
+                },
+                {
+                  "key": "alamat",
+                  "value": "Jl. Bandung No. 10",
+                  "type": "text",
+                  "description": "Wajib"
+                },
+                {
+                  "key": "namaIbu",
+                  "value": "Siti Aminah",
+                  "type": "text",
+                  "description": "Wajib"
+                },
+                {
+                  "key": "foto",
+                  "type": "file",
+                  "src": [],
+                  "description": "Wajib – JPEG/PNG/JPG, max 2 MB, min 360×480 px – dikonversi ke 3:4 portrait (360×480 px) WebP q85"
+                },
+                {
+                  "key": "agama",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional: Islam / Budha / Kristen Protestan / Katolik / Hindu",
+                  "disabled": true
+                },
+                {
+                  "key": "namaAyah",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "pekerjaanAyah",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "pekerjaanIbu",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "noTelpAyah",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, angka",
+                  "disabled": true
+                },
+                {
+                  "key": "noTelpIbu",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, angka",
+                  "disabled": true
+                },
+                {
+                  "key": "namaWali",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "hubunganWali",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "noTelpWali",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, angka",
+                  "disabled": true
+                }
               ]
             },
             "url": {
               "raw": "{{baseURL}}/siswa",
-              "host": ["{{baseURL}}"],
-              "path": ["siswa"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "siswa"
+              ]
             },
             "description": "Tambah data siswa baru dengan upload foto.\n\nSetelah berhasil, akun login (email + password default) untuk siswa otomatis dibuat di Gateway."
           },
@@ -669,39 +1387,179 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "idSiswa", "value": "1", "type": "text", "description": "Wajib – ID siswa yang akan diupdate" },
-                { "key": "namaLengkap", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "nisn", "value": "", "type": "text", "description": "Opsional, angka, unik", "disabled": true },
-                { "key": "telephone", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
-                { "key": "jenisKelamin", "value": "", "type": "text", "description": "Opsional: Laki-Laki / Perempuan", "disabled": true },
-                { "key": "status", "value": "", "type": "text", "description": "Opsional: Aktif / Lulus / Berhenti / Pindah", "disabled": true },
-                { "key": "statusDate", "value": "", "type": "text", "description": "Opsional, format YYYY-MM-DD – tanggal perubahan status", "disabled": true },
-                { "key": "tempatLahir", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "tanggalLahir", "value": "", "type": "text", "description": "Opsional, format YYYY-MM-DD", "disabled": true },
-                { "key": "tanggalMasuk", "value": "", "type": "text", "description": "Opsional, format YYYY-MM-DD", "disabled": true },
-                { "key": "alamat", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "foto", "type": "file", "src": [], "description": "Opsional – ganti foto, JPEG/PNG/JPG, max 2 MB, min 360×480 px – dikonversi ke 3:4 portrait (360×480 px) WebP q85", "disabled": true },
-                { "key": "agama", "value": "", "type": "text", "description": "Opsional: Islam / Budha / Kristen Protestan / Katolik / Hindu", "disabled": true },
-                { "key": "namaAyah", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "namaIbu", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "pekerjaanAyah", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "pekerjaanIbu", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "noTelpAyah", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
-                { "key": "noTelpIbu", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true },
-                { "key": "namaWali", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "hubunganWali", "value": "", "type": "text", "description": "Opsional", "disabled": true },
-                { "key": "noTelpWali", "value": "", "type": "text", "description": "Opsional, angka", "disabled": true }
+                {
+                  "key": "idSiswa",
+                  "value": "1",
+                  "type": "text",
+                  "description": "Wajib – ID siswa yang akan diupdate"
+                },
+                {
+                  "key": "namaLengkap",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "nisn",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, angka, unik",
+                  "disabled": true
+                },
+                {
+                  "key": "telephone",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, angka",
+                  "disabled": true
+                },
+                {
+                  "key": "jenisKelamin",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional: Laki-Laki / Perempuan",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional: Aktif / Lulus / Berhenti / Pindah",
+                  "disabled": true
+                },
+                {
+                  "key": "statusDate",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, format YYYY-MM-DD – tanggal perubahan status",
+                  "disabled": true
+                },
+                {
+                  "key": "tempatLahir",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "tanggalLahir",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, format YYYY-MM-DD",
+                  "disabled": true
+                },
+                {
+                  "key": "tanggalMasuk",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, format YYYY-MM-DD",
+                  "disabled": true
+                },
+                {
+                  "key": "alamat",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "foto",
+                  "type": "file",
+                  "src": [],
+                  "description": "Opsional – ganti foto, JPEG/PNG/JPG, max 2 MB, min 360×480 px – dikonversi ke 3:4 portrait (360×480 px) WebP q85",
+                  "disabled": true
+                },
+                {
+                  "key": "agama",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional: Islam / Budha / Kristen Protestan / Katolik / Hindu",
+                  "disabled": true
+                },
+                {
+                  "key": "namaAyah",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "namaIbu",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "pekerjaanAyah",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "pekerjaanIbu",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "noTelpAyah",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, angka",
+                  "disabled": true
+                },
+                {
+                  "key": "noTelpIbu",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, angka",
+                  "disabled": true
+                },
+                {
+                  "key": "namaWali",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "hubunganWali",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional",
+                  "disabled": true
+                },
+                {
+                  "key": "noTelpWali",
+                  "value": "",
+                  "type": "text",
+                  "description": "Opsional, angka",
+                  "disabled": true
+                }
               ]
             },
             "url": {
               "raw": "{{baseURL}}/siswa/update",
-              "host": ["{{baseURL}}"],
-              "path": ["siswa", "update"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "siswa",
+                "update"
+              ]
             },
             "description": "Update data siswa. Aktifkan (enable) hanya field yang ingin diubah.\n\nJika `namaLengkap` diubah, nama di akun login juga ikut terupdate.\nJika `foto` dikirim, foto lama akan dihapus dan diganti otomatis."
           },
@@ -712,12 +1570,21 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "url": {
               "raw": "{{baseURL}}/siswa/1",
-              "host": ["{{baseURL}}"],
-              "path": ["siswa", "1"]
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "siswa",
+                "1"
+              ]
             },
             "description": "Hapus (soft delete) data siswa berdasarkan ID. Akun login siswa juga dihapus (soft delete).\n\nGanti `1` di URL dengan ID siswa yang ingin dihapus."
           },
@@ -737,12 +1604,22 @@
               "request": {
                 "method": "GET",
                 "header": [
-                  { "key": "Accept", "value": "application/json", "type": "text" }
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
                 ],
                 "url": {
                   "raw": "{{baseURL}}/akademik/semester/aktif",
-                  "host": ["{{baseURL}}"],
-                  "path": ["akademik", "semester", "aktif"]
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "semester",
+                    "aktif"
+                  ]
                 },
                 "description": "Ambil tahun ajaran dan semester yang sedang berlangsung.\n\n**Akses:** Semua role.\n\nDigunakan sebagai acuan sistem untuk pelaporan dan UI frontend.\n\n**Response fields:** `idSemesterAktif`, `tahunAjaran`, `semester`, `tanggalMulai`, `tanggalSelesai`, `isAktif`"
               },
@@ -753,18 +1630,36 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Accept", "value": "application/json", "type": "text" },
-                  { "key": "Content-Type", "value": "application/json", "type": "text" }
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
                 ],
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": \"2\",\n  \"tanggal_mulai\": \"2025-01-06\",\n  \"tanggal_selesai\": \"2025-06-20\"\n}",
-                  "options": { "raw": { "language": "json" } }
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
                 },
                 "url": {
                   "raw": "{{baseURL}}/akademik/semester/aktif",
-                  "host": ["{{baseURL}}"],
-                  "path": ["akademik", "semester", "aktif"]
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "semester",
+                    "aktif"
+                  ]
                 },
                 "description": "Set semester aktif baru. Semester sebelumnya otomatis ditutup (`is_aktif = false`) dalam satu DB transaction.\n\n**Akses:** SuperAdmin, Admin.\n\n**Field:**\n- `tahun_ajaran` (wajib) – format `YYYY/YYYY`, contoh: `2024/2025`\n- `semester` (wajib) – `1` atau `2`\n- `tanggal_mulai` (wajib) – format `YYYY-MM-DD`\n- `tanggal_selesai` (wajib) – format `YYYY-MM-DD`, harus setelah `tanggal_mulai`\n\n**Catatan:** Hanya satu semester yang bisa aktif di waktu yang sama."
               },
@@ -775,12 +1670,22 @@
               "request": {
                 "method": "GET",
                 "header": [
-                  { "key": "Accept", "value": "application/json", "type": "text" }
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
                 ],
                 "url": {
                   "raw": "{{baseURL}}/akademik/semester/riwayat",
-                  "host": ["{{baseURL}}"],
-                  "path": ["akademik", "semester", "riwayat"]
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "semester",
+                    "riwayat"
+                  ]
                 },
                 "description": "Ambil semua semester yang pernah diset, diurutkan dari terbaru.\n\n**Akses:** Semua role.\n\nField `isAktif` menunjukkan semester mana yang sedang berjalan (`true`) dan yang sudah selesai (`false`)."
               },
@@ -793,144 +1698,274 @@
           "item": [
             {
               "name": "Assign Siswa ke Kelas",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"siswa_id\": 1,\n  \"kelas_id\": 1,\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": \"1\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"siswa_id\": 1,\n  \"kelas_id\": 1,\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": \"1\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/akademik/kelas/assign",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "kelas",
+                    "assign"
+                  ]
+                },
+                "description": "Masukkan siswa ke dalam kelas untuk semester tertentu.\n\nGateway otomatis mengambil `limit_siswa` dari ClassMicroservices — tidak perlu dikirim manual.\n\n**Field:**\n- `siswa_id` (wajib) – ID siswa dari SiswaService\n- `kelas_id` (wajib) – ID kelas dari ClassMicroservices\n- `tahun_ajaran` (wajib) – format `2024/2025`\n- `semester` (wajib) – `1` atau `2`\n\n**Validasi:**\n- Satu siswa hanya bisa masuk satu kelas per semester\n- Kelas tidak boleh melebihi kapasitas (`limitSiswa`)"
+              },
+              "response": []
             },
-            "url": {
-              "raw": "{{baseURL}}/akademik/kelas/assign",
-              "host": ["{{baseURL}}"],
-              "path": ["akademik", "kelas", "assign"]
+            {
+              "name": "Pindah Kelas Siswa",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"kelas_id\": 2\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/akademik/kelas/assign/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "kelas",
+                    "assign",
+                    "1"
+                  ]
+                },
+                "description": "Pindahkan siswa ke kelas lain dalam semester yang sama. Record lama di-soft-delete dan record baru dibuat.\n\n**Akses:** SuperAdmin, Admin.\n\n**Field:**\n- `kelas_id` (wajib) – ID kelas tujuan\n\nGanti `1` di URL dengan ID record `siswa_kelas` (bukan ID siswa).\n\nGateway otomatis mengambil `limit_siswa` dari ClassMicroservices untuk memvalidasi kapasitas kelas tujuan.\n\n**Validasi:**\n- Tidak bisa pindah ke kelas yang sama (409)\n- Kelas tujuan tidak boleh melebihi kapasitas"
+              },
+              "response": []
             },
-            "description": "Masukkan siswa ke dalam kelas untuk semester tertentu.\n\nGateway otomatis mengambil `limit_siswa` dari ClassMicroservices — tidak perlu dikirim manual.\n\n**Field:**\n- `siswa_id` (wajib) – ID siswa dari SiswaService\n- `kelas_id` (wajib) – ID kelas dari ClassMicroservices\n- `tahun_ajaran` (wajib) – format `2024/2025`\n- `semester` (wajib) – `1` atau `2`\n\n**Validasi:**\n- Satu siswa hanya bisa masuk satu kelas per semester\n- Kelas tidak boleh melebihi kapasitas (`limitSiswa`)"
-          },
-          "response": []
-        },
-        {
-          "name": "Pindah Kelas Siswa",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"kelas_id\": 2\n}",
-              "options": { "raw": { "language": "json" } }
+            {
+              "name": "Hapus Siswa dari Kelas",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/kelas/assign/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "kelas",
+                    "assign",
+                    "1"
+                  ]
+                },
+                "description": "Hapus (soft delete) data pembagian kelas berdasarkan ID record.\n\nGanti `1` di URL dengan ID record `siswa_kelas` (bukan ID siswa)."
+              },
+              "response": []
             },
-            "url": {
-              "raw": "{{baseURL}}/akademik/kelas/assign/1",
-              "host": ["{{baseURL}}"],
-              "path": ["akademik", "kelas", "assign", "1"]
+            {
+              "name": "GET Siswa di Kelas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/kelas/1/siswa?tahun_ajaran=2024/2025&semester=1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "kelas",
+                    "1",
+                    "siswa"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "1",
+                      "description": "Filter semester: 1 atau 2 (opsional)"
+                    }
+                  ]
+                },
+                "description": "Ambil daftar siswa yang **aktif** terdaftar di kelas tertentu (tidak termasuk yang sudah dipindah).\n\n**Akses:** Semua role.\n\nGanti `1` di URL dengan ID kelas. Filter `tahun_ajaran` dan `semester` opsional."
+              },
+              "response": []
             },
-            "description": "Pindahkan siswa ke kelas lain dalam semester yang sama. Record lama di-soft-delete dan record baru dibuat.\n\n**Akses:** SuperAdmin, Admin.\n\n**Field:**\n- `kelas_id` (wajib) – ID kelas tujuan\n\nGanti `1` di URL dengan ID record `siswa_kelas` (bukan ID siswa).\n\nGateway otomatis mengambil `limit_siswa` dari ClassMicroservices untuk memvalidasi kapasitas kelas tujuan.\n\n**Validasi:**\n- Tidak bisa pindah ke kelas yang sama (409)\n- Kelas tujuan tidak boleh melebihi kapasitas"
-          },
-          "response": []
-        },
-        {
-          "name": "Hapus Siswa dari Kelas",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{baseURL}}/akademik/kelas/assign/1",
-              "host": ["{{baseURL}}"],
-              "path": ["akademik", "kelas", "assign", "1"]
+            {
+              "name": "GET Kelas Siswa",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/siswa/1/kelas?tahun_ajaran=2024/2025&semester=1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "siswa",
+                    "1",
+                    "kelas"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "1",
+                      "description": "Filter semester: 1 atau 2 (opsional)"
+                    }
+                  ]
+                },
+                "description": "Ambil kelas **aktif** seorang siswa per semester.\n\n**Akses:** Semua role.\n\nGanti `1` di URL dengan ID siswa. Filter `tahun_ajaran` dan `semester` opsional."
+              },
+              "response": []
             },
-            "description": "Hapus (soft delete) data pembagian kelas berdasarkan ID record.\n\nGanti `1` di URL dengan ID record `siswa_kelas` (bukan ID siswa)."
-          },
-          "response": []
-        },
-        {
-          "name": "GET Siswa di Kelas",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{baseURL}}/akademik/kelas/1/siswa?tahun_ajaran=2024/2025&semester=1",
-              "host": ["{{baseURL}}"],
-              "path": ["akademik", "kelas", "1", "siswa"],
-              "query": [
-                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)" },
-                { "key": "semester", "value": "1", "description": "Filter semester: 1 atau 2 (opsional)" }
-              ]
+            {
+              "name": "GET Riwayat Siswa di Kelas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/siswa/1/kelas/riwayat",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "siswa",
+                    "1",
+                    "kelas",
+                    "riwayat"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "semester",
+                      "value": "1",
+                      "description": "Filter semester (opsional)",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Ambil **semua** kelas yang pernah diikuti siswa — termasuk yang sudah dipindah (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nField `deletedAt` menunjukkan kapan siswa dipindah dari kelas tersebut (`null` = masih aktif di kelas itu).\n\nGanti `1` di URL dengan ID siswa."
+              },
+              "response": []
             },
-            "description": "Ambil daftar siswa yang **aktif** terdaftar di kelas tertentu (tidak termasuk yang sudah dipindah).\n\n**Akses:** Semua role.\n\nGanti `1` di URL dengan ID kelas. Filter `tahun_ajaran` dan `semester` opsional."
-          },
-          "response": []
-        },
-        {
-          "name": "GET Kelas Siswa",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{baseURL}}/akademik/siswa/1/kelas?tahun_ajaran=2024/2025&semester=1",
-              "host": ["{{baseURL}}"],
-              "path": ["akademik", "siswa", "1", "kelas"],
-              "query": [
-                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)" },
-                { "key": "semester", "value": "1", "description": "Filter semester: 1 atau 2 (opsional)" }
-              ]
-            },
-            "description": "Ambil kelas **aktif** seorang siswa per semester.\n\n**Akses:** Semua role.\n\nGanti `1` di URL dengan ID siswa. Filter `tahun_ajaran` dan `semester` opsional."
-          },
-          "response": []
-        },
-        {
-          "name": "GET Riwayat Siswa di Kelas",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{baseURL}}/akademik/siswa/1/kelas/riwayat",
-              "host": ["{{baseURL}}"],
-              "path": ["akademik", "siswa", "1", "kelas", "riwayat"],
-              "query": [
-                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)", "disabled": true },
-                { "key": "semester", "value": "1", "description": "Filter semester (opsional)", "disabled": true }
-              ]
-            },
-            "description": "Ambil **semua** kelas yang pernah diikuti siswa — termasuk yang sudah dipindah (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nField `deletedAt` menunjukkan kapan siswa dipindah dari kelas tersebut (`null` = masih aktif di kelas itu).\n\nGanti `1` di URL dengan ID siswa."
-          },
-          "response": []
-        },
-        {
-          "name": "GET Riwayat Kelas (semua siswa)",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{baseURL}}/akademik/kelas/1/siswa/riwayat",
-              "host": ["{{baseURL}}"],
-              "path": ["akademik", "kelas", "1", "siswa", "riwayat"],
-              "query": [
-                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)", "disabled": true },
-                { "key": "semester", "value": "1", "description": "Filter semester (opsional)", "disabled": true }
-              ]
-            },
-            "description": "Ambil **semua** siswa yang pernah masuk kelas ini — termasuk yang sudah dipindah (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nGanti `1` di URL dengan ID kelas."
-          },
-          "response": []
-        }
+            {
+              "name": "GET Riwayat Kelas (semua siswa)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/kelas/1/siswa/riwayat",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "kelas",
+                    "1",
+                    "siswa",
+                    "riwayat"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "semester",
+                      "value": "1",
+                      "description": "Filter semester (opsional)",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Ambil **semua** siswa yang pernah masuk kelas ini — termasuk yang sudah dipindah (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nGanti `1` di URL dengan ID kelas."
+              },
+              "response": []
+            }
           ]
         },
         {
@@ -938,146 +1973,731 @@
           "item": [
             {
               "name": "Assign Guru sebagai Pengampu Mapel",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"guru_id\": 1,\n  \"mapel_id\": 1,\n  \"kelas_id\": 1,\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": \"1\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"guru_id\": 1,\n  \"mapel_id\": 1,\n  \"kelas_id\": 1,\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": \"1\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/akademik/pengampu",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "pengampu"
+                  ]
+                },
+                "description": "Tetapkan guru sebagai pengampu (pengajar) sebuah mata pelajaran di kelas tertentu.\n\n**Field:**\n- `guru_id` (wajib) – ID guru dari GuruService\n- `mapel_id` (wajib) – ID mata pelajaran dari MapelService\n- `kelas_id` (wajib) – ID kelas dari ClassMicroservices\n- `tahun_ajaran` (wajib) – format `2024/2025`\n- `semester` (wajib) – `1` atau `2`\n\n**Validasi:** Satu mapel di satu kelas hanya boleh diampu satu guru per semester."
+              },
+              "response": []
             },
-            "url": {
-              "raw": "{{baseURL}}/akademik/pengampu",
-              "host": ["{{baseURL}}"],
-              "path": ["akademik", "pengampu"]
+            {
+              "name": "Ganti Guru Pengampu",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"guru_id\": 2\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/akademik/pengampu/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "pengampu",
+                    "1"
+                  ]
+                },
+                "description": "Ganti guru yang mengampu mapel di kelas tertentu. Update dilakukan in-place (bukan delete+create) untuk mempertahankan unique constraint.\n\n**Akses:** SuperAdmin, Admin.\n\n**Field:**\n- `guru_id` (wajib) – ID guru pengganti\n\nGanti `1` di URL dengan ID record `pengampu_mapel` (bukan ID guru).\n\n**Validasi:** Tidak bisa diganti ke guru yang sama (409)."
+              },
+              "response": []
             },
-            "description": "Tetapkan guru sebagai pengampu (pengajar) sebuah mata pelajaran di kelas tertentu.\n\n**Field:**\n- `guru_id` (wajib) – ID guru dari GuruService\n- `mapel_id` (wajib) – ID mata pelajaran dari MapelService\n- `kelas_id` (wajib) – ID kelas dari ClassMicroservices\n- `tahun_ajaran` (wajib) – format `2024/2025`\n- `semester` (wajib) – `1` atau `2`\n\n**Validasi:** Satu mapel di satu kelas hanya boleh diampu satu guru per semester."
-          },
-          "response": []
+            {
+              "name": "Hapus Pengampu Mapel",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/pengampu/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "pengampu",
+                    "1"
+                  ]
+                },
+                "description": "Hapus (soft delete) penugasan pengampu mapel berdasarkan ID record.\n\nGanti `1` di URL dengan ID record `pengampu_mapel` (bukan ID guru)."
+              },
+              "response": []
+            },
+            {
+              "name": "GET Mapel yang Diampu Guru",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/guru/1/mapel?tahun_ajaran=2024/2025&semester=1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "guru",
+                    "1",
+                    "mapel"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "1",
+                      "description": "Filter semester: 1 atau 2 (opsional)"
+                    }
+                  ]
+                },
+                "description": "Ambil daftar mapel yang diampu oleh guru tertentu.\n\nGanti `1` di URL dengan ID guru."
+              },
+              "response": []
+            },
+            {
+              "name": "GET Guru Pengampu Mapel",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/mapel/1/guru?kelas_id=1&tahun_ajaran=2024/2025&semester=1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "mapel",
+                    "1",
+                    "guru"
+                  ],
+                  "query": [
+                    {
+                      "key": "kelas_id",
+                      "value": "1",
+                      "description": "Filter per kelas (opsional)"
+                    },
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "1",
+                      "description": "Filter semester: 1 atau 2 (opsional)"
+                    }
+                  ]
+                },
+                "description": "Ambil daftar guru **aktif** yang mengampu mapel tertentu.\n\n**Akses:** Semua role.\n\nGanti `1` di URL dengan ID mapel. Bisa filter per kelas, tahun ajaran, dan semester."
+              },
+              "response": []
+            },
+            {
+              "name": "GET Riwayat Mapel Guru",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/guru/1/mapel/riwayat",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "guru",
+                    "1",
+                    "mapel",
+                    "riwayat"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "semester",
+                      "value": "1",
+                      "description": "Filter semester (opsional)",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Ambil **semua** mapel yang pernah diampu guru — termasuk yang sudah diganti guru lain (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nField `deletedAt` menunjukkan kapan penugasan diakhiri (`null` = masih aktif).\n\nGanti `1` di URL dengan ID guru."
+              },
+              "response": []
+            },
+            {
+              "name": "GET Riwayat Guru Pengampu Mapel",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/mapel/1/guru/riwayat",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "mapel",
+                    "1",
+                    "guru",
+                    "riwayat"
+                  ],
+                  "query": [
+                    {
+                      "key": "kelas_id",
+                      "value": "1",
+                      "description": "Filter per kelas (opsional)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "semester",
+                      "value": "1",
+                      "description": "Filter semester (opsional)",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Ambil **semua** guru yang pernah mengampu mapel ini — termasuk yang sudah diganti (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nGanti `1` di URL dengan ID mapel."
+              },
+              "response": []
+            }
+          ]
         },
         {
-          "name": "Ganti Guru Pengampu",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" },
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"guru_id\": 2\n}",
-              "options": { "raw": { "language": "json" } }
+          "name": "--- JAM PELAJARAN ---",
+          "item": [
+            {
+              "name": "GET Semua Jam",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/jam",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "jam"
+                  ]
+                },
+                "description": "List semua slot jam pelajaran, diurutkan berdasarkan ke-1 s.d. ke-10."
+              }
             },
-            "url": {
-              "raw": "{{baseURL}}/akademik/pengampu/1",
-              "host": ["{{baseURL}}"],
-              "path": ["akademik", "pengampu", "1"]
+            {
+              "name": "Tambah Jam",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/jam",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "jam"
+                  ]
+                },
+                "description": "Tambah slot jam pelajaran baru.\n\nField:\n- ke (wajib): urutan jam 1-10, harus unik\n- jam_mulai (wajib): format HH:MM\n- jam_selesai (wajib): format HH:MM, harus setelah jam_mulai",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ke\": 1,\n  \"jam_mulai\": \"07:00\",\n  \"jam_selesai\": \"07:45\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
             },
-            "description": "Ganti guru yang mengampu mapel di kelas tertentu. Update dilakukan in-place (bukan delete+create) untuk mempertahankan unique constraint.\n\n**Akses:** SuperAdmin, Admin.\n\n**Field:**\n- `guru_id` (wajib) – ID guru pengganti\n\nGanti `1` di URL dengan ID record `pengampu_mapel` (bukan ID guru).\n\n**Validasi:** Tidak bisa diganti ke guru yang sama (409)."
-          },
-          "response": []
+            {
+              "name": "Update Jam",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/jam/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "jam",
+                    "1"
+                  ]
+                },
+                "description": "Update slot jam pelajaran. Kirim hanya field yang berubah (ke, jam_mulai, jam_selesai).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"jam_mulai\": \"07:00\",\n  \"jam_selesai\": \"07:50\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Hapus Jam",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/jam/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "jam",
+                    "1"
+                  ]
+                },
+                "description": "Hapus slot jam pelajaran (hard delete). Gagal dengan 409 jika masih digunakan oleh jadwal aktif maupun riwayat."
+              }
+            }
+          ]
         },
         {
-          "name": "Hapus Pengampu Mapel",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{baseURL}}/akademik/pengampu/1",
-              "host": ["{{baseURL}}"],
-              "path": ["akademik", "pengampu", "1"]
+          "name": "--- JADWAL PELAJARAN ---",
+          "item": [
+            {
+              "name": "Buat Jadwal",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/jadwal",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "jadwal"
+                  ]
+                },
+                "description": "Buat jadwal pelajaran baru.\n\nField:\n- pengampu_mapel_id (wajib): ID dari POST /akademik/pengampu\n- hari (wajib): Senin/Selasa/Rabu/Kamis/Jumat\n- jam_mulai_id (wajib): ID jam mulai (dari GET /akademik/jam)\n- jam_selesai_id (wajib): ID jam selesai, ke-nya harus lebih besar dari jam_mulai_id\n- ruangan (opsional): nama ruangan/lab, maks 50 karakter\n- catatan (opsional): catatan tambahan, maks 500 karakter\n\nValidasi bentrok otomatis:\n- Kelas tidak bisa punya 2 mapel pada hari + jam yang overlap\n- Guru tidak bisa mengajar di 2 tempat pada hari + jam yang overlap",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pengampu_mapel_id\": 1,\n  \"hari\": \"Senin\",\n  \"jam_mulai_id\": 1,\n  \"jam_selesai_id\": 2,\n  \"ruangan\": \"Ruang 101\",\n  \"catatan\": \"Bawa buku paket\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
             },
-            "description": "Hapus (soft delete) penugasan pengampu mapel berdasarkan ID record.\n\nGanti `1` di URL dengan ID record `pengampu_mapel` (bukan ID guru)."
-          },
-          "response": []
-        },
-        {
-          "name": "GET Mapel yang Diampu Guru",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{baseURL}}/akademik/guru/1/mapel?tahun_ajaran=2024/2025&semester=1",
-              "host": ["{{baseURL}}"],
-              "path": ["akademik", "guru", "1", "mapel"],
-              "query": [
-                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)" },
-                { "key": "semester", "value": "1", "description": "Filter semester: 1 atau 2 (opsional)" }
-              ]
+            {
+              "name": "Update Jadwal",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/jadwal/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "jadwal",
+                    "1"
+                  ]
+                },
+                "description": "Update jadwal pelajaran. Kirim hanya field yang berubah.\n\nField yang dapat diubah: hari, jam_mulai_id, jam_selesai_id, ruangan, catatan.\nField pengampu_mapel_id tidak dapat diubah — hapus dan buat ulang jika pengampu berubah.\n\nCek bentrok dijalankan ulang jika hari atau jam berubah.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"hari\": \"Selasa\",\n  \"jam_mulai_id\": 3,\n  \"jam_selesai_id\": 4,\n  \"ruangan\": \"Lab IPA\",\n  \"catatan\": \"Praktikum\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
             },
-            "description": "Ambil daftar mapel yang diampu oleh guru tertentu.\n\nGanti `1` di URL dengan ID guru."
-          },
-          "response": []
-        },
-        {
-          "name": "GET Guru Pengampu Mapel",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{baseURL}}/akademik/mapel/1/guru?kelas_id=1&tahun_ajaran=2024/2025&semester=1",
-              "host": ["{{baseURL}}"],
-              "path": ["akademik", "mapel", "1", "guru"],
-              "query": [
-                { "key": "kelas_id", "value": "1", "description": "Filter per kelas (opsional)" },
-                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)" },
-                { "key": "semester", "value": "1", "description": "Filter semester: 1 atau 2 (opsional)" }
-              ]
+            {
+              "name": "Hapus Jadwal",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/jadwal/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "jadwal",
+                    "1"
+                  ]
+                },
+                "description": "Hapus jadwal pelajaran (soft delete). Data tersimpan di riwayat."
+              }
             },
-            "description": "Ambil daftar guru **aktif** yang mengampu mapel tertentu.\n\n**Akses:** Semua role.\n\nGanti `1` di URL dengan ID mapel. Bisa filter per kelas, tahun ajaran, dan semester."
-          },
-          "response": []
-        },
-        {
-          "name": "GET Riwayat Mapel Guru",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{baseURL}}/akademik/guru/1/mapel/riwayat",
-              "host": ["{{baseURL}}"],
-              "path": ["akademik", "guru", "1", "mapel", "riwayat"],
-              "query": [
-                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)", "disabled": true },
-                { "key": "semester", "value": "1", "description": "Filter semester (opsional)", "disabled": true }
-              ]
+            {
+              "name": "GET Jadwal by Pengampu",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/jadwal/pengampu/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "jadwal",
+                    "pengampu",
+                    "1"
+                  ]
+                },
+                "description": "Ambil semua jadwal aktif untuk satu pengampu mapel. Diurutkan berdasarkan hari (Senin-Jumat) lalu jam."
+              }
             },
-            "description": "Ambil **semua** mapel yang pernah diampu guru — termasuk yang sudah diganti guru lain (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nField `deletedAt` menunjukkan kapan penugasan diakhiri (`null` = masih aktif).\n\nGanti `1` di URL dengan ID guru."
-          },
-          "response": []
-        },
-        {
-          "name": "GET Riwayat Guru Pengampu Mapel",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Accept", "value": "application/json", "type": "text" }
-            ],
-            "url": {
-              "raw": "{{baseURL}}/akademik/mapel/1/guru/riwayat",
-              "host": ["{{baseURL}}"],
-              "path": ["akademik", "mapel", "1", "guru", "riwayat"],
-              "query": [
-                { "key": "kelas_id", "value": "1", "description": "Filter per kelas (opsional)", "disabled": true },
-                { "key": "tahun_ajaran", "value": "2024/2025", "description": "Filter tahun ajaran (opsional)", "disabled": true },
-                { "key": "semester", "value": "1", "description": "Filter semester (opsional)", "disabled": true }
-              ]
+            {
+              "name": "GET Jadwal by Kelas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/jadwal/kelas/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "jadwal",
+                    "kelas",
+                    "1"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (format YYYY/YYYY)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "semester",
+                      "value": "1",
+                      "description": "Filter semester: 1 atau 2",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Ambil semua jadwal aktif untuk satu kelas. Filter opsional: tahun_ajaran, semester."
+              }
             },
-            "description": "Ambil **semua** guru yang pernah mengampu mapel ini — termasuk yang sudah diganti (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nGanti `1` di URL dengan ID mapel."
-          },
-          "response": []
-        }
+            {
+              "name": "GET Jadwal by Guru",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/jadwal/guru/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "jadwal",
+                    "guru",
+                    "1"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (format YYYY/YYYY)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "semester",
+                      "value": "1",
+                      "description": "Filter semester: 1 atau 2",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Ambil semua jadwal aktif untuk satu guru (lintas kelas/mapel). Filter opsional: tahun_ajaran, semester."
+              }
+            },
+            {
+              "name": "GET Riwayat Jadwal by Pengampu",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/jadwal/pengampu/1/riwayat",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "jadwal",
+                    "pengampu",
+                    "1",
+                    "riwayat"
+                  ]
+                },
+                "description": "Riwayat lengkap jadwal pengampu termasuk yang sudah dihapus (deletedAt tidak null). Hanya SuperAdmin dan Admin."
+              }
+            },
+            {
+              "name": "GET Riwayat Jadwal by Kelas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/jadwal/kelas/1/riwayat",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "jadwal",
+                    "kelas",
+                    "1",
+                    "riwayat"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "disabled": true
+                    },
+                    {
+                      "key": "semester",
+                      "value": "1",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Riwayat lengkap jadwal kelas termasuk yang sudah dihapus. Hanya SuperAdmin dan Admin."
+              }
+            },
+            {
+              "name": "GET Riwayat Jadwal by Guru",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/jadwal/guru/1/riwayat",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "jadwal",
+                    "guru",
+                    "1",
+                    "riwayat"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "disabled": true
+                    },
+                    {
+                      "key": "semester",
+                      "value": "1",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Riwayat lengkap jadwal guru termasuk yang sudah dihapus. Hanya SuperAdmin dan Admin."
+              }
+            }
           ]
         }
       ]
@@ -1088,14 +2708,18 @@
       "listen": "prerequest",
       "script": {
         "type": "text/javascript",
-        "exec": [""]
+        "exec": [
+          ""
+        ]
       }
     },
     {
       "listen": "test",
       "script": {
         "type": "text/javascript",
-        "exec": [""]
+        "exec": [
+          ""
+        ]
       }
     }
   ],

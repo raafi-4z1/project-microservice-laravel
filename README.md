@@ -26,7 +26,7 @@ Klien / Frontend
 | `MapelService` | `mapelservice.test` | Manajemen mata pelajaran |
 | `GuruService` | `guruservice.test` | Manajemen data guru + foto |
 | `SiswaService` | `siswaservice.test` | Manajemen data siswa + foto |
-| `AkademikService` | `akademikservice.test` | Pembagian kelas, pengampu mapel, riwayat akademik, semester aktif |
+| `AkademikService` | `akademikservice.test` | Pembagian kelas, pengampu mapel, jam & jadwal pelajaran, riwayat akademik, semester aktif |
 
 ---
 
@@ -517,7 +517,9 @@ php artisan tinker
 9.  Akademik (Semester) → GET Semester Aktif → Set Semester Aktif → GET Riwayat Semester
 10. Akademik (Kelas) → Assign Siswa ke Kelas → GET Siswa di Kelas → Pindah Kelas → GET Riwayat Kelas Siswa → GET Riwayat Kelas
 11. Akademik (Pengampu) → Assign Guru Pengampu → GET Mapel Guru → Ganti Guru Pengampu → GET Riwayat Mapel Guru → Hapus Pengampu
-12. Auth → Logout
+12. Akademik (Jam) → Tambah Slot Jam → GET Semua Jam → Update Jam
+13. Akademik (Jadwal) → Buat Jadwal → GET Jadwal Kelas → GET Jadwal Guru → Update Jadwal → Hapus Jadwal → GET Riwayat Jadwal
+14. Auth → Logout
 ```
 
 ### Role & Akses
@@ -597,6 +599,19 @@ Base URL: `https://gateway.test/api`
 | GET | `/akademik/mapel/{id}/guru` | Semua | Guru aktif pengampu mapel |
 | GET | `/akademik/guru/{id}/mapel/riwayat` | SuperAdmin, Admin | Semua mapel pernah diampu guru |
 | GET | `/akademik/mapel/{id}/guru/riwayat` | SuperAdmin, Admin | Semua guru pernah mengampu mapel |
+| GET | `/akademik/jam` | Semua | List slot jam pelajaran (ke-1 s.d. ke-10) |
+| POST | `/akademik/jam` | SuperAdmin, Admin | Tambah slot jam pelajaran |
+| PATCH | `/akademik/jam/{id}` | SuperAdmin, Admin | Update slot jam pelajaran |
+| DELETE | `/akademik/jam/{id}` | SuperAdmin, Admin | Hapus slot jam (gagal jika masih dipakai jadwal) |
+| POST | `/akademik/jadwal` | SuperAdmin, Admin | Buat jadwal pelajaran (cek bentrok kelas & guru) |
+| PATCH | `/akademik/jadwal/{id}` | SuperAdmin, Admin | Update jadwal (hari/jam/ruangan/catatan) |
+| DELETE | `/akademik/jadwal/{id}` | SuperAdmin, Admin | Hapus jadwal (soft delete) |
+| GET | `/akademik/jadwal/pengampu/{id}` | Semua | Jadwal aktif satu pengampu mapel |
+| GET | `/akademik/jadwal/kelas/{id}` | Semua | Jadwal aktif seluruh kelas (filter: `tahun_ajaran`, `semester`) |
+| GET | `/akademik/jadwal/guru/{id}` | Semua | Jadwal aktif seluruh guru (filter: `tahun_ajaran`, `semester`) |
+| GET | `/akademik/jadwal/pengampu/{id}/riwayat` | SuperAdmin, Admin | Riwayat jadwal pengampu (termasuk yang dihapus) |
+| GET | `/akademik/jadwal/kelas/{id}/riwayat` | SuperAdmin, Admin | Riwayat jadwal kelas |
+| GET | `/akademik/jadwal/guru/{id}/riwayat` | SuperAdmin, Admin | Riwayat jadwal guru |
 
 ---
 
@@ -611,6 +626,8 @@ Data akademik dirancang agar **tidak ada yang hilang** saat siswa naik kelas/sem
 | Siswa naik semester/kelas | Record baru dibuat untuk semester baru, record lama tetap ada | `GET /akademik/siswa/{id}/kelas/riwayat` |
 | Siswa pindah kelas dalam semester | Record lama di-soft-delete, record baru dibuat | `GET /akademik/siswa/{id}/kelas/riwayat` |
 | Guru berganti mapel/kelas | Record lama di-soft-delete via PATCH (guru_id diganti) | `GET /akademik/guru/{id}/mapel/riwayat` |
+| Pengampu mapel dihapus | Soft delete pengampu + semua jadwal terkait ikut soft-delete | `GET /akademik/jadwal/pengampu/{id}/riwayat` |
+| Jadwal direvisi (PATCH hari/jam/ruangan) | Record yang sama di-update langsung (in-place) | `GET /akademik/jadwal/kelas/{id}/riwayat` |
 | Siswa / Guru dihapus dari sistem | Soft delete — data tetap, token dicabut | Tabel `siswa_kelas` / `pengampu_mapels` tetap ada |
 
 ### Response riwayat
@@ -642,6 +659,7 @@ Index database ditambahkan pada tabel yang datanya akan tumbuh besar. Tabel mast
 | AkademikService | `siswa_kelas` | `(kelas_id, tahun_ajaran, semester)`, `deleted_at` |
 | AkademikService | `pengampu_mapels` | `(guru_id, tahun_ajaran, semester)`, `(kelas_id, tahun_ajaran, semester)`, `deleted_at` |
 | AkademikService | `semester_aktif` | `is_aktif`, `(tahun_ajaran, semester)` |
+| AkademikService | `jadwal_pelajaran` | `pengampu_mapel_id`, `deleted_at`, `(pengampu_mapel_id, hari, jam_mulai_id)` |
 
 ---
 
@@ -679,15 +697,95 @@ Index database ditambahkan pada tabel yang datanya akan tumbuh besar. Tabel mast
 
 ### Response Fields — Guru (`/guru`)
 
-**List:** `idGuru`, `foto`, `namaLengkap`, `nip`, `email`, `jabatan`, `statusKepegawaian`
+**List (`GET /guru/all`):** `idGuru`, `namaLengkap`, `nip`, `email`, `jabatan`, `statusKepegawaian`
 
-**Detail:** seluruh field list + `nik`, `jenisKelamin`, `tempatLahir`, `tanggalLahir`, `alamat`, `agama`, `statusPernikahan`, `tanggalMasuk`, `pendidikanTerakhir`, `jurusan`, `universitas`, `tahunLulus`, `nomorSKPengangkatan`, `nomorSertifikasi`, `pelatihan`
+> Foto **tidak disertakan** di list — gunakan `GET /guru?idGuru={id}` untuk mendapatkan foto.
+
+**Detail (`GET /guru?idGuru=N`):** seluruh field list + `nik`, `foto`, `jenisKelamin`, `tempatLahir`, `tanggalLahir`, `alamat`, `agama`, `statusPernikahan`, `tanggalMasuk`, `pendidikanTerakhir`, `jurusan`, `universitas`, `tahunLulus`, `nomorSKPengangkatan`, `nomorSertifikasi`, `pelatihan`
+
+> `foto` dikembalikan sebagai `data:image/webp;base64,...` (inline, siap dipakai di `<img src="..."/>`).
 
 ### Response Fields — Siswa (`/siswa`)
 
-**List:** `idSiswa`, `foto`, `namaLengkap`, `nisn`, `jenisKelamin`, `tempatLahir`, `tanggalLahir`, `tanggalMasuk`, `status`
+**List (`GET /siswa/all`):** `idSiswa`, `namaLengkap`, `nisn`, `jenisKelamin`, `tempatLahir`, `tanggalLahir`, `tanggalMasuk`, `status`
 
-**Detail:** seluruh field list + `email`, `alamat`, `agama`, `statusDate`, `namaAyah`, `namaIbu`, `pekerjaanAyah`, `pekerjaanIbu`, `noTelpAyah`, `noTelpIbu`, `namaWali`, `hubunganWali`, `noTelpWali`
+> Foto **tidak disertakan** di list — gunakan `GET /siswa?idSiswa={id}` untuk mendapatkan foto.
+
+**Detail (`GET /siswa?idSiswa=N`):** seluruh field list + `email`, `foto`, `alamat`, `agama`, `statusDate`, `namaAyah`, `namaIbu`, `pekerjaanAyah`, `pekerjaanIbu`, `noTelpAyah`, `noTelpIbu`, `namaWali`, `hubunganWali`, `noTelpWali`
+
+> `foto` dikembalikan sebagai `data:image/webp;base64,...` (inline, siap dipakai di `<img src="..."/>`).
+
+### Request Fields — Guru (`/guru`)
+
+**Store (POST multipart/form-data):**
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `email` | ✅ | Email unik |
+| `nik` | ✅ | Nomor Induk Kependudukan (maks 16 digit) |
+| `nip` | ✅ | Nomor Induk Pegawai (maks 16 digit) |
+| `namaLengkap` | ✅ | Nama lengkap |
+| `telephone` | ✅ | Nomor telepon |
+| `jenisKelamin` | ✅ | `Laki-Laki` atau `Perempuan` |
+| `tempatLahir` | ✅ | Kota tempat lahir |
+| `tanggalLahir` | ✅ | Format `YYYY-MM-DD` |
+| `alamat` | ✅ | Alamat lengkap |
+| `foto` | ✅ | File gambar JPEG/PNG/JPG, maks 2 MB, min 360×480 px |
+| `statusKepegawaian` | ✅ | Contoh: `PNS`, `Honorer` |
+| `tanggalMasuk` | ✅ | Format `YYYY-MM-DD` |
+| `jabatan` | ✅ | Jabatan guru |
+| `pendidikanTerakhir` | ✅ | Contoh: `S1`, `S2` |
+| `jurusan` | ✅ | Jurusan pendidikan |
+| `universitas` | ✅ | Nama universitas |
+| `tahunLulus` | ✅ | Tahun lulus |
+| `agama` | ❌ | Agama |
+| `statusPernikahan` | ❌ | Status pernikahan |
+| `nomorSKPengangkatan` | ❌ | Nomor SK (angka) |
+| `nomorSertifikasi` | ❌ | Nomor sertifikasi (angka) |
+| `pelatihan` | ❌ | Info pelatihan |
+
+**Update (POST multipart/form-data atau JSON):**
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `idGuru` | ✅ | ID guru yang diupdate |
+| *field lain* | ❌ | Kirim hanya field yang berubah |
+| `foto` | ❌ | Jika dikirim, foto lama otomatis dihapus |
+
+### Request Fields — Siswa (`/siswa`)
+
+**Store (POST multipart/form-data):**
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `email` | ✅ | Email unik |
+| `nisn` | ✅ | Nomor Induk Siswa Nasional (angka) |
+| `namaLengkap` | ✅ | Nama lengkap |
+| `telephone` | ✅ | Nomor telepon |
+| `jenisKelamin` | ✅ | `Laki-Laki` atau `Perempuan` |
+| `tempatLahir` | ✅ | Kota tempat lahir |
+| `tanggalLahir` | ✅ | Format `YYYY-MM-DD` |
+| `tanggalMasuk` | ✅ | Format `YYYY-MM-DD` |
+| `alamat` | ✅ | Alamat lengkap |
+| `namaIbu` | ✅ | Nama ibu kandung |
+| `foto` | ✅ | File gambar JPEG/PNG/JPG, maks 2 MB, min 360×480 px |
+| `agama` | ❌ | Agama |
+| `namaAyah` | ❌ | Nama ayah |
+| `pekerjaanAyah` | ❌ | Pekerjaan ayah |
+| `pekerjaanIbu` | ❌ | Pekerjaan ibu |
+| `noTelpAyah` | ❌ | No. telepon ayah (angka) |
+| `noTelpIbu` | ❌ | No. telepon ibu (angka) |
+| `namaWali` | ❌ | Nama wali |
+| `hubunganWali` | ❌ | Hubungan dengan wali |
+| `noTelpWali` | ❌ | No. telepon wali (angka) |
+
+**Update (POST multipart/form-data atau JSON):**
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `idSiswa` | ✅ | ID siswa yang diupdate |
+| *field lain* | ❌ | Kirim hanya field yang berubah |
+| `foto` | ❌ | Jika dikirim, foto lama otomatis dihapus |
 
 ### Request Fields — Akademik Kelas (`/akademik/kelas/assign`)
 
@@ -723,9 +821,46 @@ Index database ditambahkan pada tabel yang datanya akan tumbuh besar. Tabel mast
 | `tahun_ajaran` | ✅ | Format `YYYY/YYYY`, contoh `2024/2025` |
 | `semester` | ✅ | `1` atau `2` |
 | `tanggal_mulai` | ✅ | Format `YYYY-MM-DD` |
-| `tanggal_selesai` | ✅ | Format `YYYY-MM-DD`, harus setelah `tanggal_mulai` |
+| `tanggal_selesai` | ❌ | Format `YYYY-MM-DD`, harus setelah `tanggal_mulai` (opsional) |
 
 **Response semester_aktif:** `idSemesterAktif`, `tahunAjaran`, `semester`, `tanggalMulai`, `tanggalSelesai`, `isAktif`
+
+### Request Fields — Jam Pelajaran (`/akademik/jam`)
+
+**Store (POST JSON):**
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `ke` | ✅ | Urutan jam (1–10), unik |
+| `jam_mulai` | ✅ | Format `HH:MM`, contoh `07:00` |
+| `jam_selesai` | ✅ | Format `HH:MM`, harus setelah `jam_mulai` |
+
+**Update (PATCH JSON):** kirim hanya field yang berubah. Slot tidak dapat dihapus jika masih digunakan jadwal (aktif maupun riwayat).
+
+**Response:** `idJam`, `ke`, `jamMulai`, `jamSelesai`
+
+### Request Fields — Jadwal Pelajaran (`/akademik/jadwal`)
+
+**Store (POST JSON):**
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `pengampu_mapel_id` | ✅ | ID dari `POST /akademik/pengampu` |
+| `hari` | ✅ | `Senin` / `Selasa` / `Rabu` / `Kamis` / `Jumat` (Sabtu tidak berlaku) |
+| `jam_mulai_id` | ✅ | ID jam mulai (dari `GET /akademik/jam`) |
+| `jam_selesai_id` | ✅ | ID jam selesai, harus ke-nya lebih besar dari `jam_mulai_id` |
+| `ruangan` | ❌ | Nama ruangan / lab (maks 50 karakter) |
+| `catatan` | ❌ | Catatan tambahan untuk jadwal ini (maks 500 karakter) |
+
+**Validasi bentrok (otomatis):**
+- Kelas yang sama tidak boleh punya 2 mapel pada hari + jam yang overlap dalam satu semester
+- Guru yang sama tidak boleh mengajar di 2 tempat pada hari + jam yang overlap dalam satu semester
+
+**Update (PATCH JSON):** kirim hanya field yang berubah (`hari`, `jam_mulai_id`, `jam_selesai_id`, `ruangan`, `catatan`). Field `pengampu_mapel_id` tidak dapat diubah — hapus dan buat ulang jika pengampu berubah.
+
+**Response jadwal:** `idJadwal`, `pengampuMapelId`, `guruId`, `mapelId`, `kelasId`, `tahunAjaran`, `semester`, `hari`, `jamMulaiId`, `jamSelesaiId`, `keMulai`, `keSelesai`, `pukul` (contoh: `07:00:00 - 08:30:00`), `ruangan`, `catatan`
+
+**Response riwayat** (tambahan): `deletedAt` — `null` jika aktif, timestamp jika sudah dihapus
 
 ---
 

@@ -33,7 +33,7 @@ class GuruController extends Controller
                 );
             }
 
-            $columns  = ['id', 'foto', 'nama_lengkap', 'nip', 'email', 'jabatan', 'status_kepegawaian'];
+            $columns  = ['id', 'nama_lengkap', 'nip', 'email', 'jabatan', 'status_kepegawaian'];
             $perPage  = $request->input('per_page', 5);
             $paginator = Guru::select($columns)->paginate($perPage)->withQueryString();
 

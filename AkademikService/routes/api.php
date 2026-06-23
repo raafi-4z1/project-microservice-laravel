@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SiswaKelasController;
 use App\Http\Controllers\PengampuMapelController;
 use App\Http\Controllers\SemesterAktifController;
+use App\Http\Controllers\JamPelajaranController;
+use App\Http\Controllers\JadwalPelajaranController;
 
 Route::prefix('akademik')->group(function () {
 
@@ -31,4 +33,22 @@ Route::prefix('akademik')->group(function () {
     Route::get('semester/aktif', [SemesterAktifController::class, 'getAktif']);
     Route::post('semester/aktif', [SemesterAktifController::class, 'setAktif']);
     Route::get('semester/riwayat', [SemesterAktifController::class, 'getRiwayat']);
+
+    // Jam Pelajaran (master slot waktu)
+    Route::get('jam', [JamPelajaranController::class, 'index']);
+    Route::post('jam', [JamPelajaranController::class, 'store']);
+    Route::patch('jam/{id}', [JamPelajaranController::class, 'update']);
+    Route::delete('jam/{id}', [JamPelajaranController::class, 'destroy']);
+
+    // Jadwal Pelajaran
+    Route::post('jadwal', [JadwalPelajaranController::class, 'store']);
+    Route::patch('jadwal/{id}', [JadwalPelajaranController::class, 'update']);
+    Route::delete('jadwal/{id}', [JadwalPelajaranController::class, 'destroy']);
+    Route::get('jadwal/pengampu/{pengampu_id}', [JadwalPelajaranController::class, 'getByPengampu']);
+    Route::get('jadwal/kelas/{kelas_id}', [JadwalPelajaranController::class, 'getByKelas']);
+    Route::get('jadwal/guru/{guru_id}', [JadwalPelajaranController::class, 'getByGuru']);
+    // Riwayat lengkap (termasuk jadwal yang sudah dihapus)
+    Route::get('jadwal/pengampu/{pengampu_id}/riwayat', [JadwalPelajaranController::class, 'getRiwayatByPengampu']);
+    Route::get('jadwal/kelas/{kelas_id}/riwayat', [JadwalPelajaranController::class, 'getRiwayatByKelas']);
+    Route::get('jadwal/guru/{guru_id}/riwayat', [JadwalPelajaranController::class, 'getRiwayatByGuru']);
 });

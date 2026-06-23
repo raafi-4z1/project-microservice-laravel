@@ -29,4 +29,22 @@ Route::middleware('auth:api')->prefix(config('gateway.akademik_prefix'))->group(
     Route::get('semester/aktif', [AkademikController::class, 'getSemesterAktif']);
     Route::post('semester/aktif', [AkademikController::class, 'setSemesterAktif'])->middleware('check.role:SuperAdmin,Admin');
     Route::get('semester/riwayat', [AkademikController::class, 'getRiwayatSemester']);
+
+    // Jam Pelajaran (master slot waktu) — Write: SuperAdmin, Admin | Read: semua role
+    Route::get('jam', [AkademikController::class, 'getJamPelajaran']);
+    Route::post('jam', [AkademikController::class, 'storeJam'])->middleware('check.role:SuperAdmin,Admin');
+    Route::patch('jam/{id}', [AkademikController::class, 'updateJam'])->middleware('check.role:SuperAdmin,Admin');
+    Route::delete('jam/{id}', [AkademikController::class, 'destroyJam'])->middleware('check.role:SuperAdmin,Admin');
+
+    // Jadwal Pelajaran — Write: SuperAdmin, Admin | Read: semua role
+    Route::post('jadwal', [AkademikController::class, 'storeJadwal'])->middleware('check.role:SuperAdmin,Admin');
+    Route::patch('jadwal/{id}', [AkademikController::class, 'updateJadwal'])->middleware('check.role:SuperAdmin,Admin');
+    Route::delete('jadwal/{id}', [AkademikController::class, 'removeJadwal'])->middleware('check.role:SuperAdmin,Admin');
+    Route::get('jadwal/pengampu/{pengampu_id}', [AkademikController::class, 'getJadwalByPengampu']);
+    Route::get('jadwal/kelas/{kelas_id}', [AkademikController::class, 'getJadwalByKelas']);
+    Route::get('jadwal/guru/{guru_id}', [AkademikController::class, 'getJadwalByGuru']);
+    // Riwayat: SuperAdmin, Admin (data historis termasuk yang sudah dihapus)
+    Route::get('jadwal/pengampu/{pengampu_id}/riwayat', [AkademikController::class, 'getRiwayatJadwalByPengampu'])->middleware('check.role:SuperAdmin,Admin');
+    Route::get('jadwal/kelas/{kelas_id}/riwayat', [AkademikController::class, 'getRiwayatJadwalByKelas'])->middleware('check.role:SuperAdmin,Admin');
+    Route::get('jadwal/guru/{guru_id}/riwayat', [AkademikController::class, 'getRiwayatJadwalByGuru'])->middleware('check.role:SuperAdmin,Admin');
 });
