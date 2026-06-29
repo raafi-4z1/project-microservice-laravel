@@ -1,61 +1,175 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Gateway
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Service utama yang menjadi pintu masuk seluruh request. Menangani autentikasi OAuth2 (Laravel Passport), otorisasi berbasis role, routing ke service internal via HMAC, dan audit log.
 
-## About Laravel
+**Domain lokal:** `https://gateway.test`  
+**Database:** `gateway_db`
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Konfigurasi Environment
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+```env
+APP_URL=https://gateway.test
 
-## Learning Laravel
+SESSION_ENCRYPT=true
+SESSION_SECURE_COOKIE=true
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=gateway_db
+DB_USERNAME=root
+DB_PASSWORD=
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+# Secret HMAC — harus sama dengan ACCEPTED_SECRETS di tiap service
+CLASS_SERVICE_BASE_URL=http://classmicroservices.test
+CLASS_SERVICE_SECRET=base64:...
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+MAPEL_SERVICE_BASE_URL=http://mapelservice.test
+MAPEL_SERVICE_SECRET=base64:...
 
-## Laravel Sponsors
+GURU_SERVICE_BASE_URL=http://guruservice.test
+GURU_SERVICE_SECRET=base64:...
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+SISWA_SERVICE_BASE_URL=http://siswaservice.test
+SISWA_SERVICE_SECRET=base64:...
 
-### Premium Partners
+AKADEMIK_SERVICE_BASE_URL=http://akademikservice.test
+AKADEMIK_SERVICE_SECRET=base64:...
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+# Akun SuperAdmin awal (dipakai seeder — wajib diganti)
+SUPERADMIN_NAME="Nama Admin Kamu"
+SUPERADMIN_EMAIL="email@domain.com"
+SUPERADMIN_PASSWORD="MinimalDuabelasKarakter1"
+```
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Endpoints
 
-## Code of Conduct
+Base URL: `https://gateway.test/api`
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Auth
 
-## Security Vulnerabilities
+| Method | Endpoint | Role | Keterangan |
+|--------|----------|------|------------|
+| POST | `/login` | Publik | Login, max 5x/menit |
+| POST | `/logout` | Semua | Cabut token aktif |
+| POST | `/register` | SuperAdmin, Admin | Daftar akun baru (wajib login) |
+| GET | `/user` | Semua | Profil diri sendiri — hanya mengembalikan data milik user yang sedang login |
+| POST | `/password` | Semua | Ganti password sendiri |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Manajemen User
 
-## License
+| Method | Endpoint | Role | Keterangan |
+|--------|----------|------|------------|
+| GET | `/users` | SuperAdmin, Admin | List semua akun user |
+| GET | `/users/{id}` | SuperAdmin, Admin | Detail akun user by ID |
+| POST | `/users/{id}/password` | SuperAdmin, Admin | Reset password user lain (token target dicabut) |
+| DELETE | `/users/{id}` | SuperAdmin, Admin | Hapus akun user (soft delete) |
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+---
+
+## Request Fields
+
+### POST /login
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `email` | ✅ | Email akun |
+| `password` | ✅ | Password akun |
+
+Response menyertakan `access_token` yang disimpan otomatis ke `{{token}}` oleh Postman.
+
+### POST /register
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `name` | ✅ | Nama lengkap |
+| `email` | ✅ | Email unik |
+| `password` | ✅ | Min 8 karakter, harus mengandung huruf dan angka |
+| `confirm_password` | ✅ | Harus sama dengan `password` |
+| `role` | ✅ | `Admin` / `Guru` / `Siswa` / `Karyawan` |
+
+### POST /password (ganti password sendiri)
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `current_password` | ✅ | Password saat ini |
+| `new_password` | ✅ | Min 8 karakter, harus mengandung huruf dan angka |
+| `confirm_password` | ✅ | Harus sama dengan `new_password` |
+
+### POST /users/{id}/password (reset password user lain)
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `new_password` | ✅ | Min 8 karakter, harus mengandung huruf dan angka |
+| `confirm_password` | ✅ | Harus sama dengan `new_password` |
+
+Semua token aktif milik target user langsung dicabut saat password direset.
+
+---
+
+## Role & Akses
+
+| Role | GET | Write (POST/PATCH) | DELETE | Register |
+|------|-----|--------------------|--------|----------|
+| SuperAdmin | ✅ | ✅ | ✅ | Admin, Guru, Siswa, Karyawan |
+| Admin | ✅ | ✅ | ✅* | Guru, Siswa, Karyawan |
+| Guru / Siswa / Karyawan | ✅ (data sendiri) | ✅ (password sendiri) | ❌ | ❌ |
+
+Role `SuperAdmin` tidak dapat dibuat melalui API — hanya via `php artisan db:seed`.
+
+### Proteksi DELETE /users/{id}
+
+| Kondisi | Hasil |
+|---------|-------|
+| Admin hapus Guru / Siswa / Karyawan | ✅ Diizinkan |
+| Admin hapus Admin lain | ❌ 403 |
+| Admin hapus SuperAdmin | ❌ 403 |
+| SuperAdmin hapus Admin / Guru / Siswa / Karyawan | ✅ Diizinkan |
+| Siapapun hapus SuperAdmin | ❌ 403 (tidak bisa via API) |
+| Menghapus akun sendiri | ❌ 403 |
+
+Hapus bersifat **soft delete** — kolom `deleted_at` terisi, data tetap di database. Token aktif milik user yang dihapus langsung dicabut.
+
+### Proteksi Reset Password
+
+- Admin hanya dapat reset password Guru, Siswa, Karyawan — tidak bisa reset Admin/SuperAdmin
+- Password SuperAdmin tidak dapat direset via API
+- `new_password` tidak boleh sama dengan password lama
+
+---
+
+## Token & Sesi
+
+- Token OAuth2 (Bearer) berlaku **8 jam**, refresh token **30 hari**
+- Login baru **mencabut semua token lama** — tidak ada concurrent session
+- Endpoint `/login` dibatasi **5 percobaan per menit**
+- Endpoint `/oauth/token` juga dibatasi **5 percobaan per menit** (mencegah bypass brute force)
+
+---
+
+## Audit Log
+
+Semua aksi tulis (create, update, delete, login, register) dicatat di tabel `audit_logs`.
+
+| Kolom | Isi |
+|-------|-----|
+| `action` | `login` / `created` / `updated` / `deleted` / `registered` |
+| `resource` | `guru` / `siswa` / `mapel` / `kelas` / `user` / dst. |
+| `resource_id` | ID record yang diubah |
+| `performed_by` | Email pelaku aksi |
+| `role` | Role pelaku |
+| `ip_address` | IP address pengirim request |
+| `payload` | Data yang dikirim (foto dan password otomatis disanitasi) |
+
+---
+
+## Database Index
+
+| Tabel | Index |
+|-------|-------|
+| `users` | `role`, `deleted_at` |
+| `audit_logs` | `(resource, resource_id)`, `performed_by`, `created_at` |

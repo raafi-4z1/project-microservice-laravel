@@ -1,61 +1,118 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# GuruService
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Microservice untuk manajemen data guru beserta foto profil. Hanya dapat diakses dari **Gateway** melalui autentikasi **HMAC SHA-256** — tidak ada akses langsung dari klien.
 
-## About Laravel
+**Domain lokal:** `http://guruservice.test` (internal only)  
+**Database:** `guru_db`
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Konfigurasi Environment
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+```env
+APP_URL=http://guruservice.test
 
-## Learning Laravel
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=guru_db
+DB_USERNAME=root
+DB_PASSWORD=
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+FILESYSTEM_DISK=private
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+# Harus sama persis dengan GURU_SERVICE_SECRET di Gateway
+ACCEPTED_SECRETS=base64:bIah+HgRXoDF2xOZx6VqQHwPAi9Qn8EL+odWRRAC4LA=
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## Endpoints (via Gateway)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Base URL: `https://gateway.test/api`
 
-### Premium Partners
+| Method | Endpoint | Role | Keterangan |
+|--------|----------|------|------------|
+| GET | `/guru/all` | Semua | List seluruh guru (tanpa foto) |
+| GET | `/guru` | Semua | Detail guru by `idGuru` (query param, termasuk foto) |
+| POST | `/guru` | SuperAdmin, Admin | Tambah guru baru + foto (multipart/form-data) |
+| POST | `/guru/update` | SuperAdmin, Admin | Update data guru + foto opsional |
+| DELETE | `/guru/{id}` | SuperAdmin, Admin | Hapus guru (soft delete) |
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+---
 
-## Contributing
+## Request Fields
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### POST /guru (tambah guru) — multipart/form-data
 
-## Code of Conduct
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `email` | ✅ | Email unik |
+| `nik` | ✅ | Nomor Induk Kependudukan (maks 16 digit) |
+| `nip` | ✅ | Nomor Induk Pegawai (maks 16 digit) |
+| `namaLengkap` | ✅ | Nama lengkap |
+| `telephone` | ✅ | Nomor telepon |
+| `jenisKelamin` | ✅ | `Laki-Laki` atau `Perempuan` |
+| `tempatLahir` | ✅ | Kota tempat lahir |
+| `tanggalLahir` | ✅ | Format `YYYY-MM-DD` |
+| `alamat` | ✅ | Alamat lengkap |
+| `foto` | ✅ | File gambar (lihat [Ketentuan Foto](#ketentuan-foto)) |
+| `statusKepegawaian` | ✅ | Contoh: `PNS`, `Honorer` |
+| `tanggalMasuk` | ✅ | Format `YYYY-MM-DD` |
+| `jabatan` | ✅ | Jabatan guru |
+| `pendidikanTerakhir` | ✅ | Contoh: `S1`, `S2` |
+| `jurusan` | ✅ | Jurusan pendidikan |
+| `universitas` | ✅ | Nama universitas |
+| `tahunLulus` | ✅ | Tahun lulus |
+| `agama` | ❌ | Agama |
+| `statusPernikahan` | ❌ | Status pernikahan |
+| `nomorSKPengangkatan` | ❌ | Nomor SK (angka) |
+| `nomorSertifikasi` | ❌ | Nomor sertifikasi (angka) |
+| `pelatihan` | ❌ | Info pelatihan |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### POST /guru/update (update guru)
 
-## Security Vulnerabilities
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `idGuru` | ✅ | ID guru yang diupdate |
+| *field lain* | ❌ | Kirim hanya field yang berubah |
+| `foto` | ❌ | Jika dikirim, foto lama otomatis dihapus dan diganti |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## Response Fields
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+**List (`GET /guru/all`):**
+
+| Field | Keterangan |
+|-------|------------|
+| `idGuru` | ID unik guru |
+| `namaLengkap` | Nama lengkap |
+| `nip` | Nomor Induk Pegawai |
+| `email` | Email |
+| `jabatan` | Jabatan |
+| `statusKepegawaian` | Status kepegawaian |
+
+Foto **tidak disertakan** di list — gunakan `GET /guru?idGuru={id}` untuk mendapatkan foto.
+
+**Detail (`GET /guru?idGuru=N`):** seluruh field list + `nik`, `foto`, `jenisKelamin`, `tempatLahir`, `tanggalLahir`, `alamat`, `agama`, `statusPernikahan`, `tanggalMasuk`, `pendidikanTerakhir`, `jurusan`, `universitas`, `tahunLulus`, `nomorSKPengangkatan`, `nomorSertifikasi`, `pelatihan`
+
+Field `foto` dikembalikan sebagai `data:image/webp;base64,...` (inline, siap dipakai di `<img src="..."/>`).
+
+---
+
+## Ketentuan Foto
+
+- **Format yang diterima:** JPEG, PNG, JPG
+- **Ukuran maksimal:** 2 MB
+- **Dimensi minimal sumber:** 360×480 px
+- Foto dikonversi otomatis ke rasio **3:4 portrait (360×480 px)** dan disimpan sebagai **WebP** (kualitas 85)
+- Disimpan di disk `private` (tidak dapat diakses langsung via URL publik)
+
+---
+
+## Database Index
+
+| Tabel | Index |
+|-------|-------|
+| `gurus` | `status_kepegawaian`, `jabatan`, `deleted_at` |
