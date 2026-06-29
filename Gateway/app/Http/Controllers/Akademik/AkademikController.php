@@ -16,8 +16,11 @@ class AkademikController extends Controller
 
     private $baseUri, $secret, $reqUrl;
 
-    // Untuk memanggil ClassMicroservices saat assign siswa
+    // Kredensial service lain untuk validasi cross-service ID
     private $classBaseUri, $classSecret, $classReqUrl;
+    private $guruBaseUri,  $guruSecret,  $guruReqUrl;
+    private $siswaBaseUri, $siswaSecret, $siswaReqUrl;
+    private $mapelBaseUri, $mapelSecret, $mapelReqUrl;
 
     public function __construct()
     {
@@ -28,10 +31,22 @@ class AkademikController extends Controller
         $this->classBaseUri = config('services.class.base_uri');
         $this->classSecret  = config('services.class.secret');
         $this->classReqUrl  = config('gateway.class_prefix');
+
+        $this->guruBaseUri  = config('services.guru.base_uri');
+        $this->guruSecret   = config('services.guru.secret');
+        $this->guruReqUrl   = config('gateway.guru_prefix');
+
+        $this->siswaBaseUri = config('services.siswa.base_uri');
+        $this->siswaSecret  = config('services.siswa.secret');
+        $this->siswaReqUrl  = config('gateway.siswa_prefix');
+
+        $this->mapelBaseUri = config('services.mapel.base_uri');
+        $this->mapelSecret  = config('services.mapel.secret');
+        $this->mapelReqUrl  = config('gateway.mapel_prefix');
     }
 
     // POST /akademik/kelas/assign — SuperAdmin, Admin
-    // Ambil limit_siswa dari ClassMicroservices, lalu teruskan ke AkademikService
+    // Validasi siswa_id ke SiswaService + ambil limit_siswa dari ClassMicroservices
     public function assignSiswa(Request $request)
     {
         try {
@@ -39,9 +54,20 @@ class AkademikController extends Controller
                 return $this->response('Field kelas_id wajib diisi.', Response::HTTP_UNPROCESSABLE_ENTITY);
             }
 
-            // Ambil info kelas untuk mendapatkan limit_siswa
-            $kelasResponse = $this->callClassService('GET', $this->classReqUrl, ['idKelas' => $request->kelas_id]);
-            $kelasData     = $this->decode($kelasResponse);
+            // Validasi siswa_id: pastikan masih aktif di SiswaService
+            if ($request->filled('siswa_id')) {
+                $siswaData = $this->decode(
+                    $this->callService($this->siswaBaseUri, $this->siswaSecret, 'GET', $this->siswaReqUrl, ['idSiswa' => $request->siswa_id])
+                );
+                if (($siswaData['resCode'] ?? null) !== Response::HTTP_OK) {
+                    return $this->response('Siswa tidak ditemukan atau sudah tidak aktif.', Response::HTTP_NOT_FOUND);
+                }
+            }
+
+            // Ambil info kelas untuk mendapatkan limit_siswa (sekaligus validasi kelas_id)
+            $kelasData = $this->decode(
+                $this->callService($this->classBaseUri, $this->classSecret, 'GET', $this->classReqUrl, ['idKelas' => $request->kelas_id])
+            );
 
             if (($kelasData['resCode'] ?? null) !== Response::HTTP_OK) {
                 return $this->response('Kelas tidak ditemukan.', Response::HTTP_NOT_FOUND);
@@ -80,8 +106,9 @@ class AkademikController extends Controller
                 return $this->response('Field kelas_id wajib diisi.', Response::HTTP_UNPROCESSABLE_ENTITY);
             }
 
-            $kelasResponse = $this->callClassService('GET', $this->classReqUrl, ['idKelas' => $request->kelas_id]);
-            $kelasData     = $this->decode($kelasResponse);
+            $kelasData = $this->decode(
+                $this->callService($this->classBaseUri, $this->classSecret, 'GET', $this->classReqUrl, ['idKelas' => $request->kelas_id])
+            );
 
             if (($kelasData['resCode'] ?? null) !== Response::HTTP_OK) {
                 return $this->response('Kelas tujuan tidak ditemukan.', Response::HTTP_NOT_FOUND);
@@ -138,9 +165,37 @@ class AkademikController extends Controller
     }
 
     // POST /akademik/pengampu — SuperAdmin, Admin
+    // Validasi guru_id ke GuruService, mapel_id ke MapelService, kelas_id ke ClassService
     public function assignGuru(Request $request)
     {
         try {
+            if ($request->filled('guru_id')) {
+                $guruData = $this->decode(
+                    $this->callService($this->guruBaseUri, $this->guruSecret, 'GET', $this->guruReqUrl, ['idGuru' => $request->guru_id])
+                );
+                if (($guruData['resCode'] ?? null) !== Response::HTTP_OK) {
+                    return $this->response('Guru tidak ditemukan atau sudah tidak aktif.', Response::HTTP_NOT_FOUND);
+                }
+            }
+
+            if ($request->filled('mapel_id')) {
+                $mapelData = $this->decode(
+                    $this->callService($this->mapelBaseUri, $this->mapelSecret, 'GET', $this->mapelReqUrl, ['idPelajaran' => $request->mapel_id])
+                );
+                if (($mapelData['resCode'] ?? null) !== Response::HTTP_OK) {
+                    return $this->response('Mata pelajaran tidak ditemukan.', Response::HTTP_NOT_FOUND);
+                }
+            }
+
+            if ($request->filled('kelas_id')) {
+                $kelasData = $this->decode(
+                    $this->callService($this->classBaseUri, $this->classSecret, 'GET', $this->classReqUrl, ['idKelas' => $request->kelas_id])
+                );
+                if (($kelasData['resCode'] ?? null) !== Response::HTTP_OK) {
+                    return $this->response('Kelas tidak ditemukan.', Response::HTTP_NOT_FOUND);
+                }
+            }
+
             $response = $this->performRequest('POST', "{$this->reqUrl}/pengampu", $request->all());
             $decode   = $this->decode($response);
 
@@ -177,6 +232,12 @@ class AkademikController extends Controller
         }
     }
 
+    // GET /akademik/kelas/{kelas_id}/pengampu — semua role
+    public function getPengampuByKelas(Request $request, $kelasId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/kelas/{$kelasId}/pengampu", $request->only(['tahun_ajaran', 'semester']));
+    }
+
     // GET /akademik/guru/{guru_id}/mapel — semua role
     public function getMapelByGuru(Request $request, $guruId)
     {
@@ -202,9 +263,19 @@ class AkademikController extends Controller
     }
 
     // PATCH /akademik/pengampu/{id} — SuperAdmin, Admin
+    // Validasi guru_id ke GuruService sebelum ganti pengampu
     public function gantiGuru(Request $request, $id)
     {
         try {
+            if ($request->filled('guru_id')) {
+                $guruData = $this->decode(
+                    $this->callService($this->guruBaseUri, $this->guruSecret, 'GET', $this->guruReqUrl, ['idGuru' => $request->guru_id])
+                );
+                if (($guruData['resCode'] ?? null) !== Response::HTTP_OK) {
+                    return $this->response('Guru tidak ditemukan atau sudah tidak aktif.', Response::HTTP_NOT_FOUND);
+                }
+            }
+
             $response = $this->performRequest('PATCH', "{$this->reqUrl}/pengampu/{$id}", $request->only('guru_id'));
             $decode   = $this->decode($response);
 
@@ -393,6 +464,12 @@ class AkademikController extends Controller
         return $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}", $request->only(['tahun_ajaran', 'semester']));
     }
 
+    // GET /akademik/jadwal/siswa/{id} — semua role
+    public function getJadwalBySiswa(Request $request, $siswaId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/siswa/{$siswaId}", $request->only(['tahun_ajaran', 'semester']));
+    }
+
     // GET /akademik/jadwal/pengampu/{id}/riwayat — SuperAdmin, Admin
     public function getRiwayatJadwalByPengampu($pengampuId)
     {
@@ -411,15 +488,303 @@ class AkademikController extends Controller
         return $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}/riwayat", $request->only(['tahun_ajaran', 'semester']));
     }
 
-    // Panggil ClassMicroservices dengan swap baseUri/secret sementara
-    private function callClassService(string $method, string $url, array $params = [])
+    // ─── Pengaturan Bobot Nilai ─────────────────────────────────────────────────
+
+    // GET /akademik/pengaturan-nilai — SuperAdmin, Admin
+    public function getPengaturanNilai(Request $request)
     {
-        [$uri, $secret] = [$this->baseUri, $this->secret];
-        $this->baseUri  = $this->classBaseUri;
-        $this->secret   = $this->classSecret;
+        return $this->performRequest('GET', "{$this->reqUrl}/pengaturan-nilai", $request->only(['tahun_ajaran', 'semester']));
+    }
+
+    // POST /akademik/pengaturan-nilai — SuperAdmin, Admin
+    public function storePengaturanNilai(Request $request)
+    {
+        try {
+            $response = $this->performRequest('POST', "{$this->reqUrl}/pengaturan-nilai", $request->all());
+            $decode   = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_CREATED) {
+                $this->auditLog('created', 'pengaturan_nilai', $decode['data']['idPengaturan'] ?? null, $request->only(['tahun_ajaran', 'semester', 'bobot_harian', 'bobot_uts', 'bobot_uas']));
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // PATCH /akademik/pengaturan-nilai/{id} — SuperAdmin, Admin
+    public function updatePengaturanNilai(Request $request, $id)
+    {
+        try {
+            $response = $this->performRequest('PATCH', "{$this->reqUrl}/pengaturan-nilai/{$id}", $request->all());
+            $decode   = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_OK) {
+                $this->auditLog('updated', 'pengaturan_nilai', $id, $request->only(['bobot_harian', 'bobot_uts', 'bobot_uas']));
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // ─── Nilai & Raport ─────────────────────────────────────────────────────────
+
+    // POST /akademik/nilai — Admin, SuperAdmin, Guru
+    // Guru: resolve guru_id dari email user yang login, inject X-Guru-Id
+    public function storeNilai(Request $request)
+    {
+        try {
+            $extraHeaders = $this->resolveGuruHeader($request);
+            if ($extraHeaders instanceof \Illuminate\Http\Response) return $extraHeaders;
+
+            $response = $this->performRequest('POST', "{$this->reqUrl}/nilai", $request->all(), $extraHeaders);
+            $decode   = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_CREATED) {
+                $this->auditLog('created', 'nilai', $decode['data']['idNilai'] ?? null, $request->only(['siswa_kelas_id', 'pengampu_mapel_id']));
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // PATCH /akademik/nilai/{id} — Admin, SuperAdmin, Guru
+    public function updateNilai(Request $request, $id)
+    {
+        try {
+            $extraHeaders = $this->resolveGuruHeader($request);
+            if ($extraHeaders instanceof \Illuminate\Http\Response) return $extraHeaders;
+
+            $response = $this->performRequest('PATCH', "{$this->reqUrl}/nilai/{$id}", $request->all(), $extraHeaders);
+            $decode   = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_OK) {
+                $this->auditLog('updated', 'nilai', $id, $request->only(['nilai_harian', 'nilai_uts', 'nilai_uas']));
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // DELETE /akademik/nilai/{id} — Admin, SuperAdmin, Guru
+    public function destroyNilai(Request $request, $id)
+    {
+        try {
+            $extraHeaders = $this->resolveGuruHeader($request);
+            if ($extraHeaders instanceof \Illuminate\Http\Response) return $extraHeaders;
+
+            $response = $this->performRequest('DELETE', "{$this->reqUrl}/nilai/{$id}", [], $extraHeaders);
+            $decode   = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_ACCEPTED) {
+                $this->auditLog('deleted', 'nilai', $id, []);
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // GET /akademik/nilai/pengampu/{id} — Admin, SuperAdmin, Guru (mapel sendiri), Karyawan
+    public function getNilaiByPengampu(Request $request, $pengampuId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/nilai/pengampu/{$pengampuId}");
+    }
+
+    // GET /akademik/nilai/kelas/{id} — Admin, SuperAdmin, Guru (kelas sendiri), Karyawan
+    public function getNilaiByKelas(Request $request, $kelasId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/nilai/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']));
+    }
+
+    // GET /akademik/nilai/siswa/{id} — Admin, SuperAdmin, Guru, Karyawan
+    public function getNilaiBySiswa(Request $request, $siswaId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/nilai/siswa/{$siswaId}", $request->only(['tahun_ajaran', 'semester']));
+    }
+
+    // GET /akademik/nilai/saya — Siswa (self-only); Gateway resolve siswa_id dari email
+    public function getNilaiSaya(Request $request)
+    {
+        try {
+            $siswaId = $this->resolveSiswaId($request);
+            if (!is_int($siswaId)) return $siswaId;
+
+            return $this->performRequest('GET', "{$this->reqUrl}/nilai/siswa/{$siswaId}", $request->only(['tahun_ajaran', 'semester']));
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // GET /akademik/raport/saya — Siswa (self-only)
+    public function getRaportSaya(Request $request)
+    {
+        try {
+            $siswaId = $this->resolveSiswaId($request);
+            if (!is_int($siswaId)) return $siswaId;
+
+            return $this->performRequest('GET', "{$this->reqUrl}/nilai/raport/siswa/{$siswaId}", $request->only(['tahun_ajaran', 'semester']));
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // GET /akademik/raport/siswa/{id} — Admin, SuperAdmin, Guru, Karyawan
+    public function getRaportSiswa(Request $request, $siswaId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/nilai/raport/siswa/{$siswaId}", $request->only(['tahun_ajaran', 'semester']));
+    }
+
+    // GET /akademik/raport/kelas/{id} — Admin, SuperAdmin, Guru, Karyawan
+    public function getRaportKelas(Request $request, $kelasId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/nilai/raport/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']));
+    }
+
+    // GET /akademik/nilai/ranking/saya — Siswa (self-only): posisi di kelas saja
+    public function getRankingSaya(Request $request)
+    {
+        try {
+            $siswaId = $this->resolveSiswaId($request);
+            if (!is_int($siswaId)) return $siswaId;
+
+            // Cari kelas aktif siswa ini untuk semester yang diminta
+            $siswaKelasData = $this->decode(
+                $this->performRequest('GET', "{$this->reqUrl}/siswa/{$siswaId}/kelas", $request->only(['tahun_ajaran', 'semester']))
+            );
+
+            $kelasId = $siswaKelasData['data'][0]['kelasId'] ?? null;
+            if (!$kelasId) {
+                return $this->response('Siswa belum terdaftar di kelas untuk semester ini.', Response::HTTP_NOT_FOUND);
+            }
+
+            // Kirim X-Siswa-Id agar AkademikService hanya kembalikan posisi diri sendiri
+            return $this->performRequest(
+                'GET',
+                "{$this->reqUrl}/nilai/ranking/kelas/{$kelasId}",
+                $request->only(['tahun_ajaran', 'semester']),
+                ['X-Siswa-Id' => $siswaId]
+            );
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // GET /akademik/nilai/ranking/kelas/{id} — Admin, SuperAdmin, Guru, Karyawan
+    public function getRankingKelas(Request $request, $kelasId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/nilai/ranking/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']));
+    }
+
+    // ─── Helper: resolve identitas dari email user yang login ───────────────────
+
+    // Untuk Guru role: resolve guru_id dan kembalikan sebagai header array
+    // Untuk Admin/SuperAdmin: kembalikan [] (tidak perlu header)
+    // Kembalikan Response jika gagal
+    private function resolveGuruHeader(Request $request): array|\Illuminate\Http\Response
+    {
+        $user = $request->user();
+        if ($user->role !== 'Guru') {
+            return [];
+        }
+
+        $guruData = $this->decode(
+            $this->callService($this->guruBaseUri, $this->guruSecret, 'GET', "{$this->guruReqUrl}/lookup", ['email' => $user->email])
+        );
+
+        if (($guruData['resCode'] ?? null) !== Response::HTTP_OK) {
+            return $this->response('Profil guru tidak ditemukan untuk akun ini.', Response::HTTP_NOT_FOUND);
+        }
+
+        return ['X-Guru-Id' => $guruData['data']['idGuru']];
+    }
+
+    // Untuk Siswa role: resolve siswa_id dari email user yang login
+    // Kembalikan siswa_id (int) atau Response jika gagal
+    private function resolveSiswaId(Request $request): int|\Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+        $siswaData = $this->decode(
+            $this->callService($this->siswaBaseUri, $this->siswaSecret, 'GET', "{$this->siswaReqUrl}/lookup", ['email' => $user->email])
+        );
+
+        if (($siswaData['resCode'] ?? null) !== Response::HTTP_OK) {
+            return $this->response('Profil siswa tidak ditemukan untuk akun ini.', Response::HTTP_NOT_FOUND);
+        }
+
+        return (int) ($siswaData['data']['idSiswa']);
+    }
+
+    // GET /akademik/siswa/belum-terdaftar — SuperAdmin, Admin
+    // Cross-service: siswa di SiswaService yang belum punya siswa_kelas untuk semester ini
+    public function getSiswaBelumTerdaftar(Request $request)
+    {
+        try {
+            $tahunAjaran = $request->input('tahun_ajaran');
+            $semester    = $request->input('semester');
+
+            if (!$tahunAjaran || !$semester) {
+                $semAktif = $this->decode(
+                    $this->performRequest('GET', "{$this->reqUrl}/semester/aktif")
+                );
+                if (($semAktif['resCode'] ?? null) !== Response::HTTP_OK) {
+                    return $this->response('Semester aktif tidak ditemukan.', Response::HTTP_NOT_FOUND);
+                }
+                $tahunAjaran = $tahunAjaran ?: ($semAktif['data']['tahunAjaran'] ?? null);
+                $semester    = $semester    ?: ($semAktif['data']['semester']    ?? null);
+            }
+
+            if (!$tahunAjaran || !$semester) {
+                return $this->response('Parameter tahun_ajaran dan semester diperlukan.', Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            // Ambil siswa_id yang sudah terdaftar di kelas dari AkademikService
+            $enrolledResp = $this->decode(
+                $this->performRequest('GET', "{$this->reqUrl}/siswa-kelas/terdaftar", [
+                    'tahun_ajaran' => $tahunAjaran,
+                    'semester'     => $semester,
+                ])
+            );
+
+            if (($enrolledResp['resCode'] ?? null) !== Response::HTTP_OK) {
+                return $this->response('Gagal mengambil data siswa terdaftar.', Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            $enrolledIds = $enrolledResp['data'] ?? [];
+
+            // Ambil semua siswa aktif dari SiswaService
+            $siswaResp = $this->decode(
+                $this->callService($this->siswaBaseUri, $this->siswaSecret, 'GET', "{$this->siswaReqUrl}/all", ['per_page' => 9999])
+            );
+
+            if (($siswaResp['resCode'] ?? null) !== Response::HTTP_OK) {
+                return $this->response('Gagal mengambil data siswa.', Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            $allSiswa = $siswaResp['data']['data'] ?? [];
+
+            $belumTerdaftar = array_values(
+                array_filter($allSiswa, fn($s) => !in_array($s['idSiswa'] ?? null, $enrolledIds))
+            );
+
+            return $this->response('Siswa belum terdaftar di kelas.', Response::HTTP_OK, [
+                'tahun_ajaran'    => $tahunAjaran,
+                'semester'        => (int) $semester,
+                'total_siswa'     => count($allSiswa),
+                'total_terdaftar' => count($enrolledIds),
+                'total_belum'     => count($belumTerdaftar),
+                'siswa'           => $belumTerdaftar,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Panggil service lain dengan swap baseUri/secret sementara
+    private function callService(string $baseUri, string $secret, string $method, string $url, array $params = [])
+    {
+        [$origUri, $origSecret] = [$this->baseUri, $this->secret];
+        [$this->baseUri, $this->secret] = [$baseUri, $secret];
         $response = $this->performRequest($method, $url, $params);
-        $this->baseUri  = $uri;
-        $this->secret   = $secret;
+        [$this->baseUri, $this->secret] = [$origUri, $origSecret];
         return $response;
     }
 

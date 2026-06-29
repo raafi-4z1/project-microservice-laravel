@@ -14,7 +14,7 @@ trait ConsumeMicroserviceService
      * @param $formParams
      * @return $contentType
      */
-    public function performRequest($method, $requestUrl, $formParams = [])
+    public function performRequest($method, $requestUrl, $formParams = [], array $extraHeaders = [])
     {
         $method = strtoupper($method);
         $timestamp = time();
@@ -43,11 +43,11 @@ trait ConsumeMicroserviceService
 
         $signature = hash_hmac('sha256', $timestamp . $hmacBody, $this->secret);
 
-        $options['headers'] = [
+        $options['headers'] = array_merge([
             'X-Timestamp'     => $timestamp,
             'X-Signature'     => $signature,
             'X-Forwarded-For' => request()->ip(),
-        ];
+        ], $extraHeaders);
         $options['timeout']         = 30;
         $options['connect_timeout'] = 5;
         

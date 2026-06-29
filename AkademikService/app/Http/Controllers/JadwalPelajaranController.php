@@ -293,6 +293,43 @@ class JadwalPelajaranController extends Controller
         }
     }
 
+    // GET aktif jadwal untuk seorang siswa — via kelas aktif di siswa_kelas
+    public function getBySiswa(Request $request, $siswaId)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'tahun_ajaran' => ['nullable', 'regex:/^\d{4}\/\d{4}$/'],
+                'semester'     => 'nullable|in:1,2',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $records = JadwalPelajaran::with(['jamMulai', 'jamSelesai', 'pengampuMapel'])
+                ->whereHas('pengampuMapel', function ($pm) use ($siswaId, $request) {
+                    $pm->whereExists(function ($sub) use ($siswaId, $request) {
+                        $sub->select(DB::raw(1))
+                            ->from('siswa_kelas as sk')
+                            ->whereColumn('sk.kelas_id', 'pengampu_mapels.kelas_id')
+                            ->whereColumn('sk.tahun_ajaran', 'pengampu_mapels.tahun_ajaran')
+                            ->whereColumn('sk.semester', 'pengampu_mapels.semester')
+                            ->where('sk.siswa_id', $siswaId)
+                            ->whereNull('sk.deleted_at');
+                        if ($request->filled('tahun_ajaran')) $sub->where('sk.tahun_ajaran', $request->tahun_ajaran);
+                        if ($request->filled('semester'))     $sub->where('sk.semester', $request->semester);
+                    });
+                })
+                ->orderByRaw("FIELD(hari,'Senin','Selasa','Rabu','Kamis','Jumat')")
+                ->orderBy('jam_mulai_id')
+                ->get()
+                ->map(fn($r) => $this->toApiArray($r));
+
+            return $this->response("Jadwal siswa id:{$siswaId}.", Response::HTTP_OK, $records);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     // GET riwayat lengkap (termasuk soft-deleted) per pengampu
     public function getRiwayatByPengampu(Request $request, $pengampuId)
     {

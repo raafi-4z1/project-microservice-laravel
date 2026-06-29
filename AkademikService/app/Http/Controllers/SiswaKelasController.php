@@ -276,6 +276,39 @@ class SiswaKelasController extends Controller
         }
     }
 
+    // Kembalikan daftar siswa_id yang sudah terdaftar di kelas untuk semester tertentu.
+    // Dipanggil dari Gateway saat menghitung siswa yang belum terdaftar (cross-service diff).
+    public function getSiswaTerdaftar(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'tahun_ajaran' => ['required', 'regex:/^\d{4}\/\d{4}$/'],
+                'semester'     => 'required|in:1,2',
+            ], [
+                'tahun_ajaran.regex' => 'Format tahun ajaran harus YYYY/YYYY, contoh: 2024/2025.',
+                'semester.in'        => 'Semester harus 1 atau 2.',
+            ]);
+
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $siswaIds = SiswaKelas::where('tahun_ajaran', $request->tahun_ajaran)
+                ->where('semester', $request->semester)
+                ->pluck('siswa_id')
+                ->unique()
+                ->values();
+
+            return $this->response(
+                "Siswa terdaftar semester {$request->semester} tahun ajaran {$request->tahun_ajaran}.",
+                Response::HTTP_OK,
+                $siswaIds
+            );
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     private function toApiArray(array $data): array
     {
         return array_filter([

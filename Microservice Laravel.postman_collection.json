@@ -1965,6 +1965,44 @@
                 "description": "Ambil **semua** siswa yang pernah masuk kelas ini — termasuk yang sudah dipindah (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nGanti `1` di URL dengan ID kelas."
               },
               "response": []
+            },
+            {
+              "name": "GET Siswa Belum Terdaftar di Kelas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/siswa/belum-terdaftar?tahun_ajaran=2024/2025&semester=2",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "siswa",
+                    "belum-terdaftar"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional, default semester aktif)"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "2",
+                      "description": "Filter semester: 1 atau 2 (opsional)"
+                    }
+                  ]
+                },
+                "description": "Ambil daftar siswa yang belum terdaftar di kelas manapun untuk semester tertentu.\n\n**Akses:** SuperAdmin, Admin.\n\nTanpa query, otomatis menggunakan semester aktif.\n\n**Response:** tahun_ajaran, semester, total_siswa, total_terdaftar, total_belum, siswa: [...]"
+              },
+              "response": []
             }
           ]
         },
@@ -2075,6 +2113,41 @@
                 "description": "Hapus (soft delete) penugasan pengampu mapel berdasarkan ID record.\n\nGanti `1` di URL dengan ID record `pengampu_mapel` (bukan ID guru)."
               },
               "response": []
+            },
+            {
+              "name": "GET Pengampu by Kelas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/kelas/1/pengampu?tahun_ajaran=2024/2025&semester=1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "kelas",
+                    "1",
+                    "pengampu"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "1"
+                    }
+                  ]
+                }
+              }
             },
             {
               "name": "GET Mapel yang Diampu Guru",
@@ -2697,6 +2770,621 @@
                 },
                 "description": "Riwayat lengkap jadwal guru termasuk yang sudah dihapus. Hanya SuperAdmin dan Admin."
               }
+            },
+            {
+              "name": "GET Jadwal by Siswa",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/jadwal/siswa/1?tahun_ajaran=2024/2025&semester=2",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "jadwal",
+                    "siswa",
+                    "1"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (format YYYY/YYYY)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "semester",
+                      "value": "2",
+                      "description": "Filter semester: 1 atau 2",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Ambil jadwal aktif untuk satu siswa berdasarkan kelas yang sedang diikuti.\n\n**Akses:** Semua role.\n\nGanti 1 di URL dengan ID siswa. Filter tahun_ajaran dan semester opsional."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "--- PENGATURAN NILAI ---",
+          "item": [
+            {
+              "name": "GET Pengaturan Nilai",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/pengaturan-nilai?tahun_ajaran=2024/2025&semester=2",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "pengaturan-nilai"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "2",
+                      "description": "Filter semester: 1 atau 2 (opsional)"
+                    }
+                  ]
+                },
+                "description": "Ambil daftar pengaturan nilai (bobot komponen).\n\n**Akses:** Semua role.\n\n**Query:** tahun_ajaran dan semester opsional sebagai filter.\n\n**Response:** idPengaturan, tahunAjaran, semester, bobotHarian, bobotUts, bobotUas"
+              },
+              "response": []
+            },
+            {
+              "name": "Tambah Pengaturan Nilai",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\\n  \"tahun_ajaran\": \"2024/2025\",\\n  \"semester\": 2,\\n  \"bobot_harian\": 40,\\n  \"bobot_uts\": 30,\\n  \"bobot_uas\": 30\\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/akademik/pengaturan-nilai",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "pengaturan-nilai"
+                  ]
+                },
+                "description": "Buat pengaturan bobot nilai untuk semester tertentu.\n\n**Akses:** SuperAdmin, Admin.\n\n**Field:**\n- tahun_ajaran (wajib): format YYYY/YYYY\n- semester (wajib): 1 atau 2\n- bobot_harian (wajib): bobot nilai harian (0-100)\n- bobot_uts (wajib): bobot nilai UTS (0-100)\n- bobot_uas (wajib): bobot nilai UAS (0-100)\n\n**Catatan:** Total bobot_harian + bobot_uts + bobot_uas harus = 100. Unik per tahun_ajaran + semester."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Pengaturan Nilai",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\\n  \"bobot_harian\": 40,\\n  \"bobot_uts\": 30,\\n  \"bobot_uas\": 30\\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/akademik/pengaturan-nilai/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "pengaturan-nilai",
+                    "1"
+                  ]
+                },
+                "description": "Update bobot komponen nilai untuk pengaturan tertentu.\n\n**Akses:** SuperAdmin, Admin.\n\nGanti 1 di URL dengan idPengaturan. Kirim hanya field yang berubah."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "--- NILAI ---",
+          "item": [
+            {
+              "name": "Tambah Nilai",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\\n  \"siswa_kelas_id\": 1,\\n  \"pengampu_mapel_id\": 1,\\n  \"nilai_harian\": 80\\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/akademik/nilai",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "nilai"
+                  ]
+                },
+                "description": "Tambah atau buat record nilai siswa untuk satu pengampu mapel.\n\n**Akses:** SuperAdmin, Admin, Guru (pengampu mapel tersebut).\n\n**Field:**\n- siswa_kelas_id (wajib): ID dari GET /akademik/kelas/{id}/siswa\n- pengampu_mapel_id (wajib): ID dari POST /akademik/pengampu\n- nilai_harian (opsional): 0-100\n- nilai_uts (opsional): 0-100\n- nilai_uas (opsional): 0-100\n\n**nilai_akhir** dihitung otomatis jika ketiga komponen terisi (menggunakan bobot dari pengaturan nilai)."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Nilai",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\\n  \"nilai_uts\": 75,\\n  \"nilai_uas\": 90\\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/akademik/nilai/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "nilai",
+                    "1"
+                  ]
+                },
+                "description": "Update komponen nilai siswa. Kirim hanya field yang berubah.\n\n**Akses:** SuperAdmin, Admin, Guru (pengampu mapel tersebut).\n\nGanti 1 di URL dengan idNilai.\n\n**nilai_akhir** dihitung ulang otomatis jika semua tiga komponen sudah terisi."
+              },
+              "response": []
+            },
+            {
+              "name": "Hapus Nilai",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/nilai/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "nilai",
+                    "1"
+                  ]
+                },
+                "description": "Hapus record nilai siswa.\n\n**Akses:** SuperAdmin, Admin.\n\nGanti 1 di URL dengan idNilai."
+              },
+              "response": []
+            },
+            {
+              "name": "GET Nilai by Pengampu",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/nilai/pengampu/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "nilai",
+                    "pengampu",
+                    "1"
+                  ]
+                },
+                "description": "Ambil daftar nilai seluruh siswa untuk satu pengampu mapel.\n\n**Akses:** Semua role (Guru hanya bisa akses mapel yang diampu sendiri).\n\nGanti 1 di URL dengan idPengampuMapel.\n\n**Response per item:** idNilai, siswaKelasId, pengampuMapelId, nilaiHarian, nilaiUts, nilaiUas, nilaiAkhir (null jika belum lengkap)"
+              },
+              "response": []
+            },
+            {
+              "name": "GET Nilai by Kelas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/nilai/kelas/1?tahun_ajaran=2024/2025&semester=2",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "nilai",
+                    "kelas",
+                    "1"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "2",
+                      "description": "Filter semester: 1 atau 2 (opsional)"
+                    }
+                  ]
+                },
+                "description": "Ambil semua nilai untuk seluruh mapel dalam satu kelas.\n\n**Akses:** SuperAdmin, Admin.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional."
+              },
+              "response": []
+            },
+            {
+              "name": "GET Nilai by Siswa",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/nilai/siswa/1?tahun_ajaran=2024/2025&semester=2",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "nilai",
+                    "siswa",
+                    "1"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "2",
+                      "description": "Filter semester: 1 atau 2 (opsional)"
+                    }
+                  ]
+                },
+                "description": "Ambil semua nilai satu siswa untuk semua mapel.\n\n**Akses:** SuperAdmin, Admin.\n\nGanti 1 di URL dengan idSiswa. Filter tahun_ajaran dan semester opsional."
+              },
+              "response": []
+            },
+            {
+              "name": "GET Nilai Saya (Siswa)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/nilai/saya?tahun_ajaran=2024/2025&semester=2",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "nilai",
+                    "saya"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "2",
+                      "description": "Filter semester: 1 atau 2 (opsional)"
+                    }
+                  ]
+                },
+                "description": "Ambil nilai diri sendiri untuk semua mapel. **Khusus role Siswa.**\n\nFilter tahun_ajaran dan semester opsional."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "--- RAPORT & RANKING ---",
+          "item": [
+            {
+              "name": "GET Raport Siswa",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/raport/siswa/1?tahun_ajaran=2024/2025&semester=2",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "raport",
+                    "siswa",
+                    "1"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "2",
+                      "description": "Filter semester: 1 atau 2 (opsional)"
+                    }
+                  ]
+                },
+                "description": "Ambil raport satu siswa — semua mapel dengan nilai dan rata-rata tertimbang.\n\n**Akses:** SuperAdmin, Admin.\n\nGanti 1 di URL dengan idSiswa. Filter tahun_ajaran dan semester opsional."
+              },
+              "response": []
+            },
+            {
+              "name": "GET Raport Kelas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/raport/kelas/1?tahun_ajaran=2024/2025&semester=2",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "raport",
+                    "kelas",
+                    "1"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "2",
+                      "description": "Filter semester: 1 atau 2 (opsional)"
+                    }
+                  ]
+                },
+                "description": "Ambil raport seluruh siswa dalam satu kelas — semua mapel dengan nilai dan rata-rata.\n\n**Akses:** SuperAdmin, Admin.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional."
+              },
+              "response": []
+            },
+            {
+              "name": "GET Raport Saya (Siswa)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/raport/saya?tahun_ajaran=2024/2025&semester=2",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "raport",
+                    "saya"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "2",
+                      "description": "Filter semester: 1 atau 2 (opsional)"
+                    }
+                  ]
+                },
+                "description": "Ambil raport diri sendiri. **Khusus role Siswa.**\n\nFilter tahun_ajaran dan semester opsional."
+              },
+              "response": []
+            },
+            {
+              "name": "GET Ranking Kelas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/nilai/ranking/kelas/1?tahun_ajaran=2024/2025&semester=2",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "nilai",
+                    "ranking",
+                    "kelas",
+                    "1"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "2",
+                      "description": "Filter semester: 1 atau 2 (opsional)"
+                    }
+                  ]
+                },
+                "description": "Ambil ranking siswa dalam satu kelas berdasarkan rata-rata nilai_akhir.\n\n**Akses:** SuperAdmin, Admin.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Response:** array siswa urut dari tertinggi, dengan field rankingSiswa dan totalSiswa."
+              },
+              "response": []
+            },
+            {
+              "name": "GET Ranking Saya (Siswa)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/nilai/ranking/saya?tahun_ajaran=2024/2025&semester=2",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "nilai",
+                    "ranking",
+                    "saya"
+                  ],
+                  "query": [
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Filter tahun ajaran (opsional)"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "2",
+                      "description": "Filter semester: 1 atau 2 (opsional)"
+                    }
+                  ]
+                },
+                "description": "Ambil posisi ranking diri sendiri di kelas. **Khusus role Siswa.**\n\nFilter tahun_ajaran dan semester opsional.\n\n**Response:** rankingSiswa, totalSiswa, beserta array seluruh siswa di kelas."
+              },
+              "response": []
             }
           ]
         }

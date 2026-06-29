@@ -9,6 +9,7 @@ use App\Http\Controllers\SiswaController;
 
 Route::prefix('siswa')->group(function () {
     Route::get('all', [SiswaController::class, 'index']);
+    Route::get('lookup', [SiswaController::class, 'lookupByEmail']);
     Route::get('/', [SiswaController::class, 'show']);
     Route::post('/', [SiswaController::class, 'store']);
     Route::post('update', [SiswaController::class, 'update']);

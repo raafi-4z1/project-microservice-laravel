@@ -391,6 +391,32 @@ class GuruController extends Controller
         }
     }
 
+    // Lookup minimal untuk keperluan internal (Gateway resolve guru_id dari email)
+    public function lookupByEmail(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'email' => 'required|email',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $guru = Guru::where('email', $request->email)->first();
+            if (!$guru) {
+                return $this->response('Guru tidak ditemukan.', Response::HTTP_NOT_FOUND);
+            }
+
+            return $this->response("Guru ditemukan.", Response::HTTP_OK, [
+                'idGuru'      => $guru->id,
+                'namaLengkap' => $guru->nama_lengkap,
+                'email'       => $guru->email,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     private function toApiArray(array $data): array
     {
         $map = [

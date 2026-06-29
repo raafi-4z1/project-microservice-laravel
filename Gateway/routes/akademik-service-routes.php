@@ -10,6 +10,7 @@ Route::middleware('auth:api')->prefix(config('gateway.akademik_prefix'))->group(
     Route::patch('kelas/assign/{id}', [AkademikController::class, 'pindahKelas'])->middleware('check.role:SuperAdmin,Admin');
     Route::delete('kelas/assign/{id}', [AkademikController::class, 'removeSiswa'])->middleware('check.role:SuperAdmin,Admin');
     Route::get('kelas/{kelas_id}/siswa', [AkademikController::class, 'getSiswaByKelas']);
+    Route::get('siswa/belum-terdaftar', [AkademikController::class, 'getSiswaBelumTerdaftar'])->middleware('check.role:SuperAdmin,Admin');
     Route::get('siswa/{siswa_id}/kelas', [AkademikController::class, 'getKelasBySiswa']);
     // Riwayat: SuperAdmin, Admin (data sensitif pencatatan sekolah)
     Route::get('kelas/{kelas_id}/siswa/riwayat', [AkademikController::class, 'getRiwayatKelas'])->middleware('check.role:SuperAdmin,Admin');
@@ -19,6 +20,7 @@ Route::middleware('auth:api')->prefix(config('gateway.akademik_prefix'))->group(
     Route::post('pengampu', [AkademikController::class, 'assignGuru'])->middleware('check.role:SuperAdmin,Admin');
     Route::patch('pengampu/{id}', [AkademikController::class, 'gantiGuru'])->middleware('check.role:SuperAdmin,Admin');
     Route::delete('pengampu/{id}', [AkademikController::class, 'removeGuru'])->middleware('check.role:SuperAdmin,Admin');
+    Route::get('kelas/{kelas_id}/pengampu', [AkademikController::class, 'getPengampuByKelas']);
     Route::get('guru/{guru_id}/mapel', [AkademikController::class, 'getMapelByGuru']);
     Route::get('mapel/{mapel_id}/guru', [AkademikController::class, 'getGuruByMapel']);
     // Riwayat: SuperAdmin, Admin (data sensitif pencatatan sekolah)
@@ -43,8 +45,33 @@ Route::middleware('auth:api')->prefix(config('gateway.akademik_prefix'))->group(
     Route::get('jadwal/pengampu/{pengampu_id}', [AkademikController::class, 'getJadwalByPengampu']);
     Route::get('jadwal/kelas/{kelas_id}', [AkademikController::class, 'getJadwalByKelas']);
     Route::get('jadwal/guru/{guru_id}', [AkademikController::class, 'getJadwalByGuru']);
+    Route::get('jadwal/siswa/{siswa_id}', [AkademikController::class, 'getJadwalBySiswa']);
     // Riwayat: SuperAdmin, Admin (data historis termasuk yang sudah dihapus)
     Route::get('jadwal/pengampu/{pengampu_id}/riwayat', [AkademikController::class, 'getRiwayatJadwalByPengampu'])->middleware('check.role:SuperAdmin,Admin');
     Route::get('jadwal/kelas/{kelas_id}/riwayat', [AkademikController::class, 'getRiwayatJadwalByKelas'])->middleware('check.role:SuperAdmin,Admin');
     Route::get('jadwal/guru/{guru_id}/riwayat', [AkademikController::class, 'getRiwayatJadwalByGuru'])->middleware('check.role:SuperAdmin,Admin');
+
+    // Pengaturan Bobot Nilai — SuperAdmin, Admin only
+    Route::get('pengaturan-nilai', [AkademikController::class, 'getPengaturanNilai'])->middleware('check.role:SuperAdmin,Admin');
+    Route::post('pengaturan-nilai', [AkademikController::class, 'storePengaturanNilai'])->middleware('check.role:SuperAdmin,Admin');
+    Route::patch('pengaturan-nilai/{id}', [AkademikController::class, 'updatePengaturanNilai'])->middleware('check.role:SuperAdmin,Admin');
+
+    // Nilai & Raport — Write: Admin, SuperAdmin, Guru | Read: sesuai role
+    Route::post('nilai', [AkademikController::class, 'storeNilai'])->middleware('check.role:SuperAdmin,Admin,Guru');
+    Route::patch('nilai/{id}', [AkademikController::class, 'updateNilai'])->middleware('check.role:SuperAdmin,Admin,Guru');
+    Route::delete('nilai/{id}', [AkademikController::class, 'destroyNilai'])->middleware('check.role:SuperAdmin,Admin,Guru');
+    Route::get('nilai/pengampu/{pengampu_id}', [AkademikController::class, 'getNilaiByPengampu'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
+    Route::get('nilai/kelas/{kelas_id}', [AkademikController::class, 'getNilaiByKelas'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
+    Route::get('nilai/siswa/{siswa_id}', [AkademikController::class, 'getNilaiBySiswa'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
+    // Siswa: self-only via /nilai/saya
+    Route::get('nilai/saya', [AkademikController::class, 'getNilaiSaya'])->middleware('check.role:Siswa');
+
+    // Raport — Admin, SuperAdmin, Guru, Karyawan (full); Siswa (diri sendiri via /saya)
+    Route::get('raport/saya', [AkademikController::class, 'getRaportSaya'])->middleware('check.role:Siswa');
+    Route::get('raport/siswa/{siswa_id}', [AkademikController::class, 'getRaportSiswa'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
+    Route::get('raport/kelas/{kelas_id}', [AkademikController::class, 'getRaportKelas'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
+
+    // Ranking — Siswa (posisi sendiri via /saya); Admin/Guru/Karyawan (full)
+    Route::get('nilai/ranking/saya', [AkademikController::class, 'getRankingSaya'])->middleware('check.role:Siswa');
+    Route::get('nilai/ranking/kelas/{kelas_id}', [AkademikController::class, 'getRankingKelas'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
 });

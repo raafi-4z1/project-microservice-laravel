@@ -190,6 +190,34 @@ class PengampuMapelController extends Controller
         }
     }
 
+    // Semua pengampu aktif di satu kelas — filter opsional: tahun_ajaran, semester
+    public function getByKelas(Request $request, $kelasId)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'tahun_ajaran' => ['nullable', 'regex:/^\d{4}\/\d{4}$/'],
+                'semester'     => 'nullable|in:1,2',
+            ], [
+                'tahun_ajaran.regex' => 'Format tahun ajaran harus YYYY/YYYY, contoh: 2024/2025.',
+                'semester.in'        => 'Semester harus 1 atau 2.',
+            ]);
+
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $query = PengampuMapel::where('kelas_id', $kelasId);
+            if ($request->filled('tahun_ajaran')) $query->where('tahun_ajaran', $request->tahun_ajaran);
+            if ($request->filled('semester'))     $query->where('semester', $request->semester);
+
+            $records = $query->orderBy('mapel_id')->get()->map(fn($r) => $this->toApiArray($r->toArray()));
+
+            return $this->response("Daftar pengampu kelas id:{$kelasId}.", Response::HTTP_OK, $records);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     // Riwayat lengkap termasuk data yang sudah dibatalkan (soft-deleted)
     public function getRiwayatGuru(Request $request, $guruId)
     {
