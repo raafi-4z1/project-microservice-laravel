@@ -166,6 +166,31 @@ Google "Now in Android". Ikuti panduan Material 3 (m3.material.io).
   sederhana + call-to-action, error state dengan tombol coba lagi; konfirmasi
   destructive (hapus) selalu pakai dialog; snackbar untuk feedback sukses.
 
+## Keamanan
+
+- Simpan access token secara terenkripsi: EncryptedSharedPreferences atau
+  DataStore yang dienkripsi dengan kunci dari Android Keystore — JANGAN
+  simpan token dalam plain text.
+- Semua komunikasi wajib HTTPS. Trust-all/bypass sertifikat hanya boleh ada
+  di build debug (untuk sertifikat mkcert lokal) — build release wajib
+  validasi sertifikat normal, siapkan juga opsi certificate pinning via
+  Network Security Config.
+- `android:allowBackup="false"` dan `android:usesCleartextTraffic="false"`
+  di manifest.
+- Jangan tulis token, password, atau data siswa ke Log/logcat.
+- Aktifkan R8/ProGuard (minify + obfuscation) di build release.
+- Tidak ada secret apapun yang ditanam di APK (HMAC antar-service murni
+  urusan backend, bukan klien).
+- Ingat: menyembunyikan menu berdasarkan role hanyalah UX — otorisasi
+  sesungguhnya tetap divalidasi server. App harus menangani 403 dengan
+  pesan "tidak berhak" secara anggun, bukan crash.
+- Logout harus memanggil `POST /logout` (mencabut token di server), bukan
+  sekadar menghapus token lokal. Saat token kedaluwarsa/401, bersihkan sesi
+  lokal dan kembali ke Login.
+- Layar sensitif (nilai, raport, data pribadi siswa) opsional dilindungi
+  `FLAG_SECURE` agar tidak bisa di-screenshot (jadikan setting yang bisa
+  dimatikan).
+
 ## Kualitas
 
 - Loading/error/empty state konsisten di semua layar, pull-to-refresh pada list
