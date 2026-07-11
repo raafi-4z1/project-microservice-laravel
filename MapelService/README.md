@@ -20,7 +20,7 @@ DB_USERNAME=root
 DB_PASSWORD=
 
 # Harus sama persis dengan MAPEL_SERVICE_SECRET di Gateway
-ACCEPTED_SECRETS=base64:tV2U1JsoTvOqIgaDJXb1aHrmAhnGW0uvs/tY9h4xuCE=
+ACCEPTED_SECRETS=base64:...
 ```
 
 ---
@@ -31,7 +31,7 @@ Base URL: `https://gateway.test/api`
 
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
-| GET | `/mapel/all` | Semua | List seluruh mata pelajaran |
+| GET | `/mapel/all` | Semua | List seluruh mata pelajaran. Query: `page`, `per_page`, `search` (cari di kode/nama pelajaran) |
 | GET | `/mapel` | Semua | Detail mapel by `idPelajaran` (query param) |
 | POST | `/mapel` | SuperAdmin, Admin | Tambah mata pelajaran baru |
 | POST | `/mapel/update` | SuperAdmin, Admin | Update data mata pelajaran |

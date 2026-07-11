@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    // Secret HMAC yang diterima dari Gateway (comma-separated untuk rotasi kunci).
+    // Diakses via config() agar tetap bekerja saat config:cache aktif.
+    'accepted_secrets' => env('ACCEPTED_SECRETS', ''),
+
 ];

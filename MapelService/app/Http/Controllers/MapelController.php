@@ -19,6 +19,7 @@ class MapelController extends Controller
             $validate = Validator::make($request->all(), [
                 'page'     => 'sometimes|numeric|min:1',
                 'per_page' => 'sometimes|numeric|min:1',
+                'search'   => 'sometimes|string|max:100',
             ]);
 
             if ($validate->fails()) {
@@ -31,7 +32,19 @@ class MapelController extends Controller
 
             $columns = ['id', 'kode', 'nama_pelajaran', 'keterangan'];
             $perPage = $request->input('per_page', 5);
-            $paginator = Mapel::select($columns)->paginate($perPage)->withQueryString();
+
+            $query = Mapel::select($columns);
+
+            // Cari di kode atau nama pelajaran
+            if ($request->filled('search')) {
+                $s = $request->input('search');
+                $query->where(function ($q) use ($s) {
+                    $q->where('kode', 'like', "%{$s}%")
+                      ->orWhere('nama_pelajaran', 'like', "%{$s}%");
+                });
+            }
+
+            $paginator = $query->paginate($perPage)->withQueryString();
 
             $current = $paginator->currentPage();
             $last    = $paginator->lastPage();

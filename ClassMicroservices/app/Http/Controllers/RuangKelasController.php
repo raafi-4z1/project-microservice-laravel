@@ -21,6 +21,7 @@ class RuangKelasController extends Controller
             $validate = Validator::make($request->all(), [
                 'page'     => 'sometimes|numeric|min:1',
                 'per_page' => 'sometimes|numeric|min:1',
+                'search'   => 'sometimes|string|max:100',
             ]);
 
             if ($validate->fails()) {
@@ -33,8 +34,19 @@ class RuangKelasController extends Controller
 
             $columns = ['id', 'nama_kelas', 'tingkat', 'jurusan', 'limit_siswa', 'deleted_at'];
             $perPage  = $request->input('per_page', 5);
-            $paginator = RuangKelas::select($columns)
-                ->withTrashed()
+
+            $query = RuangKelas::select($columns)->withTrashed();
+
+            // Cari di nama kelas atau jurusan
+            if ($request->filled('search')) {
+                $s = $request->input('search');
+                $query->where(function ($q) use ($s) {
+                    $q->where('nama_kelas', 'like', "%{$s}%")
+                      ->orWhere('jurusan', 'like', "%{$s}%");
+                });
+            }
+
+            $paginator = $query
                 ->paginate($perPage)
                 ->withQueryString();
 

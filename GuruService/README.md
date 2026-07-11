@@ -22,7 +22,7 @@ DB_PASSWORD=
 FILESYSTEM_DISK=private
 
 # Harus sama persis dengan GURU_SERVICE_SECRET di Gateway
-ACCEPTED_SECRETS=base64:bIah+HgRXoDF2xOZx6VqQHwPAi9Qn8EL+odWRRAC4LA=
+ACCEPTED_SECRETS=base64:...
 ```
 
 ---
@@ -33,8 +33,8 @@ Base URL: `https://gateway.test/api`
 
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
-| GET | `/guru/all` | Semua | List seluruh guru (tanpa foto) |
-| GET | `/guru` | Semua | Detail guru by `idGuru` (query param, termasuk foto) |
+| GET | `/guru/all` | Semua | List seluruh guru (tanpa foto). Query: `page`, `per_page`, `search` (cari di nama/NIP/email/jabatan) |
+| GET | `/guru` | Semua | Detail guru by `idGuru` (query param, termasuk foto). Untuk role Guru/Siswa field pribadi (NIK, alamat, telepon, tanggal lahir, dll.) disaring — hanya SuperAdmin/Admin/Karyawan yang menerima profil lengkap |
 | POST | `/guru` | SuperAdmin, Admin | Tambah guru baru + foto (multipart/form-data) |
 | POST | `/guru/update` | SuperAdmin, Admin | Update data guru + foto opsional |
 | DELETE | `/guru/{id}` | SuperAdmin, Admin | Hapus guru (soft delete) |

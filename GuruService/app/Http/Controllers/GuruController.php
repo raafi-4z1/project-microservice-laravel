@@ -23,6 +23,7 @@ class GuruController extends Controller
             $validate = Validator::make($request->all(), [
                 'page'     => 'sometimes|numeric|min:1',
                 'per_page' => 'sometimes|numeric|min:1',
+                'search'   => 'sometimes|string|max:100',
             ]);
 
             if ($validate->fails()) {
@@ -35,7 +36,21 @@ class GuruController extends Controller
 
             $columns  = ['id', 'nama_lengkap', 'nip', 'email', 'jabatan', 'status_kepegawaian'];
             $perPage  = $request->input('per_page', 5);
-            $paginator = Guru::select($columns)->paginate($perPage)->withQueryString();
+
+            $query = Guru::select($columns);
+
+            // Cari di nama, NIP, email, atau jabatan
+            if ($request->filled('search')) {
+                $s = $request->input('search');
+                $query->where(function ($q) use ($s) {
+                    $q->where('nama_lengkap', 'like', "%{$s}%")
+                      ->orWhere('nip', 'like', "%{$s}%")
+                      ->orWhere('email', 'like', "%{$s}%")
+                      ->orWhere('jabatan', 'like', "%{$s}%");
+                });
+            }
+
+            $paginator = $query->paginate($perPage)->withQueryString();
 
             $current = $paginator->currentPage();
             $last    = $paginator->lastPage();

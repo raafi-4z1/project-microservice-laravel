@@ -23,6 +23,7 @@ class SiswaController extends Controller
             $validate = Validator::make($request->all(), [
                 'page'     => 'sometimes|numeric|min:1',
                 'per_page' => 'sometimes|numeric|min:1',
+                'search'   => 'sometimes|string|max:100',
             ]);
 
             if ($validate->fails()) {
@@ -39,7 +40,19 @@ class SiswaController extends Controller
             ];
 
             $perPage  = $request->input('per_page', 5);
-            $paginator = Siswa::select($columns)->paginate($perPage)->withQueryString();
+
+            $query = Siswa::select($columns);
+
+            // Cari di nama lengkap atau NISN
+            if ($request->filled('search')) {
+                $s = $request->input('search');
+                $query->where(function ($q) use ($s) {
+                    $q->where('nama_lengkap', 'like', "%{$s}%")
+                      ->orWhere('nisn', 'like', "%{$s}%");
+                });
+            }
+
+            $paginator = $query->paginate($perPage)->withQueryString();
 
             $current = $paginator->currentPage();
             $last    = $paginator->lastPage();

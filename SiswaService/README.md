@@ -22,7 +22,7 @@ DB_PASSWORD=
 FILESYSTEM_DISK=private
 
 # Harus sama persis dengan SISWA_SERVICE_SECRET di Gateway
-ACCEPTED_SECRETS=base64:9sFQ/3POZdTj36SAka4tl76ZOBEw28KCqbUGFch/iPw=
+ACCEPTED_SECRETS=base64:...
 ```
 
 ---
@@ -33,8 +33,8 @@ Base URL: `https://gateway.test/api`
 
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
-| GET | `/siswa/all` | Semua | List seluruh siswa (tanpa foto) |
-| GET | `/siswa` | Semua | Detail siswa by `idSiswa` (query param, termasuk foto) |
+| GET | `/siswa/all` | Semua | List seluruh siswa (tanpa foto). Query: `page`, `per_page`, `search` (cari di nama/NISN) |
+| GET | `/siswa` | SuperAdmin, Admin, Guru, Karyawan | Detail siswa by `idSiswa` (query param, termasuk foto). Role Siswa diblokir — berisi data pribadi (alamat, kontak orang tua) |
 | POST | `/siswa` | SuperAdmin, Admin | Tambah siswa baru + foto (multipart/form-data) |
 | POST | `/siswa/update` | SuperAdmin, Admin | Update data siswa + foto opsional |
 | DELETE | `/siswa/{id}` | SuperAdmin, Admin | Hapus siswa (soft delete) |

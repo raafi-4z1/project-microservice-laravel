@@ -33,7 +33,7 @@ class AuthenticateAccessMiddleware
         } else {
             $body = $request->getContent();
         }
-        $secrets = array_map('trim', explode(',', env('ACCEPTED_SECRETS', '')));
+        $secrets = array_map('trim', explode(',', config('services.accepted_secrets', '')));
         
         $valid = false;
         foreach ($secrets as $secret) {

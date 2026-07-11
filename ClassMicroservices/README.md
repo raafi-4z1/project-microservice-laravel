@@ -20,7 +20,7 @@ DB_USERNAME=root
 DB_PASSWORD=
 
 # Harus sama persis dengan CLASS_SERVICE_SECRET di Gateway
-ACCEPTED_SECRETS=base64:uUTtmBL1ZmUdIOtGSx+2uWQuYg1MdGWnyZb1AC4W/go=
+ACCEPTED_SECRETS=base64:...
 ```
 
 ---
@@ -31,7 +31,7 @@ Base URL: `https://gateway.test/api`
 
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
-| GET | `/class/all` | Semua | List seluruh kelas |
+| GET | `/class/all` | Semua | List seluruh kelas. Query: `page`, `per_page`, `search` (cari di nama kelas/jurusan) |
 | GET | `/class` | Semua | Detail kelas by `idKelas` (query param) |
 | POST | `/class` | SuperAdmin, Admin | Tambah kelas baru |
 | POST | `/class/update` | SuperAdmin, Admin | Update data kelas |

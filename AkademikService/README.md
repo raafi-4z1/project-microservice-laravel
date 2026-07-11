@@ -20,7 +20,7 @@ DB_USERNAME=root
 DB_PASSWORD=
 
 # Harus sama persis dengan AKADEMIK_SERVICE_SECRET di Gateway
-ACCEPTED_SECRETS=base64:+ZnOcffL/GId4hrnVT4YCWG8f/E8woMi8lSlRsOiZBQ=
+ACCEPTED_SECRETS=base64:...
 ```
 
 ---
