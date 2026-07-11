@@ -90,7 +90,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{superadmin_email}}\",\n  \"password\": \"{{superadmin_password}}\"\n}",
+              "raw": "{\n  \"email\": \"{{superadmin_email}}\",\n  \"password\": \"{{superadmin_password}}\",\n  \"device_name\": \"web\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -106,7 +106,7 @@
                 "login"
               ]
             },
-            "description": "Login dan dapatkan Bearer token.\n\nSebelum menjalankan request ini, isi variabel collection:\n- `superadmin_email` → email SuperAdmin kamu (dari `SUPERADMIN_EMAIL` di `.env` Gateway)\n- `superadmin_password` → password SuperAdmin kamu (dari `SUPERADMIN_PASSWORD` di `.env` Gateway)\n\nTab **Variables** di collection → isi kolom **Current Value** (bukan Initial Value) agar tidak ter-sync ke cloud.\n\nToken otomatis tersimpan ke variabel `token` setelah login berhasil.\n\n**Throttle:** Dibatasi 5 percobaan per menit. Setelah itu akan mendapat resCode 429."
+            "description": "Login dan dapatkan Bearer token.\n\nSebelum menjalankan request ini, isi variabel collection:\n- `superadmin_email` → email SuperAdmin kamu (dari `SUPERADMIN_EMAIL` di `.env` Gateway)\n- `superadmin_password` → password SuperAdmin kamu (dari `SUPERADMIN_PASSWORD` di `.env` Gateway)\n\nTab **Variables** di collection → isi kolom **Current Value** (bukan Initial Value) agar tidak ter-sync ke cloud.\n\nToken otomatis tersimpan ke variabel `token` setelah login berhasil.\n\n**Field `mustChangePassword` di response:** `true` berarti akun masih memakai password default (akun guru/siswa yang dibuat otomatis) — semua endpoint lain diblokir 403 sampai `POST /password` dilakukan.\n\n**Field `device_name` (opsional, default `web`):** identitas perangkat, contoh `web` / `android`. Satu sesi aktif per device — login baru hanya mencabut token lama dari device yang sama, sesi device lain tetap hidup.\n\n**Throttle:** Dibatasi 5 percobaan per menit. Setelah itu akan mendapat resCode 429."
           },
           "response": []
         },
@@ -168,7 +168,55 @@
                 "password"
               ]
             },
-            "description": "Ganti password akun yang sedang login.\n\n**Field:**\n- `current_password` (wajib) – password yang sekarang aktif\n- `new_password` (wajib) – min 8 karakter, harus mengandung huruf dan angka, tidak boleh sama dengan `current_password`\n- `confirm_password` (wajib) – harus sama dengan `new_password`\n\n**Catatan:** Token yang sedang dipakai tetap aktif setelah ganti password. Logout manual jika ingin mencabut sesi."
+            "description": "Ganti password akun yang sedang login.\n\n**Field:**\n- `current_password` (wajib) – password yang sekarang aktif\n- `new_password` (wajib) – min 8 karakter, harus mengandung huruf dan angka, tidak boleh sama dengan `current_password`\n- `confirm_password` (wajib) – harus sama dengan `new_password`\n\n**Catatan:** Token yang sedang dipakai tetap aktif setelah ganti password. Logout manual jika ingin mencabut sesi.\n\n**Throttle:** Dibatasi 5 percobaan per menit. Setelah itu akan mendapat resCode 429."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.resCode === 200 && json.data && json.data.token) {",
+                  "    pm.collectionVariables.set('token', json.data.token);",
+                  "    console.log('Token baru tersimpan:', json.data.token.substring(0, 40) + '...');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/refresh",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "refresh"
+              ]
+            },
+            "description": "Tukar token yang masih valid dengan token baru (perpanjang sesi 8 jam). Token lama langsung dicabut; `device_name` diwarisi dari token lama.\n\nToken baru otomatis tersimpan ke variabel `token`.\n\n**Catatan:** Token yang sudah kedaluwarsa tidak bisa di-refresh — user harus login kembali.\n\n**Throttle:** Dibatasi 5 percobaan per menit. Setelah itu akan mendapat resCode 429."
           },
           "response": []
         },
@@ -201,7 +249,40 @@
                 "logout"
               ]
             },
-            "description": "Cabut (revoke) token yang sedang aktif. Setelah logout, token tidak bisa digunakan lagi."
+            "description": "Cabut (revoke) token yang sedang aktif (device ini saja). Sesi di device lain tetap hidup."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout Semua Sesi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/logout-all",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "logout-all"
+              ]
+            },
+            "description": "Cabut SEMUA sesi aktif di semua device sekaligus. Gunakan jika akun dicurigai dipakai orang lain."
           },
           "response": []
         }
@@ -246,10 +327,16 @@
                   "value": "",
                   "description": "Filter berdasarkan role: SuperAdmin / Admin / Guru / Siswa / Karyawan",
                   "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Cari di nama atau email (partial match)",
+                  "disabled": true
                 }
               ]
             },
-            "description": "Ambil daftar semua akun user yang terdaftar di Gateway (hasil /register), dengan pagination.\n\nParameter opsional:\n- `page` – nomor halaman (default: 1)\n- `per_page` – jumlah item per halaman (default: 10)\n- `role` – filter by role\n\nResponse pagination:\n- `current_page` – halaman saat ini\n- `last_page` – total halaman\n- `total` – total seluruh data\n- `next_page_url` – URL halaman berikutnya (null jika sudah halaman terakhir)\n- `prev_page_url` – URL halaman sebelumnya (null jika halaman pertama)"
+            "description": "Ambil daftar semua akun user yang terdaftar di Gateway (hasil /register), dengan pagination.\n\nParameter opsional:\n- `page` – nomor halaman (default: 1)\n- `per_page` – jumlah item per halaman (default: 10)\n- `role` – filter by role\n- `search` – cari di nama atau email (partial match)\n\nResponse pagination:\n- `current_page` – halaman saat ini\n- `last_page` – total halaman\n- `total` – total seluruh data\n- `next_page_url` – URL halaman berikutnya (null jika sudah halaman terakhir)\n- `prev_page_url` – URL halaman sebelumnya (null jika halaman pertama)"
           },
           "response": []
         },
@@ -379,10 +466,16 @@
                   "key": "per_page",
                   "value": "5",
                   "description": "Jumlah item per halaman (default: 5)"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Cari di kode atau nama pelajaran (partial match)",
+                  "disabled": true
                 }
               ]
             },
-            "description": "Ambil daftar semua mata pelajaran dengan pagination."
+            "description": "Ambil daftar semua mata pelajaran dengan pagination.\n\nParameter opsional `search`: cari di kode atau nama pelajaran (partial match)."
           },
           "response": []
         },
@@ -555,10 +648,16 @@
                   "key": "per_page",
                   "value": "5",
                   "description": "Jumlah item per halaman (default: 5)"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Cari di nama kelas atau jurusan (partial match)",
+                  "disabled": true
                 }
               ]
             },
-            "description": "Ambil daftar semua kelas dengan pagination."
+            "description": "Ambil daftar semua kelas dengan pagination.\n\nParameter opsional `search`: cari di nama kelas atau jurusan (partial match)."
           },
           "response": []
         },
@@ -731,10 +830,16 @@
                   "key": "per_page",
                   "value": "5",
                   "description": "Jumlah item per halaman (default: 5)"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Cari di nama, NIP, email, atau jabatan (partial match)",
+                  "disabled": true
                 }
               ]
             },
-            "description": "Ambil daftar semua guru dengan pagination.\n\nFoto **tidak disertakan** di list untuk menjaga response tetap ringan. Gunakan **GET Guru by ID** untuk mendapatkan foto dalam format base64 WebP."
+            "description": "Ambil daftar semua guru dengan pagination.\n\nParameter opsional `search`: cari di nama, NIP, email, atau jabatan (partial match).\n\nFoto **tidak disertakan** di list untuk menjaga response tetap ringan. Gunakan **GET Guru by ID** untuk mendapatkan foto dalam format base64 WebP."
           },
           "response": []
         },
@@ -765,7 +870,7 @@
                 }
               ]
             },
-            "description": "Ambil detail lengkap satu guru berdasarkan ID. Foto dikembalikan sebagai base64 WebP."
+            "description": "Ambil detail lengkap satu guru berdasarkan ID. Foto dikembalikan sebagai base64 WebP.\n\n**Privasi:** untuk role Guru/Siswa, field pribadi (NIK, alamat, telepon, tanggal lahir, dll.) disaring oleh Gateway — hanya SuperAdmin/Admin/Karyawan yang menerima profil lengkap."
           },
           "response": []
         },
@@ -1186,10 +1291,16 @@
                   "key": "per_page",
                   "value": "5",
                   "description": "Jumlah item per halaman (default: 5)"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Cari di nama lengkap atau NISN (partial match)",
+                  "disabled": true
                 }
               ]
             },
-            "description": "Ambil daftar semua siswa dengan pagination.\n\nFoto **tidak disertakan** di list untuk menjaga response tetap ringan. Gunakan **GET Siswa by ID** untuk mendapatkan foto dalam format base64 WebP."
+            "description": "Ambil daftar semua siswa dengan pagination.\n\nParameter opsional `search`: cari di nama lengkap atau NISN (partial match).\n\nFoto **tidak disertakan** di list untuk menjaga response tetap ringan. Gunakan **GET Siswa by ID** untuk mendapatkan foto dalam format base64 WebP."
           },
           "response": []
         },
@@ -1220,7 +1331,7 @@
                 }
               ]
             },
-            "description": "Ambil detail lengkap satu siswa berdasarkan ID. Foto dikembalikan sebagai base64 WebP."
+            "description": "Ambil detail lengkap satu siswa berdasarkan ID. Foto dikembalikan sebagai base64 WebP.\n\n**Akses:** SuperAdmin, Admin, Guru, Karyawan. Role Siswa mendapat 403 — berisi data pribadi (alamat, kontak orang tua)."
           },
           "response": []
         },

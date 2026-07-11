@@ -228,19 +228,19 @@ DB_PASSWORD=
 
 # Secret HMAC per service (nilai di bawah adalah default)
 CLASS_SERVICE_BASE_URL=http://classmicroservices.test
-CLASS_SERVICE_SECRET=base64:uUTtmBL1ZmUdIOtGSx+2uWQuYg1MdGWnyZb1AC4W/go=
+CLASS_SERVICE_SECRET=base64:...
 
 MAPEL_SERVICE_BASE_URL=http://mapelservice.test
-MAPEL_SERVICE_SECRET=base64:tV2U1JsoTvOqIgaDJXb1aHrmAhnGW0uvs/tY9h4xuCE=
+MAPEL_SERVICE_SECRET=base64:...
 
 GURU_SERVICE_BASE_URL=http://guruservice.test
-GURU_SERVICE_SECRET=base64:bIah+HgRXoDF2xOZx6VqQHwPAi9Qn8EL+odWRRAC4LA=
+GURU_SERVICE_SECRET=base64:...
 
 SISWA_SERVICE_BASE_URL=http://siswaservice.test
-SISWA_SERVICE_SECRET=base64:9sFQ/3POZdTj36SAka4tl76ZOBEw28KCqbUGFch/iPw=
+SISWA_SERVICE_SECRET=base64:...
 
 AKADEMIK_SERVICE_BASE_URL=http://akademikservice.test
-AKADEMIK_SERVICE_SECRET=base64:+ZnOcffL/GId4hrnVT4YCWG8f/E8woMi8lSlRsOiZBQ=
+AKADEMIK_SERVICE_SECRET=base64:...
 
 # Kredensial akun SuperAdmin pertama (dipakai oleh seeder)
 SUPERADMIN_NAME="Nama Admin Kamu"
@@ -285,7 +285,7 @@ DB_USERNAME=root
 DB_PASSWORD=
 
 # Harus sama persis dengan CLASS_SERVICE_SECRET di Gateway
-ACCEPTED_SECRETS=base64:uUTtmBL1ZmUdIOtGSx+2uWQuYg1MdGWnyZb1AC4W/go=
+ACCEPTED_SECRETS=base64:...
 ```
 
 ```sh
@@ -316,7 +316,7 @@ DB_USERNAME=root
 DB_PASSWORD=
 
 # Harus sama persis dengan MAPEL_SERVICE_SECRET di Gateway
-ACCEPTED_SECRETS=base64:tV2U1JsoTvOqIgaDJXb1aHrmAhnGW0uvs/tY9h4xuCE=
+ACCEPTED_SECRETS=base64:...
 ```
 
 ```sh
@@ -349,7 +349,7 @@ DB_PASSWORD=
 FILESYSTEM_DISK=private
 
 # Harus sama persis dengan GURU_SERVICE_SECRET di Gateway
-ACCEPTED_SECRETS=base64:bIah+HgRXoDF2xOZx6VqQHwPAi9Qn8EL+odWRRAC4LA=
+ACCEPTED_SECRETS=base64:...
 ```
 
 ```sh
@@ -382,7 +382,7 @@ DB_PASSWORD=
 FILESYSTEM_DISK=private
 
 # Harus sama persis dengan SISWA_SERVICE_SECRET di Gateway
-ACCEPTED_SECRETS=base64:9sFQ/3POZdTj36SAka4tl76ZOBEw28KCqbUGFch/iPw=
+ACCEPTED_SECRETS=base64:...
 ```
 
 ```sh
@@ -413,7 +413,7 @@ DB_USERNAME=root
 DB_PASSWORD=
 
 # Harus sama persis dengan AKADEMIK_SERVICE_SECRET di Gateway
-ACCEPTED_SECRETS=base64:+ZnOcffL/GId4hrnVT4YCWG8f/E8woMi8lSlRsOiZBQ=
+ACCEPTED_SECRETS=base64:...
 ```
 
 ```sh
