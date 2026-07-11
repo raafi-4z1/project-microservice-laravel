@@ -1,0 +1,6 @@
+# Dikirim lewat jalur lain, jangan masuk git:
+# - berisi data capture asli dari DB dev + kredensial akun test
+api-sample-responses.md
+capture-api-samples.ps1
+seed-test-accounts.ps1
+android-build-phases.md
