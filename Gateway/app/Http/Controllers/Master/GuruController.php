@@ -26,11 +26,32 @@ class GuruController extends Controller
     }
 
     public function index(Request $request) {
-        return $this->performRequest($request->method(), "{$this->reqUrl}/all", $request->only(['page', 'per_page']));
+        return $this->performRequest($request->method(), "{$this->reqUrl}/all", $request->only(['page', 'per_page', 'search']));
     }
 
+    // Field profil guru yang boleh dilihat role non-administratif (Guru, Siswa).
+    // Data pribadi (NIK, alamat, telepon, tanggal lahir, dll.) hanya untuk
+    // SuperAdmin, Admin, dan Karyawan.
+    private const GURU_PUBLIC_FIELDS = [
+        'idGuru', 'namaLengkap', 'nip', 'email', 'jabatan',
+        'statusKepegawaian', 'pendidikanTerakhir', 'foto',
+    ];
+
     public function show(Request $request) {
-        return $this->performRequest($request->method(), "{$this->reqUrl}", $request->only(['idGuru']));
+        $response = $this->performRequest($request->method(), "{$this->reqUrl}", $request->only(['idGuru']));
+
+        if (in_array(auth()->user()->role, ['Guru', 'Siswa'])) {
+            $decode = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_OK && is_array($decode['data'] ?? null)) {
+                return $this->response(
+                    $decode['resMsg'] ?? 'OK',
+                    Response::HTTP_OK,
+                    array_intersect_key($decode['data'], array_flip(self::GURU_PUBLIC_FIELDS))
+                );
+            }
+        }
+
+        return $response;
     }
 
     public function store(Request $request) {

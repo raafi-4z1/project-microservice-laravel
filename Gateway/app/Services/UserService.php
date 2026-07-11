@@ -5,19 +5,29 @@ namespace App\Services;
 use App\Models\User;
 use Exception;
 use Auth;
+use Illuminate\Support\Facades\Schema;
 
 class UserService
 {
     /**
-     * Buat user baru
+     * Buat user baru.
+     * Password awal = email (agar guru/siswa bisa login pertama kali),
+     * tapi akun ditandai wajib ganti password sebelum bisa mengakses fitur lain.
      */
     public function create(string $name, string $email, string $role) {
-        $user = User::create([
+        $attributes = [
             'name'     => $name,
             'email'    => $email,
             'role'     => $role,
             'password' => bcrypt($email),
-        ]);
+        ];
+
+        // Guard: kolom baru — lewati jika migration belum dijalankan
+        if (Schema::hasColumn('users', 'must_change_password')) {
+            $attributes['must_change_password'] = true;
+        }
+
+        $user = User::create($attributes);
 
         if (!$user) {
             throw new Exception("Gagal membuat user.");

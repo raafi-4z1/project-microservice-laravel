@@ -22,10 +22,19 @@ class UserManagementController extends Controller
 
     public function index(Request $request)
     {
-        $query = User::select('id', 'name', 'email', 'role', 'created_at');
+        $query = User::select('id', 'name', 'email', 'role', 'must_change_password', 'created_at');
 
         if ($request->filled('role')) {
             $query->where('role', $request->role);
+        }
+
+        // Cari di nama atau email
+        if ($request->filled('search')) {
+            $s = $request->input('search');
+            $query->where(function ($q) use ($s) {
+                $q->where('name', 'like', "%{$s}%")
+                  ->orWhere('email', 'like', "%{$s}%");
+            });
         }
 
         $users = $query->paginate($request->get('per_page', 10));
@@ -35,7 +44,7 @@ class UserManagementController extends Controller
 
     public function show($id)
     {
-        $user = User::select('id', 'name', 'email', 'role', 'created_at')->find($id);
+        $user = User::select('id', 'name', 'email', 'role', 'must_change_password', 'created_at')->find($id);
 
         if (!$user) {
             return $this->response('User tidak ditemukan.', Response::HTTP_NOT_FOUND);

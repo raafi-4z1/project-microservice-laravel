@@ -54,17 +54,19 @@ Base URL: `https://gateway.test/api`
 
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
-| POST | `/login` | Publik | Login, max 5x/menit |
-| POST | `/logout` | Semua | Cabut token aktif |
+| POST | `/login` | Publik | Login (per device via `device_name`), max 5x/menit |
+| POST | `/refresh` | Semua | Tukar token yang masih valid dengan token baru (perpanjang sesi), max 5x/menit |
+| POST | `/logout` | Semua | Cabut token aktif (device ini saja) |
+| POST | `/logout-all` | Semua | Cabut semua sesi aktif di semua device |
 | POST | `/register` | SuperAdmin, Admin | Daftar akun baru (wajib login) |
 | GET | `/user` | Semua | Profil diri sendiri — hanya mengembalikan data milik user yang sedang login |
-| POST | `/password` | Semua | Ganti password sendiri |
+| POST | `/password` | Semua | Ganti password sendiri, max 5x/menit |
 
 ### Manajemen User
 
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
-| GET | `/users` | SuperAdmin, Admin | List semua akun user |
+| GET | `/users` | SuperAdmin, Admin | List semua akun user. Query: `page`, `per_page`, `role` (filter exact), `search` (cari di nama/email) |
 | GET | `/users/{id}` | SuperAdmin, Admin | Detail akun user by ID |
 | POST | `/users/{id}/password` | SuperAdmin, Admin | Reset password user lain (token target dicabut) |
 | DELETE | `/users/{id}` | SuperAdmin, Admin | Hapus akun user (soft delete) |
@@ -79,8 +81,9 @@ Base URL: `https://gateway.test/api`
 |-------|-------|------------|
 | `email` | ✅ | Email akun |
 | `password` | ✅ | Password akun |
+| `device_name` | ❌ | Identitas perangkat, contoh: `web` / `android` (default: `web`, maks 50 karakter) |
 
-Response menyertakan `access_token` yang disimpan otomatis ke `{{token}}` oleh Postman.
+Response menyertakan `access_token` yang disimpan otomatis ke `{{token}}` oleh Postman, plus field `mustChangePassword` (lihat bagian Password Default di bawah).
 
 ### POST /register
 
@@ -142,12 +145,36 @@ Hapus bersifat **soft delete** — kolom `deleted_at` terisi, data tetap di data
 
 ---
 
+## Password Default & Wajib Ganti Password
+
+Akun guru/siswa dibuat **otomatis** saat data guru/siswa didaftarkan, dengan
+password awal = alamat emailnya sendiri. Karena password default itu mudah
+ditebak, akun tersebut ditandai `must_change_password` dan **wajib mengganti
+password saat login pertama**:
+
+- Response `POST /login` menyertakan `mustChangePassword: true/false`
+- Selama flag masih `true`, semua endpoint diblokir **403** dengan
+  `data: {"mustChangePassword": true}` — kecuali `POST /password`, `GET /user`,
+  `POST /logout`, dan `POST /logout-all`
+- Setelah `POST /password` sukses, flag terhapus dan akses normal kembali
+- Akun yang dibuat via `POST /register` (password dipilih admin) dan SuperAdmin
+  tidak terkena kewajiban ini; migration mem-backfill akun lama yang masih
+  memakai password default
+
+---
+
 ## Token & Sesi
 
-- Token OAuth2 (Bearer) berlaku **8 jam**, refresh token **30 hari**
-- Login baru **mencabut semua token lama** — tidak ada concurrent session
-- Endpoint `/login` dibatasi **5 percobaan per menit**
-- Endpoint `/oauth/token` juga dibatasi **5 percobaan per menit** (mencegah bypass brute force)
+- Token OAuth2 (Bearer) berlaku **8 jam**
+- `POST /refresh` menukar token yang **masih valid** dengan token baru 8 jam
+  (token lama langsung dicabut, `device_name` diwarisi) — klien dapat memperpanjang sesi tanpa login ulang.
+  Token yang sudah kedaluwarsa tidak bisa di-refresh; user harus login kembali
+- **Satu sesi aktif per device**: login baru hanya mencabut token lama dari
+  `device_name` yang sama. Login di `web` dan `android` bisa berjalan bersamaan;
+  login ulang di `android` hanya menendang sesi `android` yang lama
+- `POST /logout-all` mencabut **semua** sesi di semua device — gunakan jika akun
+  dicurigai dipakai orang lain
+- Endpoint `/login`, `/refresh`, `/password`, dan `/oauth/token` dibatasi **5 percobaan per menit**
 
 ---
 

@@ -17,7 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         //"alias(string $name, string $class)" membuat kita bisa memanggilnya di route seperti "->middleware('check.role:SuperAdmin,Admin')".
         $middleware->alias([
-            'check.role' => \App\Http\Middleware\CheckRole::class
+            'check.role' => \App\Http\Middleware\CheckRole::class,
+            // Akun dengan password default (auto-created) diblokir dari semua
+            // endpoint kecuali /password, /user, /logout sampai ganti password.
+            // Dipasang per-group SETELAH auth:api (global tidak bekerja —
+            // guard belum aktif saat middleware global berjalan)
+            'force.pwd'  => \App\Http\Middleware\ForcePasswordChange::class,
         ]);
         $middleware->append(\App\Http\Middleware\CollectForwardedIps::class);
     })

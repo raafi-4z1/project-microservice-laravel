@@ -78,10 +78,16 @@ class AuthController extends Controller
             if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
                 $user = Auth::user();
 
-                // Cabut semua token lama agar tidak ada sesi ganda yang aktif
-                $user->tokens()->where('revoked', false)->each(fn ($t) => $t->revoke());
+                // Identitas perangkat: satu sesi aktif per device (web, android, dst.)
+                $deviceName = substr(trim((string) $request->input('device_name')), 0, 50) ?: 'web';
 
-                $token = $user->createToken("My Token")->accessToken;
+                // Cabut hanya token dari device yang sama — sesi device lain tetap hidup
+                $user->tokens()
+                    ->where('name', $deviceName)
+                    ->where('revoked', false)
+                    ->each(fn ($t) => $t->revoke());
+
+                $token = $user->createToken($deviceName)->accessToken;
 
                 AuditLog::create([
                     'action'      => 'login',
@@ -98,6 +104,9 @@ class AuthController extends Controller
                     'user'  => $user->name,
                     'email' => $user->email,
                     'role'  => $user->role,
+                    // true = akun masih memakai password default; client wajib
+                    // mengarahkan ke layar ganti password sebelum fitur lain
+                    'mustChangePassword' => (bool) ($user->must_change_password ?? false),
                 ]);
             }
 
@@ -130,7 +139,15 @@ class AuthController extends Controller
                 return $this->response('Password saat ini tidak sesuai.', Response::HTTP_UNPROCESSABLE_ENTITY);
             }
 
-            $user->update(['password' => $request->new_password]);
+            $updates = ['password' => $request->new_password];
+
+            // Ganti password memenuhi kewajiban akun berpassword default.
+            // Guard truthy: aman sebelum migration (kolom belum ada -> null)
+            if ($user->must_change_password ?? false) {
+                $updates['must_change_password'] = false;
+            }
+
+            $user->update($updates);
 
             $this->auditLog('updated', 'user', $user->email, ['field' => 'password']);
 
@@ -140,9 +157,39 @@ class AuthController extends Controller
         }
     }
 
+    public function refresh(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            // Cabut token yang sedang dipakai, terbitkan pengganti dengan device yang sama
+            $deviceName = $request->user()->token()->name ?: 'web';
+            $request->user()->token()->revoke();
+            $token = $user->createToken($deviceName)->accessToken;
+
+            $this->auditLog('refreshed', 'user', $user->email);
+
+            return $this->response("Token refreshed.", Response::HTTP_OK, [
+                'token' => $token,
+                'user'  => $user->name,
+                'email' => $user->email,
+                'role'  => $user->role,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     public function logout(Request $request)
     {
         $request->user()->token()->revoke();
         return $this->response("Logged out.", Response::HTTP_OK);
+    }
+
+    // Cabut SEMUA sesi aktif di semua device — dipakai jika akun dicurigai disalahgunakan
+    public function logoutAll(Request $request)
+    {
+        $request->user()->tokens()->where('revoked', false)->each(fn ($t) => $t->revoke());
+        return $this->response("All sessions logged out.", Response::HTTP_OK);
     }
 }

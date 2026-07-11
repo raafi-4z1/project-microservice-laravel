@@ -3,7 +3,7 @@
 use App\Http\Controllers\Akademik\AkademikController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:api')->prefix(config('gateway.akademik_prefix'))->group(function () {
+Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.akademik_prefix'))->group(function () {
 
     // Pembagian Kelas — Write: SuperAdmin, Admin | Read: semua role
     Route::post('kelas/assign', [AkademikController::class, 'assignSiswa'])->middleware('check.role:SuperAdmin,Admin');

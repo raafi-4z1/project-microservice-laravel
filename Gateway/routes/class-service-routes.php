@@ -3,7 +3,7 @@
 use App\Http\Controllers\Master\ClassController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:api')->prefix(config('gateway.class_prefix'))->group(function(){
+Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.class_prefix'))->group(function(){
     Route::get('all', [ClassController::class, 'index']);
     Route::get('/', [ClassController::class, 'show']);
     Route::post('/', [ClassController::class, 'store'])->middleware('check.role:SuperAdmin,Admin');

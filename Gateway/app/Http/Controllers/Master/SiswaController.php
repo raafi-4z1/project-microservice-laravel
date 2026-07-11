@@ -27,7 +27,7 @@ class SiswaController extends Controller
 
     public function index(Request $request)
     {
-        return $this->performRequest($request->method(), "{$this->reqUrl}/all", $request->only(['page', 'per_page']));
+        return $this->performRequest($request->method(), "{$this->reqUrl}/all", $request->only(['page', 'per_page', 'search']));
     }
 
     public function show(Request $request)
