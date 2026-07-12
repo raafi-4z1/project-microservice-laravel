@@ -10,6 +10,12 @@
     RewriteCond %{REQUEST_METHOD} ^(TRACE|TRACK)
     RewriteRule .* - [F,L]
 
+    # Paksa HTTPS: redirect http:// -> https:// (301).
+    # Hanya di Gateway (pintu masuk klien). Service internal TIDAK diberi rule ini
+    # agar panggilan HTTP internal Gateway->service tetap jalan.
+    RewriteCond %{HTTPS} off
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

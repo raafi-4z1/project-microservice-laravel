@@ -4,3 +4,7 @@ api-sample-responses.md
 capture-api-samples.ps1
 seed-test-accounts.ps1
 android-build-phases.md
+security-tests.ps1
+
+# Output backup database (berisi data) — skrip backup-databases.ps1 boleh commit
+db-backups/

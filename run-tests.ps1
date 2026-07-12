@@ -10,8 +10,12 @@
 #   $env:TEST_ADMIN_EMAIL    = "superadmin@example.com"
 #   $env:TEST_ADMIN_PASSWORD = "PasswordSuperAdmin"
 #   powershell -ExecutionPolicy Bypass -File run-tests.ps1
+#
+# Uji dari PC lain di LAN: arahkan ke IP backend + Host header gateway.test
+#   $env:TEST_BASE_URL = "https://192.168.12.168/api"
+#   (SSL bypass sudah aktif; jika cert bukan untuk IP, request tetap jalan)
 $CFG = @{
-    BaseUrl       = "https://gateway.test/api"
+    BaseUrl       = $(if ($env:TEST_BASE_URL) { $env:TEST_BASE_URL } else { "https://gateway.test/api" })
 
     # Kredensial SuperAdmin (wajib) — dari environment variable
     AdminEmail    = $(if ($env:TEST_ADMIN_EMAIL)    { $env:TEST_ADMIN_EMAIL }    else { "superadmin@example.com" })
@@ -61,6 +65,7 @@ $script:FAIL     = 0
 $script:SKIP     = 0
 $script:CREATED  = @{}     # track ID yang dibuat untuk cleanup
 $script:LAST_CHK = $false  # hasil Chk terakhir (digunakan oleh if ($script:LAST_CHK))
+$script:LOGINS   = @()     # timestamp login untuk pacing (throttle 5/menit)
 
 # Timestamp unik agar nama test data tidak bentrok
 $TS = (Get-Date -Format "HHmmss")
@@ -68,6 +73,25 @@ $TS = (Get-Date -Format "HHmmss")
 # ──────────────────────────────────────────────
 #  HELPER FUNCTIONS
 # ──────────────────────────────────────────────
+# Jaga agar login < 5/menit (endpoint /login & /oauth/token di-throttle).
+# Suite melakukan banyak login; lewat LAN yang cepat bisa menumpuk dalam satu
+# jendela 60s dan kena 429. Guard ini menahan login ke-5 sampai yang tertua lewat.
+function Wait-LoginSlot {
+    $cutoff = (Get-Date).AddSeconds(-60)
+    $script:LOGINS = @($script:LOGINS | Where-Object { $_ -gt $cutoff })
+    if ($script:LOGINS.Count -ge 4) {
+        $oldest = [DateTime]($script:LOGINS | Sort-Object | Select-Object -First 1)
+        $wait = [int][math]::Ceiling(($oldest.AddSeconds(61) - (Get-Date)).TotalSeconds)
+        if ($wait -gt 0) {
+            Write-Host "    (pacing: tunggu ${wait}s agar login tetap < 5/menit)" -ForegroundColor DarkGray
+            Start-Sleep -Seconds $wait
+        }
+        $cutoff = (Get-Date).AddSeconds(-60)
+        $script:LOGINS = @($script:LOGINS | Where-Object { $_ -gt $cutoff })
+    }
+    $script:LOGINS += (Get-Date)
+}
+
 function Api {
     param(
         [string]$Method,
@@ -76,32 +100,46 @@ function Api {
         [string]$Token     = $null,
         [string]$BodyType  = "json"   # json | form
     )
+    # Pacing untuk endpoint login (throttle 5/menit) — lapis pertama cegah 429
+    $isLogin = ($Path -eq "login" -or $Path -like "login`?*")
+    if ($isLogin) { Wait-LoginSlot }
+
     $tok = if ($Token) { $Token } else { $script:TOKEN }
     $headers = @{ 'Accept' = 'application/json' }
     if ($tok) { $headers['Authorization'] = "Bearer $tok" }
-
     $uri = "$($CFG.BaseUrl)/$Path"
-    $params = @{ Uri = $uri; Method = $Method; Headers = $headers; UseBasicParsing = $true; TimeoutSec = $CFG.Timeout }
+    $bodyJson = if ($Body -ne $null) { $Body | ConvertTo-Json -Depth 6 } else { $null }
+    if ($bodyJson) { $headers['Content-Type'] = 'application/json' }
 
-    if ($Body -ne $null) {
-        $headers['Content-Type'] = 'application/json'
-        $params['Body'] = ($Body | ConvertTo-Json -Depth 6)
-    }
-
-    try {
-        $r = Invoke-WebRequest @params
-        return $r.Content | ConvertFrom-Json
-    } catch {
-        $er = $_.Exception.Response
-        if ($er) {
-            try {
-                $st = $er.GetResponseStream()
-                $rd = [System.IO.StreamReader]::new($st)
-                $tx = $rd.ReadToEnd(); $rd.Close(); $st.Close(); $er.Close()
-                if ($tx) { return $tx | ConvertFrom-Json }
-            } catch {}
+    $attempt = 0
+    while ($true) {
+        $attempt++
+        $params = @{ Uri = $uri; Method = $Method; Headers = $headers; UseBasicParsing = $true; TimeoutSec = $CFG.Timeout }
+        if ($bodyJson) { $params['Body'] = $bodyJson }
+        $resp = $null
+        try {
+            $r = Invoke-WebRequest @params
+            $resp = $r.Content | ConvertFrom-Json
+        } catch {
+            $er = $_.Exception.Response
+            if ($er) {
+                try {
+                    $st = $er.GetResponseStream()
+                    $rd = [System.IO.StreamReader]::new($st)
+                    $tx = $rd.ReadToEnd(); $rd.Close(); $st.Close(); $er.Close()
+                    if ($tx) { $resp = $tx | ConvertFrom-Json }
+                } catch {}
+            }
+            if (-not $resp) { $resp = [PSCustomObject]@{ resCode = 0; resMsg = $_.Exception.Message; data = $null } }
         }
-        return [PSCustomObject]@{ resCode = 0; resMsg = $_.Exception.Message; data = $null }
+        # Login kena 429 (rate limit) -> tunggu jendela reset, coba lagi.
+        # Mencegah token null yang men-cascade jadi kegagalan lintas-phase.
+        if ($isLogin -and $resp.resCode -eq 429 -and $attempt -le 2) {
+            Write-Host "    (login 429 — tunggu 62s lalu coba lagi #$attempt)" -ForegroundColor DarkGray
+            Start-Sleep -Seconds 62
+            continue
+        }
+        return $resp
     }
 }
 

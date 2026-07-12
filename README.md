@@ -492,6 +492,69 @@ Untuk detail endpoint per service, lihat README masing-masing service:
 - [SiswaService/README.md](SiswaService/README.md) — Siswa
 - [AkademikService/README.md](AkademikService/README.md) — Semester, Kelas, Pengampu, Jam, Jadwal, Nilai, Raport
 
+### Testing Otomatis (PowerShell)
+
+Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (165 skenario)
+mencakup auth, CRUD semua service, akademik, RBAC 4 role, sesi multi-device,
+dan validasi cross-service. Kredensial dibaca dari environment variable
+(tidak ditulis di file).
+
+```powershell
+$env:TEST_ADMIN_PASSWORD = "PasswordSuperAdmin"
+powershell -ExecutionPolicy Bypass -File run-tests.ps1
+```
+
+Menguji dari PC lain di LAN — arahkan ke IP server (tambahkan hosts entry
+`<IP-server> gateway.test` di PC penguji agar Host header benar):
+
+```powershell
+$env:TEST_BASE_URL       = "https://192.168.x.x/api"
+$env:TEST_ADMIN_PASSWORD = "PasswordSuperAdmin"
+powershell -ExecutionPolicy Bypass -File run-tests.ps1
+```
+
+---
+
+## Maintenance / Operasional
+
+### Backup Database
+
+`backup-databases.ps1` mem-backup keenam database (nama & kredensial dibaca dari
+`.env` tiap service), kompres ke `.zip` bertanggal, lalu bersihkan backup lama.
+
+```powershell
+# Harian — pemulihan bencana; retensi 14 hari, auto-hapus. Disimpan di db-backups\
+powershell -ExecutionPolicy Bypass -File backup-databases.ps1
+
+# Per semester — arsip permanen; diberi label semester aktif (dibaca dari DB),
+# disimpan di db-backups\archive\, TIDAK pernah dihapus otomatis.
+# Jalankan saat menutup/ganti semester.
+$env:BACKUP_MODE = "semester"; powershell -ExecutionPolicy Bypass -File backup-databases.ps1
+```
+
+Opsi: `$env:BACKUP_DIR` (lokasi backup — idealnya drive/lokasi terpisah),
+`$env:RETENTION_DAYS` (default 14, mode harian saja).
+
+**Jadwalkan backup harian** via Task Scheduler:
+
+```powershell
+schtasks /create /tn "Backup SIM Sekolah" /sc daily /st 02:00 ^
+  /tr "powershell -ExecutionPolicy Bypass -File C:\path\ke\backup-databases.ps1"
+```
+
+> ⚠️ MySQL harus **berjalan** saat backup. Agar backup terjadwal (mis. 02:00)
+> selalu berhasil meski Laragon belum dibuka, jadikan MySQL auto-start:
+> Laragon → Menu → **MySQL → Install service** (atau Preferences → auto-start).
+
+Output `db-backups/` berisi data dan sudah di-`.gitignore`.
+
+### Rotasi Log
+
+Log Laravel dikonfigurasi rotasi **harian**, retensi **14 hari** (channel `daily`
+di `config/logging.php` semua service). File menjadi `laravel-YYYY-MM-DD.log`
+dan terhapus otomatis setelah 14 hari. Ubah retensi via `LOG_DAILY_DAYS` di `.env`
+bila perlu.
+
 ---
 
 ## Referensi
