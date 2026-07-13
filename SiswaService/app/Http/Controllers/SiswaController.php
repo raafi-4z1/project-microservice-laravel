@@ -324,8 +324,10 @@ class SiswaController extends Controller
                 $newPath  = "{$directoryStorage}/{$filename}";
                 Storage::disk('private')->put($newPath, (string) $this->convertImage($request->file('foto')));
 
-                if ($siswa->foto && Storage::disk('private')->exists($siswa->foto)) {
-                    Storage::disk('private')->delete($siswa->foto);
+                // getRawOriginal: ambil PATH asli, bukan accessor foto (base64)
+                $oldFoto = $siswa->getRawOriginal('foto');
+                if ($oldFoto && Storage::disk('private')->exists($oldFoto)) {
+                    Storage::disk('private')->delete($oldFoto);
                 }
                 $updateData['foto'] = $newPath;
             }

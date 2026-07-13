@@ -34,40 +34,9 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-    
-    // Class API Microservice
-    'class'  =>  [
-        'base_uri'  =>  env('CLASS_SERVICE_BASE_URL'),
-        'secret'  =>  env('CLASS_SERVICE_SECRET'),
-    ],
-    
-    // Mapel API Service
-    'mapel'  =>  [
-        'base_uri'  =>  env('MAPEL_SERVICE_BASE_URL'),
-        'secret'  =>  env('MAPEL_SERVICE_SECRET'),
-    ],
-    
-    // Guru API Service
-    'guru'  =>  [
-        'base_uri'  =>  env('GURU_SERVICE_BASE_URL'),
-        'secret'  =>  env('GURU_SERVICE_SECRET'),
-    ],
-    
-    // Siswa API Service
-    'siswa'  =>  [
-        'base_uri'  =>  env('SISWA_SERVICE_BASE_URL'),
-        'secret'  =>  env('SISWA_SERVICE_SECRET'),
-    ],
 
-    // Karyawan API Service
-    'karyawan'  =>  [
-        'base_uri'  =>  env('KARYAWAN_SERVICE_BASE_URL'),
-        'secret'  =>  env('KARYAWAN_SERVICE_SECRET'),
-    ],
+    // Secret HMAC yang diterima dari Gateway (comma-separated untuk rotasi kunci).
+    // Diakses via config() agar tetap bekerja saat config:cache aktif.
+    'accepted_secrets' => env('ACCEPTED_SECRETS', ''),
 
-    // Akademik API Service
-    'akademik'  =>  [
-        'base_uri'  =>  env('AKADEMIK_SERVICE_BASE_URL'),
-        'secret'  =>  env('AKADEMIK_SERVICE_SECRET'),
-    ],
 ];
