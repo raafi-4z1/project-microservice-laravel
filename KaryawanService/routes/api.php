@@ -12,5 +12,7 @@ Route::prefix('karyawan')->group(function () {
     Route::post('update', [KaryawanController::class, 'update']);
     Route::post('kartu/terbitkan', [KaryawanController::class, 'terbitkanKartu']);
     Route::post('kartu/blokir', [KaryawanController::class, 'blokirKartu']);
+    Route::post('pin/set', [KaryawanController::class, 'setPin']);
+    Route::post('pin/verify', [KaryawanController::class, 'verifyPin']);
     Route::delete('/{id}', [KaryawanController::class, 'destroy']);
 });

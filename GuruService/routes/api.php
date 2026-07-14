@@ -16,5 +16,7 @@ Route::prefix('guru')->group(function () {
     Route::post('update', [GuruController::class, 'update']);
     Route::post('kartu/terbitkan', [GuruController::class, 'terbitkanKartu']);
     Route::post('kartu/blokir', [GuruController::class, 'blokirKartu']);
+    Route::post('pin/set', [GuruController::class, 'setPin']);
+    Route::post('pin/verify', [GuruController::class, 'verifyPin']);
     Route::delete('/{id}', [GuruController::class, 'destroy']);
 });

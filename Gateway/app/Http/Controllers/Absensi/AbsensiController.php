@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Absensi;
 
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use App\Models\PinWindow;
 use App\Traits\ApiResponser;
 use App\Http\Controllers\Controller;
 use App\Traits\ConsumeMicroserviceService;
@@ -114,6 +116,132 @@ class AbsensiController extends Controller
             'terminal_id' => $terminal?->id,
             'metode'      => 'scan',
         ]);
+    }
+
+    // ── Jendela PIN (lupa kartu) ──────────────────────────────────────────────
+
+    // Default durasi jendela PIN bila admin tidak menentukan (menit).
+    private const DEFAULT_DURASI_PIN_MENIT = 10;
+
+    // POST /absensi/pin/atur — pegawai (Guru/Karyawan) mengatur PIN sendiri
+    public function aturPin(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $tipe = $user->role === 'Guru' ? 'guru' : 'karyawan';
+
+            [$baseUri, $secret, $reqUrl, $idKey] = $this->kredensialPegawai($tipe);
+
+            // Resolusi id pegawai dari email akun yang login
+            $lookup = $this->decode(
+                $this->callService($baseUri, $secret, 'GET', "{$reqUrl}/lookup", ['email' => $user->email])
+            );
+            if (($lookup['resCode'] ?? null) !== Response::HTTP_OK) {
+                return $this->response('Profil pegawai tidak ditemukan untuk akun ini.', Response::HTTP_NOT_FOUND);
+            }
+
+            return $this->callService($baseUri, $secret, 'POST', "{$reqUrl}/pin/set", [
+                $idKey => $lookup['data'][$idKey],
+                'pin'  => $request->input('pin'),
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // POST /absensi/pin/buka — admin membuka jendela PIN untuk seorang pegawai
+    public function bukaPinWindow(Request $request)
+    {
+        try {
+            $tipe     = $request->input('subjek_tipe');
+            $subjekId = (int) $request->input('subjek_id');
+            if (!in_array($tipe, ['guru', 'karyawan'], true) || $subjekId < 1) {
+                return $this->response('subjek_tipe (guru|karyawan) dan subjek_id wajib diisi.', Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            // Validasi pegawai ada di service terkait
+            [$baseUri, $secret, $reqUrl, $idKey] = $this->kredensialPegawai($tipe);
+            $cek = $this->decode(
+                $this->callService($baseUri, $secret, 'GET', $reqUrl, [$idKey => $subjekId])
+            );
+            if (($cek['resCode'] ?? null) !== Response::HTTP_OK) {
+                return $this->response('Pegawai tidak ditemukan.', Response::HTTP_NOT_FOUND);
+            }
+
+            $durasi = (int) ($request->input('durasi_menit') ?: self::DEFAULT_DURASI_PIN_MENIT);
+            $durasi = max(1, min(60, $durasi));
+
+            $now    = Carbon::now();
+            $window = PinWindow::create([
+                'subjek_tipe'    => $tipe,
+                'subjek_id'      => $subjekId,
+                'dibuka_oleh'    => $request->user()->id,
+                'dibuka_at'      => $now,
+                'berlaku_sampai' => $now->copy()->addMinutes($durasi),
+            ]);
+
+            return $this->response('Jendela PIN dibuka.', Response::HTTP_CREATED, [
+                'idPinWindow'   => $window->id,
+                'subjekTipe'    => $window->subjek_tipe,
+                'subjekId'      => $window->subjek_id,
+                'berlakuSampai' => $window->berlaku_sampai->toDateTimeString(),
+                'durasiMenit'   => $durasi,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // POST /absensi/pin/absen — pegawai absen via NIP+PIN di terminal (lupa kartu)
+    public function absenPin(Request $request)
+    {
+        try {
+            $terminal = $request->attributes->get('terminal');
+            $tipe     = $request->input('subjek_tipe');
+            $nip      = trim((string) $request->input('nip'));
+            $pin      = (string) $request->input('pin');
+
+            if (!in_array($tipe, ['guru', 'karyawan'], true) || $nip === '' || $pin === '') {
+                return $this->response('subjek_tipe (guru|karyawan), nip, dan pin wajib diisi.', Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            [$baseUri, $secret, $reqUrl, $idKey] = $this->kredensialPegawai($tipe);
+
+            // Verifikasi NIP + PIN ke service (pesan gagal diteruskan apa adanya)
+            $verify = $this->decode(
+                $this->callService($baseUri, $secret, 'POST', "{$reqUrl}/pin/verify", ['nip' => $nip, 'pin' => $pin])
+            );
+            if (($verify['resCode'] ?? null) !== Response::HTTP_OK) {
+                return $this->response($verify['resMsg'] ?? 'Verifikasi PIN gagal.', $verify['resCode'] ?? Response::HTTP_UNAUTHORIZED);
+            }
+
+            $subjekId = (int) $verify['data'][$idKey];
+
+            $window = PinWindow::aktif()->untuk($tipe, $subjekId)->latest('berlaku_sampai')->first();
+            if (!$window) {
+                return $this->response('Tidak ada jendela PIN aktif. Minta admin membuka jendela.', Response::HTTP_FORBIDDEN);
+            }
+
+            $window->update(['terpakai_at' => Carbon::now()]);
+
+            return $this->performRequest('POST', "{$this->reqUrl}/absensi/scan-pegawai", [
+                'subjek_tipe'   => $tipe,
+                'subjek_id'     => $subjekId,
+                'terminal_id'   => $terminal?->id,
+                'pin_window_id' => $window->id,
+                'metode'        => 'pin',
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // [baseUri, secret, reqUrl, idKey] untuk guru/karyawan
+    private function kredensialPegawai(string $tipe): array
+    {
+        return $tipe === 'guru'
+            ? [$this->guruBaseUri, $this->guruSecret, $this->guruReqUrl, 'idGuru']
+            : [$this->karyawanBaseUri, $this->karyawanSecret, $this->karyawanReqUrl, 'idKaryawan'];
     }
 
     // Panggil service lain dengan swap baseUri/secret sementara
