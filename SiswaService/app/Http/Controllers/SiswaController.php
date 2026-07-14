@@ -438,6 +438,32 @@ class SiswaController extends Controller
         }
     }
 
+    // Lookup untuk Gateway resolve kartu absensi (scan) -> siswa
+    public function lookupByKartu(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'uid' => 'required|string|max:32',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $siswa = Siswa::where('kartu_uid', $request->uid)->first();
+            if (!$siswa) {
+                return $this->response('Kartu tidak dikenali.', Response::HTTP_NOT_FOUND);
+            }
+
+            return $this->response("Kartu ditemukan.", Response::HTTP_OK, [
+                'idSiswa'     => $siswa->id,
+                'namaLengkap' => $siswa->nama_lengkap,
+                'kartuStatus' => $siswa->kartu_status,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     private function toApiArray(array $data): array
     {
         $map = [

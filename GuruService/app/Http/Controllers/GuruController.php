@@ -434,6 +434,32 @@ class GuruController extends Controller
         }
     }
 
+    // Lookup untuk Gateway resolve kartu absensi (scan) -> guru
+    public function lookupByKartu(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'uid' => 'required|string|max:32',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $guru = Guru::where('kartu_uid', $request->uid)->first();
+            if (!$guru) {
+                return $this->response('Kartu tidak dikenali.', Response::HTTP_NOT_FOUND);
+            }
+
+            return $this->response("Kartu ditemukan.", Response::HTTP_OK, [
+                'idGuru'      => $guru->id,
+                'namaLengkap' => $guru->nama_lengkap,
+                'kartuStatus' => $guru->kartu_status,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     private function toApiArray(array $data): array
     {
         $map = [
