@@ -75,6 +75,11 @@ class RouteServiceProvider extends ServiceProvider
                 ->middleware('api')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/kartu-routes.php'));
+                //Absensi scan terminal registration
+            Route::prefix('api')
+                ->middleware('api')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/absensi-service-routes.php'));
         });
     }
 

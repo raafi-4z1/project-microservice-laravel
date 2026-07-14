@@ -8,6 +8,7 @@ use App\Http\Controllers\JamPelajaranController;
 use App\Http\Controllers\JadwalPelajaranController;
 use App\Http\Controllers\NilaiController;
 use App\Http\Controllers\PengaturanNilaiController;
+use App\Http\Controllers\AbsensiController;
 
 Route::prefix('akademik')->group(function () {
 
@@ -72,4 +73,8 @@ Route::prefix('akademik')->group(function () {
     Route::get('nilai/raport/siswa/{siswa_id}', [NilaiController::class, 'getRaportSiswa']);
     Route::get('nilai/raport/kelas/{kelas_id}', [NilaiController::class, 'getRaportKelas']);
     Route::get('nilai/ranking/kelas/{kelas_id}',[NilaiController::class, 'getRankingKelas']);
+
+    // Absensi — pencatatan scan masuk (dipanggil Gateway setelah resolve kartu/terminal)
+    Route::post('absensi/scan-siswa',   [AbsensiController::class, 'scanSiswa']);
+    Route::post('absensi/scan-pegawai', [AbsensiController::class, 'scanPegawai']);
 });
