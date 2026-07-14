@@ -77,4 +77,9 @@ Route::prefix('akademik')->group(function () {
     // Absensi — pencatatan scan masuk (dipanggil Gateway setelah resolve kartu/terminal)
     Route::post('absensi/scan-siswa',   [AbsensiController::class, 'scanSiswa']);
     Route::post('absensi/scan-pegawai', [AbsensiController::class, 'scanPegawai']);
+
+    // Absensi per pelajaran — guru menandai siswa saat jam pelajarannya
+    Route::get('absensi/pelajaran/sekarang',          [AbsensiController::class, 'pelajaranSekarang']);
+    Route::get('absensi/pelajaran/{jadwal_id}/siswa', [AbsensiController::class, 'daftarSiswaJadwal']);
+    Route::post('absensi/pelajaran/tandai',           [AbsensiController::class, 'tandaiPelajaran']);
 });

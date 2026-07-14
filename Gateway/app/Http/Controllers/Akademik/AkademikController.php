@@ -674,6 +674,83 @@ class AkademikController extends Controller
         return $this->performRequest('GET', "{$this->reqUrl}/nilai/ranking/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']));
     }
 
+    // ─── Absensi per pelajaran ──────────────────────────────────────────────────
+
+    // GET /akademik/absensi/pelajaran/sekarang — Guru: jadwal berlangsung + daftar siswa
+    public function getPelajaranSekarang(Request $request)
+    {
+        try {
+            $header = $this->resolveGuruHeader($request);
+            if ($header instanceof \Illuminate\Http\Response) return $header;
+
+            $response = $this->performRequest('GET', "{$this->reqUrl}/absensi/pelajaran/sekarang", [], $header);
+            return $this->enrichSiswaResponse($response);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // GET /akademik/absensi/pelajaran/{jadwal_id}/siswa — Guru (miliknya) / Admin
+    public function getDaftarSiswaJadwal(Request $request, $jadwalId)
+    {
+        try {
+            $header = $request->user()->role === 'Guru' ? $this->resolveGuruHeader($request) : [];
+            if ($header instanceof \Illuminate\Http\Response) return $header;
+
+            $response = $this->performRequest('GET', "{$this->reqUrl}/absensi/pelajaran/{$jadwalId}/siswa", $request->only(['tanggal']), $header);
+            return $this->enrichSiswaResponse($response);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // POST /akademik/absensi/pelajaran/tandai — Guru menandai absensi siswa
+    public function tandaiPelajaran(Request $request)
+    {
+        try {
+            $header = $this->resolveGuruHeader($request);
+            if ($header instanceof \Illuminate\Http\Response) return $header;
+
+            $response = $this->performRequest('POST', "{$this->reqUrl}/absensi/pelajaran/tandai", $request->all(), $header);
+            $decode   = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_OK) {
+                $this->auditLog('updated', 'absensi_pelajaran', $request->jadwal_id, [
+                    'tanggal'   => $decode['data']['tanggal'] ?? null,
+                    'tersimpan' => $decode['data']['tersimpan'] ?? null,
+                ]);
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Tambahkan namaLengkap ke tiap entri data.siswa (AkademikService hanya simpan id)
+    private function enrichSiswaResponse($response)
+    {
+        $decode = $this->decode($response);
+        if (($decode['resCode'] ?? null) !== Response::HTTP_OK || empty($decode['data']['siswa'])) {
+            return $response instanceof \Illuminate\Http\Response
+                ? $response
+                : response($response);
+        }
+
+        $siswaResp = $this->decode(
+            $this->callService($this->siswaBaseUri, $this->siswaSecret, 'GET', "{$this->siswaReqUrl}/all", ['per_page' => 9999])
+        );
+        $map = [];
+        foreach (($siswaResp['data']['data'] ?? []) as $s) {
+            $map[$s['idSiswa'] ?? null] = $s['namaLengkap'] ?? null;
+        }
+
+        $decode['data']['siswa'] = array_map(function ($row) use ($map) {
+            $row['namaLengkap'] = $map[$row['siswaId']] ?? null;
+            return $row;
+        }, $decode['data']['siswa']);
+
+        return $this->response($decode['resMsg'] ?? 'Ok', Response::HTTP_OK, $decode['data']);
+    }
+
     // ─── Helper: resolve identitas dari email user yang login ───────────────────
 
     // Untuk Guru role: resolve guru_id dan kembalikan sebagai header array

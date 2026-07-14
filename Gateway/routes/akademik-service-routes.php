@@ -74,4 +74,9 @@ Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.akademik_pr
     // Ranking — Siswa (posisi sendiri via /saya); Admin/Guru/Karyawan (full)
     Route::get('nilai/ranking/saya', [AkademikController::class, 'getRankingSaya'])->middleware('check.role:Siswa');
     Route::get('nilai/ranking/kelas/{kelas_id}', [AkademikController::class, 'getRankingKelas'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
+
+    // Absensi per pelajaran — Guru menandai siswa saat jam pelajarannya
+    Route::get('absensi/pelajaran/sekarang', [AkademikController::class, 'getPelajaranSekarang'])->middleware('check.role:Guru');
+    Route::post('absensi/pelajaran/tandai', [AkademikController::class, 'tandaiPelajaran'])->middleware('check.role:Guru');
+    Route::get('absensi/pelajaran/{jadwal_id}/siswa', [AkademikController::class, 'getDaftarSiswaJadwal'])->middleware('check.role:SuperAdmin,Admin,Guru');
 });
