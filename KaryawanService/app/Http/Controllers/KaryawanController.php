@@ -380,6 +380,75 @@ class KaryawanController extends Controller
         }
     }
 
+    // Terbitkan/ganti kartu absensi: generate UID unik (prefix KAR-), set aktif.
+    public function terbitkanKartu(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'idKaryawan' => 'required|exists:karyawans,id',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $karyawan = Karyawan::find($request->idKaryawan);
+            if (!$karyawan) {
+                return $this->response("Data sudah dihapus.", Response::HTTP_NOT_FOUND);
+            }
+
+            do {
+                $uid = 'KAR-' . strtoupper(Str::random(12));
+            } while (Karyawan::where('kartu_uid', $uid)->exists());
+
+            $karyawan->update([
+                'kartu_uid'            => $uid,
+                'kartu_status'         => 'aktif',
+                'kartu_diterbitkan_at' => now(),
+            ]);
+
+            return $this->response("Kartu diterbitkan.", Response::HTTP_OK, [
+                'idKaryawan'        => $karyawan->id,
+                'kartuUid'          => $uid,
+                'kartuStatus'       => 'aktif',
+                'kartuDiterbitkanAt'=> $karyawan->kartu_diterbitkan_at,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Blokir kartu (hilang/blokir) tanpa menerbitkan yang baru -> scan ditolak.
+    public function blokirKartu(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'idKaryawan' => 'required|exists:karyawans,id',
+                'status'     => 'sometimes|in:hilang,blokir',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $karyawan = Karyawan::find($request->idKaryawan);
+            if (!$karyawan) {
+                return $this->response("Data sudah dihapus.", Response::HTTP_NOT_FOUND);
+            }
+            if (!$karyawan->kartu_uid) {
+                return $this->response("Karyawan belum memiliki kartu.", Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            $status = $request->input('status', 'hilang');
+            $karyawan->update(['kartu_status' => $status]);
+
+            return $this->response("Kartu diblokir ({$status}).", Response::HTTP_OK, [
+                'idKaryawan'  => $karyawan->id,
+                'kartuStatus' => $status,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     private function toApiArray(array $data): array
     {
         $map = [

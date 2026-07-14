@@ -70,6 +70,11 @@ class RouteServiceProvider extends ServiceProvider
                 ->middleware('api')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/akademik-service-routes.php'));
+                //Kartu absensi (utilitas QR) registration
+            Route::prefix('api')
+                ->middleware('api')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/kartu-routes.php'));
         });
     }
 

@@ -14,5 +14,7 @@ Route::prefix('siswa')->group(function () {
     Route::get('/', [SiswaController::class, 'show']);
     Route::post('/', [SiswaController::class, 'store']);
     Route::post('update', [SiswaController::class, 'update']);
+    Route::post('kartu/terbitkan', [SiswaController::class, 'terbitkanKartu']);
+    Route::post('kartu/blokir', [SiswaController::class, 'blokirKartu']);
     Route::delete('/{id}', [SiswaController::class, 'destroy']);
 });

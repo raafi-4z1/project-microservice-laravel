@@ -10,5 +10,7 @@ Route::prefix('karyawan')->group(function () {
     Route::get('/', [KaryawanController::class, 'show']);
     Route::post('/', [KaryawanController::class, 'store']);
     Route::post('update', [KaryawanController::class, 'update']);
+    Route::post('kartu/terbitkan', [KaryawanController::class, 'terbitkanKartu']);
+    Route::post('kartu/blokir', [KaryawanController::class, 'blokirKartu']);
     Route::delete('/{id}', [KaryawanController::class, 'destroy']);
 });

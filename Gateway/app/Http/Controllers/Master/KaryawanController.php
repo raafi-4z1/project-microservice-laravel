@@ -138,6 +138,36 @@ class KaryawanController extends Controller
         }
     }
 
+    // Terbitkan/ganti kartu absensi karyawan
+    public function terbitkanKartu(Request $request)
+    {
+        try {
+            $response = $this->performRequest('POST', "{$this->reqUrl}/kartu/terbitkan", $request->all());
+            $decode = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_OK) {
+                $this->auditLog('updated', 'karyawan', $request->idKaryawan, ['kartu' => 'diterbitkan']);
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Blokir kartu absensi karyawan (hilang/blokir)
+    public function blokirKartu(Request $request)
+    {
+        try {
+            $response = $this->performRequest('POST', "{$this->reqUrl}/kartu/blokir", $request->all());
+            $decode = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_OK) {
+                $this->auditLog('updated', 'karyawan', $request->idKaryawan, ['kartu' => 'diblokir', 'status' => $request->input('status', 'hilang')]);
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     private function decode($response): array
     {
         $raw = $response instanceof \Illuminate\Http\Response

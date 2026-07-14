@@ -14,5 +14,7 @@ Route::prefix('guru')->group(function () {
     Route::get('/', [GuruController::class, 'show']);
     Route::post('/', [GuruController::class, 'store']);
     Route::post('update', [GuruController::class, 'update']);
+    Route::post('kartu/terbitkan', [GuruController::class, 'terbitkanKartu']);
+    Route::post('kartu/blokir', [GuruController::class, 'blokirKartu']);
     Route::delete('/{id}', [GuruController::class, 'destroy']);
 });
