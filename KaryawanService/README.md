@@ -38,6 +38,8 @@ Base URL: `https://gateway.test/api`
 | POST | `/karyawan` | SuperAdmin, Admin | Tambah karyawan (foto opsional) |
 | POST | `/karyawan/update` | SuperAdmin, Admin | Update (kirim `idKaryawan` + field berubah) |
 | DELETE | `/karyawan/{id}` | SuperAdmin, Admin | Hapus (soft delete) |
+| POST | `/karyawan/kartu/terbitkan` | SuperAdmin, Admin | Terbitkan/ganti kartu absensi (UID prefix `KAR-`) |
+| POST | `/karyawan/kartu/blokir` | SuperAdmin, Admin | Blokir kartu (`status`: `hilang`/`blokir`) |
 
 **Internal (dipanggil Gateway, tidak diekspos ke klien):**
 
@@ -45,6 +47,10 @@ Base URL: `https://gateway.test/api`
 |--------|----------|------------|
 | GET | `/karyawan/lookup?email=` | Resolve `karyawan_id` dari email (untuk absensi/RBAC) |
 | GET | `/karyawan/lookup-kartu?uid=` | Resolve kartu absensi (scan) → karyawan |
+| POST | `/karyawan/pin/set` | Set PIN absensi (di-hash) — user-facing: `POST /absensi/pin/atur` |
+| POST | `/karyawan/pin/verify` | Verifikasi NIP+PIN saat absen PIN di terminal |
+
+> Tabel `karyawans` memiliki kolom absensi: `kartu_uid`, `kartu_status` (`belum_terbit`/`aktif`/`hilang`/`blokir`), `kartu_diterbitkan_at`, `pin_hash` (hidden). Alur absensi lengkap: lihat [Gateway/README.md](../Gateway/README.md) & [AkademikService/README.md](../AkademikService/README.md).
 
 Saat `POST /karyawan`, Gateway otomatis membuat akun user role `Karyawan` (password default = email → wajib ganti saat login pertama), sama seperti alur Guru/Siswa.
 

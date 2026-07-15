@@ -35,6 +35,9 @@ GURU_SERVICE_SECRET=base64:...
 SISWA_SERVICE_BASE_URL=http://siswaservice.test
 SISWA_SERVICE_SECRET=base64:...
 
+KARYAWAN_SERVICE_BASE_URL=http://karyawanservice.test
+KARYAWAN_SERVICE_SECRET=base64:...
+
 AKADEMIK_SERVICE_BASE_URL=http://akademikservice.test
 AKADEMIK_SERVICE_SECRET=base64:...
 
@@ -70,6 +73,27 @@ Base URL: `https://gateway.test/api`
 | GET | `/users/{id}` | SuperAdmin, Admin | Detail akun user by ID |
 | POST | `/users/{id}/password` | SuperAdmin, Admin | Reset password user lain (token target dicabut) |
 | DELETE | `/users/{id}` | SuperAdmin, Admin | Hapus akun user (soft delete) |
+
+### Kartu Absensi
+
+| Method | Endpoint | Role | Keterangan |
+|--------|----------|------|------------|
+| POST | `/siswa/kartu/terbitkan` · `/guru/kartu/terbitkan` · `/karyawan/kartu/terbitkan` | SuperAdmin, Admin | Terbitkan/ganti kartu (UID opaque berprefix SIS-/GUR-/KAR-) |
+| POST | `/siswa/kartu/blokir` · `/guru/kartu/blokir` · `/karyawan/kartu/blokir` | SuperAdmin, Admin | Blokir kartu (`status`: `hilang`/`blokir`) |
+| GET | `/kartu/qr?data=<uid>` | SuperAdmin, Admin | Render QR kartu sebagai `image/svg+xml` |
+
+### Absensi (Scan & PIN via Terminal)
+
+Endpoint di bawah **tidak** memakai Bearer token — melainkan autentikasi **terminal** (header `X-Terminal-Id` + `X-Terminal-Token`). Lihat bagian [Terminal Absensi](#terminal-absensi).
+
+| Method | Endpoint | Auth | Keterangan |
+|--------|----------|------|------------|
+| POST | `/absensi/scan` | Terminal | Scan kartu masuk (siswa gerbang / guru & karyawan). Resolve UID→subjek via prefix, catat absensi. Idempotent per hari |
+| POST | `/absensi/pin/absen` | Terminal | Absen via NIP+PIN saat lupa kartu (butuh jendela PIN aktif) |
+| POST | `/absensi/pin/atur` | Guru, Karyawan | Pegawai mengatur PIN sendiri (4-6 digit) |
+| POST | `/absensi/pin/buka` | SuperAdmin, Admin | Buka jendela PIN untuk seorang pegawai (time-boxed, sekali pakai) |
+
+> Absensi per pelajaran, izin keluar, dan rekap berada di prefix `/akademik/absensi/*` — lihat [AkademikService/README.md](../AkademikService/README.md).
 
 ---
 
@@ -175,6 +199,33 @@ password saat login pertama**:
 - `POST /logout-all` mencabut **semua** sesi di semua device — gunakan jika akun
   dicurigai dipakai orang lain
 - Endpoint `/login`, `/refresh`, `/password`, dan `/oauth/token` dibatasi **5 percobaan per menit**
+
+---
+
+## Terminal Absensi
+
+Absen via scan/PIN hanya diterima dari **terminal terdaftar** (perangkat sekolah di gerbang/ruang guru/TU), bukan dari perangkat pribadi. Autentikasi terminal terpisah dari Bearer token user.
+
+**Header wajib:** `X-Terminal-Id` dan `X-Terminal-Token` (token dicek terhadap hash SHA-256 di DB).
+
+**Mode terminal:**
+
+| Mode | Cara verifikasi lokasi | Untuk |
+|------|------------------------|-------|
+| `produksi` | IP request harus di `ip_allowlist` (LAN sekolah) | perangkat tetap di sekolah |
+| `demo` | `lat`/`lng` di body harus di dalam geofence (radius) terminal | simulasi tanpa jaringan sekolah |
+
+**Daftarkan terminal** (token hanya ditampilkan sekali):
+
+```bash
+# Produksi (allowlist IP/CIDR LAN)
+php artisan terminal:register --nama="Gerbang Utama" --lokasi=gerbang --mode=produksi --ip="192.168.1.0/24"
+
+# Demo (geofence)
+php artisan terminal:register --nama="Gerbang Utama" --lokasi=gerbang --mode=demo --lat=-6.200000 --lng=106.816666 --radius=150
+```
+
+**Jendela PIN (lupa kartu):** admin membuka jendela time-boxed (default 10 menit, dari `durasi_pin_window_menit` pengaturan absensi) untuk seorang pegawai; pegawai lalu absen dengan NIP+PIN di terminal. Jendela **sekali pakai** — hangus setelah dipakai atau kedaluwarsa.
 
 ---
 

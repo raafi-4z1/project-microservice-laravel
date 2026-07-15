@@ -1704,6 +1704,234 @@
       ]
     },
     {
+      "name": "Karyawan",
+      "description": "CRUD data karyawan (via KaryawanService). Write butuh SuperAdmin/Admin. Membuat karyawan otomatis membuat akun user role Karyawan (password default, mustChangePassword=true).",
+      "item": [
+        {
+          "name": "GET Semua Karyawan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/karyawan/all?page=1&per_page=5&search=",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "karyawan",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Halaman"
+                },
+                {
+                  "key": "per_page",
+                  "value": "5",
+                  "description": "Item per halaman"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Cari nama/nip/email/jabatan (opsional)"
+                }
+              ]
+            },
+            "description": "Daftar karyawan (paginasi). Foto tidak disertakan."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Karyawan by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/karyawan?idKaryawan=1",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "karyawan"
+              ],
+              "query": [
+                {
+                  "key": "idKaryawan",
+                  "value": "1",
+                  "description": "ID karyawan"
+                }
+              ]
+            },
+            "description": "Detail karyawan. Guru/Siswa hanya melihat field publik (tanpa alamat/no_telp)."
+          },
+          "response": []
+        },
+        {
+          "name": "Tambah Karyawan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "email",
+                  "value": "karyawan@sekolah.com",
+                  "type": "text"
+                },
+                {
+                  "key": "nip",
+                  "value": "1234567890",
+                  "type": "text"
+                },
+                {
+                  "key": "namaLengkap",
+                  "value": "Budi Santoso",
+                  "type": "text"
+                },
+                {
+                  "key": "jabatan",
+                  "value": "Tata Usaha",
+                  "type": "text"
+                },
+                {
+                  "key": "statusKepegawaian",
+                  "value": "Tetap",
+                  "type": "text"
+                },
+                {
+                  "key": "jenisKelamin",
+                  "value": "Laki-Laki",
+                  "type": "text"
+                },
+                {
+                  "key": "noTelp",
+                  "value": "08123456789",
+                  "type": "text"
+                },
+                {
+                  "key": "alamat",
+                  "value": "Jl. Contoh No. 1",
+                  "type": "text"
+                },
+                {
+                  "key": "foto",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseURL}}/karyawan",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "karyawan"
+              ]
+            },
+            "description": "Tambah karyawan. **SuperAdmin/Admin.** Foto opsional (JPEG/PNG, maks 2MB, min 360x480)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Karyawan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "idKaryawan",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "jabatan",
+                  "value": "Kepala Tata Usaha",
+                  "type": "text"
+                },
+                {
+                  "key": "noTelp",
+                  "value": "08987654321",
+                  "type": "text"
+                },
+                {
+                  "key": "foto",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseURL}}/karyawan/update",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "karyawan",
+                "update"
+              ]
+            },
+            "description": "Update karyawan. **SuperAdmin/Admin.** Kirim hanya field yang diubah."
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Karyawan",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/karyawan/1",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "karyawan",
+                "1"
+              ]
+            },
+            "description": "Hapus karyawan (soft delete) + hapus akun user terkait. **SuperAdmin/Admin.**"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Akademik",
       "description": "Pembagian Kelas, Pengampu Mapel, Riwayat Akademik, dan Semester Aktif.\n\n**Akses write (POST/PATCH/DELETE):** SuperAdmin, Admin.\n**Akses read GET aktif:** Semua role yang sudah login.\n**Akses read GET riwayat:** SuperAdmin, Admin saja.\n\n**Format tahun_ajaran:** `2024/2025`\n**Semester:** `1` atau `2`\n\n**Retensi data:** Semua tabel menggunakan soft delete. Endpoint `/riwayat` mengembalikan data aktif + yang sudah dihapus, disertai field `deletedAt`.",
       "item": [
@@ -3500,6 +3728,916 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Kartu Absensi",
+      "description": "Kelola kartu absensi (UID opaque berprefix SIS-/GUR-/KAR-) + QR. **SuperAdmin/Admin.** Terbitkan-ulang menimpa UID lama (kartu fisik lama otomatis mati). Blokir menandai hilang/blokir tanpa UID baru.",
+      "item": [
+        {
+          "name": "Terbitkan Kartu Siswa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idSiswa\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/siswa/kartu/terbitkan",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "siswa",
+                "kartu",
+                "terbitkan"
+              ]
+            },
+            "description": "Terbitkan/ganti kartu siswa. Response berisi kartuUid (prefix SIS-)."
+          },
+          "response": []
+        },
+        {
+          "name": "Blokir Kartu Siswa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idSiswa\": 1,\n  \"status\": \"hilang\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/siswa/kartu/blokir",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "siswa",
+                "kartu",
+                "blokir"
+              ]
+            },
+            "description": "Blokir kartu siswa (status: hilang/blokir). Scan kartu ini akan ditolak."
+          },
+          "response": []
+        },
+        {
+          "name": "Terbitkan Kartu Guru",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idGuru\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/guru/kartu/terbitkan",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "guru",
+                "kartu",
+                "terbitkan"
+              ]
+            },
+            "description": "Terbitkan/ganti kartu guru (prefix GUR-)."
+          },
+          "response": []
+        },
+        {
+          "name": "Blokir Kartu Guru",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idGuru\": 1,\n  \"status\": \"hilang\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/guru/kartu/blokir",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "guru",
+                "kartu",
+                "blokir"
+              ]
+            },
+            "description": "Blokir kartu guru (hilang/blokir)."
+          },
+          "response": []
+        },
+        {
+          "name": "Terbitkan Kartu Karyawan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idKaryawan\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/karyawan/kartu/terbitkan",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "karyawan",
+                "kartu",
+                "terbitkan"
+              ]
+            },
+            "description": "Terbitkan/ganti kartu karyawan (prefix KAR-)."
+          },
+          "response": []
+        },
+        {
+          "name": "Blokir Kartu Karyawan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idKaryawan\": 1,\n  \"status\": \"hilang\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/karyawan/kartu/blokir",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "karyawan",
+                "kartu",
+                "blokir"
+              ]
+            },
+            "description": "Blokir kartu karyawan (hilang/blokir)."
+          },
+          "response": []
+        },
+        {
+          "name": "QR Kartu (SVG)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/kartu/qr?data=SIS-XXXXXXXXXXXX",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "kartu",
+                "qr"
+              ],
+              "query": [
+                {
+                  "key": "data",
+                  "value": "SIS-XXXXXXXXXXXX",
+                  "description": "Isi QR = kartuUid"
+                }
+              ]
+            },
+            "description": "Render QR (image/svg+xml) dari data kartu untuk dicetak. **SuperAdmin/Admin.**"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Absensi",
+      "description": "Modul absensi: scan kartu di terminal (siswa & pegawai), absen PIN saat lupa kartu, absensi per pelajaran oleh guru, izin keluar/pulang awal, dan rekap. Waktu & ambang terlambat dihitung WIB (Asia/Jakarta).",
+      "item": [
+        {
+          "name": "Scan (Terminal)",
+          "description": "Absen via scan kartu di terminal terdaftar. Autentikasi terminal via header X-Terminal-Id + X-Terminal-Token (bukan Bearer). Mode produksi: IP di allowlist LAN; mode demo: lat/lng di dalam geofence.",
+          "item": [
+            {
+              "name": "Scan Masuk (Siswa/Pegawai)",
+              "request": {
+                "method": "POST",
+                "auth": {
+                  "type": "noauth"
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-Terminal-Id",
+                    "value": "{{terminal_id}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-Terminal-Token",
+                    "value": "{{terminal_token}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"kartu_uid\": \"SIS-XXXXXXXXXXXX\",\n  \"lat\": -6.2,\n  \"lng\": 106.816666\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/absensi/scan",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "absensi",
+                    "scan"
+                  ]
+                },
+                "description": "Scan kartu di gerbang/kantor. Gateway resolve UID via prefix -> catat absensi. Status hadir/terlambat otomatis via ambang (default 07:20 WIB). Idempotent per hari.\n\nlat/lng hanya untuk terminal mode demo (geofence)."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "PIN (Lupa Kartu)",
+          "description": "Alur absen pengganti saat pegawai lupa kartu: pegawai set PIN -> admin buka jendela (time-boxed, sekali pakai) -> pegawai absen via NIP+PIN di terminal.",
+          "item": [
+            {
+              "name": "Atur PIN (Pegawai)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pin\": \"1234\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/absensi/pin/atur",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "absensi",
+                    "pin",
+                    "atur"
+                  ]
+                },
+                "description": "Pegawai (role Guru/Karyawan) mengatur PIN sendiri (4-6 digit). Bearer token pegawai."
+              },
+              "response": []
+            },
+            {
+              "name": "Buka Jendela PIN (Admin)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"subjek_tipe\": \"guru\",\n  \"subjek_id\": 1,\n  \"durasi_menit\": 10\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/absensi/pin/buka",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "absensi",
+                    "pin",
+                    "buka"
+                  ]
+                },
+                "description": "**SuperAdmin/Admin** membuka jendela PIN untuk seorang pegawai. durasi_menit opsional (default 10, maks 60)."
+              },
+              "response": []
+            },
+            {
+              "name": "Absen via PIN (Terminal)",
+              "request": {
+                "method": "POST",
+                "auth": {
+                  "type": "noauth"
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-Terminal-Id",
+                    "value": "{{terminal_id}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-Terminal-Token",
+                    "value": "{{terminal_token}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"subjek_tipe\": \"guru\",\n  \"nip\": \"9876543210123401\",\n  \"pin\": \"1234\",\n  \"lat\": -6.2,\n  \"lng\": 106.816666\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/absensi/pin/absen",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "absensi",
+                    "pin",
+                    "absen"
+                  ]
+                },
+                "description": "Pegawai absen dengan NIP+PIN di terminal saat jendela aktif. Jendela sekali pakai.\n\nlat/lng hanya untuk terminal mode demo."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Pelajaran (Guru)",
+          "description": "Guru menandai kehadiran siswa saat jam pelajarannya. Gateway resolve guru_id dari akun login (X-Guru-Id).",
+          "item": [
+            {
+              "name": "Jam Sekarang",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/absensi/pelajaran/sekarang",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "absensi",
+                    "pelajaran",
+                    "sekarang"
+                  ]
+                },
+                "description": "**Role Guru.** Jadwal guru yang sedang berlangsung (hari+jam WIB) + daftar siswa kelas itu beserta status yang sudah/belum ditandai hari ini (namaLengkap ikut disertakan)."
+              },
+              "response": []
+            },
+            {
+              "name": "Daftar Siswa per Jadwal",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/absensi/pelajaran/7/siswa?tanggal=",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "absensi",
+                    "pelajaran",
+                    "7",
+                    "siswa"
+                  ],
+                  "query": [
+                    {
+                      "key": "tanggal",
+                      "value": "",
+                      "description": "Tanggal (opsional, default hari ini WIB)"
+                    }
+                  ]
+                },
+                "description": "Daftar siswa + status untuk 1 jadwal. **Guru (miliknya) / Admin.** Ganti angka 7 dengan jadwal_id."
+              },
+              "response": []
+            },
+            {
+              "name": "Tandai Absensi",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"jadwal_id\": 7,\n  \"tanggal\": \"2026-07-15\",\n  \"absensi\": [\n    {\n      \"siswa_id\": 4,\n      \"status\": \"hadir\"\n    },\n    {\n      \"siswa_id\": 5,\n      \"status\": \"izin\",\n      \"keterangan\": \"sakit\"\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/akademik/absensi/pelajaran/tandai",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "absensi",
+                    "pelajaran",
+                    "tandai"
+                  ]
+                },
+                "description": "**Role Guru.** Menandai status siswa untuk sebuah jadwal. Hanya jadwal milik guru itu. siswa di luar kelas diabaikan (dilewati). status: hadir/izin/sakit/alpa."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Keluar (Pulang Awal)",
+          "description": "Izin keluar / pulang awal siswa, disetujui wali kelas / admin (disetujui_oleh = id user penyetuju).",
+          "item": [
+            {
+              "name": "Catat Izin Keluar",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"siswa_id\": 4,\n  \"jenis\": \"pulang_awal\",\n  \"keterangan\": \"dijemput orang tua\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseURL}}/akademik/absensi/keluar",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "absensi",
+                    "keluar"
+                  ]
+                },
+                "description": "**SuperAdmin/Admin/Guru.** jenis: pulang_awal/izin_kegiatan/lomba/pulang_sakit. jam_keluar opsional (default sekarang WIB)."
+              },
+              "response": []
+            },
+            {
+              "name": "Daftar Izin Keluar",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/absensi/keluar?tanggal=&siswa_id=",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "absensi",
+                    "keluar"
+                  ],
+                  "query": [
+                    {
+                      "key": "tanggal",
+                      "value": "",
+                      "description": "Tanggal (opsional, default hari ini)"
+                    },
+                    {
+                      "key": "siswa_id",
+                      "value": "",
+                      "description": "Filter siswa (opsional)"
+                    }
+                  ]
+                },
+                "description": "Daftar izin keluar. **SuperAdmin/Admin/Guru.**"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Rekap",
+          "description": "Ringkasan absensi. Rentang default = awal bulan berjalan s/d hari ini (WIB); override via tanggal_dari & tanggal_sampai. Semester dari request atau semester aktif.",
+          "item": [
+            {
+              "name": "Rekap Harian Kelas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/absensi/rekap/harian/kelas/1?tanggal_dari=2026-07-01&tanggal_sampai=2026-07-31&tahun_ajaran=2024/2025&semester=2",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "absensi",
+                    "rekap",
+                    "harian",
+                    "kelas",
+                    "1"
+                  ],
+                  "query": [
+                    {
+                      "key": "tanggal_dari",
+                      "value": "2026-07-01",
+                      "description": "Opsional"
+                    },
+                    {
+                      "key": "tanggal_sampai",
+                      "value": "2026-07-31",
+                      "description": "Opsional"
+                    },
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "Opsional"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "2",
+                      "description": "Opsional"
+                    }
+                  ]
+                },
+                "description": "Rekap per siswa dalam 1 kelas (hadir/terlambat/izin/sakit/alpa + total), namaLengkap disertakan. **SuperAdmin/Admin/Guru/Karyawan.**"
+              },
+              "response": []
+            },
+            {
+              "name": "Rekap Harian Siswa",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/absensi/rekap/harian/siswa/1?tanggal_dari=&tanggal_sampai=",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "absensi",
+                    "rekap",
+                    "harian",
+                    "siswa",
+                    "1"
+                  ],
+                  "query": [
+                    {
+                      "key": "tanggal_dari",
+                      "value": "",
+                      "description": "Opsional"
+                    },
+                    {
+                      "key": "tanggal_sampai",
+                      "value": "",
+                      "description": "Opsional"
+                    }
+                  ]
+                },
+                "description": "Ringkasan + detail harian 1 siswa. **SuperAdmin/Admin/Guru/Karyawan.**"
+              },
+              "response": []
+            },
+            {
+              "name": "Rekap Harian Saya (Siswa)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/absensi/rekap/harian/saya",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "absensi",
+                    "rekap",
+                    "harian",
+                    "saya"
+                  ]
+                },
+                "description": "Ringkasan + detail harian milik sendiri. **Role Siswa.**"
+              },
+              "response": []
+            },
+            {
+              "name": "Rekap Pelajaran Siswa",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/absensi/rekap/pelajaran/siswa/1?tanggal_dari=&tanggal_sampai=",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "absensi",
+                    "rekap",
+                    "pelajaran",
+                    "siswa",
+                    "1"
+                  ],
+                  "query": [
+                    {
+                      "key": "tanggal_dari",
+                      "value": "",
+                      "description": "Opsional"
+                    },
+                    {
+                      "key": "tanggal_sampai",
+                      "value": "",
+                      "description": "Opsional"
+                    }
+                  ]
+                },
+                "description": "Ringkasan absensi per pelajaran 1 siswa. **SuperAdmin/Admin/Guru/Karyawan.**"
+              },
+              "response": []
+            },
+            {
+              "name": "Rekap Pelajaran Saya (Siswa)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/absensi/rekap/pelajaran/saya",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "absensi",
+                    "rekap",
+                    "pelajaran",
+                    "saya"
+                  ]
+                },
+                "description": "Ringkasan absensi per pelajaran milik sendiri. **Role Siswa.**"
+              },
+              "response": []
+            },
+            {
+              "name": "Rekap Pegawai",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/absensi/rekap/pegawai/guru/1?tanggal_dari=&tanggal_sampai=",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "absensi",
+                    "rekap",
+                    "pegawai",
+                    "guru",
+                    "1"
+                  ],
+                  "query": [
+                    {
+                      "key": "tanggal_dari",
+                      "value": "",
+                      "description": "Opsional"
+                    },
+                    {
+                      "key": "tanggal_sampai",
+                      "value": "",
+                      "description": "Opsional"
+                    }
+                  ]
+                },
+                "description": "Ringkasan + detail absensi pegawai. **SuperAdmin/Admin.** Path: /rekap/pegawai/{guru|karyawan}/{id}."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
     }
   ],
   "event": [
@@ -3542,6 +4680,16 @@
       "key": "superadmin_password",
       "value": "",
       "description": "Password SuperAdmin sesuai SUPERADMIN_PASSWORD di .env Gateway. Isi manual sebelum Login."
+    },
+    {
+      "key": "terminal_id",
+      "value": "1",
+      "description": "ID terminal absensi (dari `php artisan terminal:register` di Gateway)."
+    },
+    {
+      "key": "terminal_token",
+      "value": "",
+      "description": "Token terminal (ditampilkan sekali saat register). Isi di Current Value."
     }
   ]
 }

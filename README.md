@@ -16,17 +16,19 @@ Klien / Frontend
       ├──────────────► MapelService        http://mapelservice.test
       ├──────────────► GuruService         http://guruservice.test
       ├──────────────► SiswaService        http://siswaservice.test
+      ├──────────────► KaryawanService     http://karyawanservice.test
       └──────────────► AkademikService     http://akademikservice.test
 ```
 
 | Folder | Domain lokal | Fungsi | README |
 |--------|-------------|--------|--------|
-| `Gateway` | `gateway.test` | Auth (OAuth2 Passport), routing, RBAC, audit log | [Gateway/README.md](Gateway/README.md) |
+| `Gateway` | `gateway.test` | Auth (OAuth2 Passport), routing, RBAC, audit log, **terminal absensi** | [Gateway/README.md](Gateway/README.md) |
 | `ClassMicroservices` | `classmicroservices.test` | Manajemen ruang kelas | [ClassMicroservices/README.md](ClassMicroservices/README.md) |
 | `MapelService` | `mapelservice.test` | Manajemen mata pelajaran | [MapelService/README.md](MapelService/README.md) |
-| `GuruService` | `guruservice.test` | Manajemen data guru + foto | [GuruService/README.md](GuruService/README.md) |
-| `SiswaService` | `siswaservice.test` | Manajemen data siswa + foto | [SiswaService/README.md](SiswaService/README.md) |
-| `AkademikService` | `akademikservice.test` | Pembagian kelas, pengampu mapel, jam & jadwal, nilai, raport, ranking | [AkademikService/README.md](AkademikService/README.md) |
+| `GuruService` | `guruservice.test` | Manajemen data guru + foto + kartu/PIN absensi | [GuruService/README.md](GuruService/README.md) |
+| `SiswaService` | `siswaservice.test` | Manajemen data siswa + foto + kartu absensi | [SiswaService/README.md](SiswaService/README.md) |
+| `KaryawanService` | `karyawanservice.test` | Manajemen data karyawan + foto + kartu/PIN absensi | [KaryawanService/README.md](KaryawanService/README.md) |
+| `AkademikService` | `akademikservice.test` | Pembagian kelas, pengampu mapel, jam & jadwal, nilai, raport, ranking, **absensi** (harian, pelajaran, keluar, rekap) | [AkademikService/README.md](AkademikService/README.md) |
 
 ---
 
@@ -485,17 +487,19 @@ php artisan tinker
 
 Untuk detail endpoint per service, lihat README masing-masing service:
 
-- [Gateway/README.md](Gateway/README.md) — Auth, User Management, Audit Log
+- [Gateway/README.md](Gateway/README.md) — Auth, User Management, Audit Log, Kartu & Terminal Absensi
 - [ClassMicroservices/README.md](ClassMicroservices/README.md) — Ruang Kelas
 - [MapelService/README.md](MapelService/README.md) — Mata Pelajaran
-- [GuruService/README.md](GuruService/README.md) — Guru
-- [SiswaService/README.md](SiswaService/README.md) — Siswa
-- [AkademikService/README.md](AkademikService/README.md) — Semester, Kelas, Pengampu, Jam, Jadwal, Nilai, Raport
+- [GuruService/README.md](GuruService/README.md) — Guru + kartu/PIN
+- [SiswaService/README.md](SiswaService/README.md) — Siswa + kartu
+- [KaryawanService/README.md](KaryawanService/README.md) — Karyawan + kartu/PIN
+- [AkademikService/README.md](AkademikService/README.md) — Semester, Kelas, Pengampu, Jam, Jadwal, Nilai, Raport, Absensi (harian/pelajaran/keluar/rekap)
 
 ### Testing Otomatis (PowerShell)
 
-Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (165 skenario)
-mencakup auth, CRUD semua service, akademik, RBAC 4 role, sesi multi-device,
+Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (181 skenario)
+mencakup auth, CRUD semua service, akademik, **absensi** (kartu/QR, keluar,
+rekap, jendela PIN, autentikasi terminal), RBAC 4 role, sesi multi-device,
 dan validasi cross-service. Kredensial dibaca dari environment variable
 (tidak ditulis di file).
 
@@ -503,6 +507,19 @@ dan validasi cross-service. Kredensial dibaca dari environment variable
 $env:TEST_ADMIN_PASSWORD = "PasswordSuperAdmin"
 powershell -ExecutionPolicy Bypass -File run-tests.ps1
 ```
+
+Uji **scan kartu di terminal** (opsional) — daftarkan terminal dulu
+(`php artisan terminal:register` di Gateway), lalu set:
+
+```powershell
+$env:TEST_TERMINAL_ID    = "1"
+$env:TEST_TERMINAL_TOKEN = "term_xxx"   # ditampilkan sekali saat register
+$env:TEST_TERMINAL_LAT   = "-6.200000"  # untuk terminal mode demo (geofence)
+$env:TEST_TERMINAL_LNG   = "106.816666"
+```
+
+Tanpa variabel ini, uji scan positif otomatis di-*skip* (uji negatif tanpa
+terminal → 401 tetap jalan).
 
 Menguji dari PC lain di LAN — arahkan ke IP server (tambahkan hosts entry
 `<IP-server> gateway.test` di PC penguji agar Host header benar):
