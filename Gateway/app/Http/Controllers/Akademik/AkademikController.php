@@ -725,6 +725,34 @@ class AkademikController extends Controller
         }
     }
 
+    // ─── Absensi keluar (pulang awal / izin keluar) ──────────────────────────────
+
+    // POST /akademik/absensi/keluar — Guru (wali kelas) / Admin menyetujui izin keluar
+    public function catatKeluar(Request $request)
+    {
+        try {
+            $response = $this->performRequest('POST', "{$this->reqUrl}/absensi/keluar", $request->all(), [
+                'X-User-Id' => $request->user()->id,
+            ]);
+            $decode = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_CREATED) {
+                $this->auditLog('created', 'absensi_keluar', $decode['data']['idKeluar'] ?? null, [
+                    'siswa_id' => $request->siswa_id,
+                    'jenis'    => $request->jenis,
+                ]);
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // GET /akademik/absensi/keluar — daftar izin keluar (Guru/Admin)
+    public function daftarKeluar(Request $request)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/absensi/keluar", $request->only(['tanggal', 'siswa_id']));
+    }
+
     // Tambahkan namaLengkap ke tiap entri data.siswa (AkademikService hanya simpan id)
     private function enrichSiswaResponse($response)
     {

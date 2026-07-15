@@ -82,4 +82,8 @@ Route::prefix('akademik')->group(function () {
     Route::get('absensi/pelajaran/sekarang',          [AbsensiController::class, 'pelajaranSekarang']);
     Route::get('absensi/pelajaran/{jadwal_id}/siswa', [AbsensiController::class, 'daftarSiswaJadwal']);
     Route::post('absensi/pelajaran/tandai',           [AbsensiController::class, 'tandaiPelajaran']);
+
+    // Absensi keluar (pulang awal / izin keluar) — disetujui wali kelas / admin
+    Route::post('absensi/keluar', [AbsensiController::class, 'catatKeluar']);
+    Route::get('absensi/keluar',  [AbsensiController::class, 'daftarKeluar']);
 });

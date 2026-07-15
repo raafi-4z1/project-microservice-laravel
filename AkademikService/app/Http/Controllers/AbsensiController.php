@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Validator;
 use App\Models\AbsensiHarian;
+use App\Models\AbsensiKeluar;
 use App\Models\AbsensiPegawai;
 use App\Models\AbsensiPelajaran;
 use App\Models\JadwalPelajaran;
@@ -303,7 +304,92 @@ class AbsensiController extends Controller
         }
     }
 
+    // ── Absensi keluar (pulang awal / izin keluar) ───────────────────────────
+
+    // POST /akademik/absensi/keluar — dicatat & disetujui wali kelas / admin
+    public function catatKeluar(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'siswa_id'    => 'required|integer|min:1',
+                'jenis'       => 'required|in:pulang_awal,izin_kegiatan,lomba,pulang_sakit',
+                'keterangan'  => 'nullable|string|max:255',
+                'jam_keluar'  => 'nullable|date',
+                'terminal_id' => 'nullable|integer|min:1',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            // Penyetuju = user id wali kelas/admin (diinject Gateway via X-User-Id)
+            $disetujui = $request->header('X-User-Id') ?: $request->input('disetujui_oleh');
+            if (!$disetujui) {
+                return $this->response('Penyetuju tidak diketahui.', Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            $jamKeluar = $request->filled('jam_keluar')
+                ? Carbon::parse($request->jam_keluar, self::TZ)
+                : Carbon::now(self::TZ);
+
+            $record = AbsensiKeluar::create([
+                'siswa_id'       => $request->siswa_id,
+                'tanggal'        => $jamKeluar->toDateString(),
+                'jam_keluar'     => $jamKeluar,
+                'jenis'          => $request->jenis,
+                'keterangan'     => $request->keterangan,
+                'disetujui_oleh' => (int) $disetujui,
+                'terminal_id'    => $request->terminal_id,
+            ]);
+
+            return $this->response('Izin keluar tercatat.', Response::HTTP_CREATED, $this->toApiArrayKeluar($record));
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // GET /akademik/absensi/keluar — daftar izin keluar (filter tanggal, opsional siswa_id)
+    public function daftarKeluar(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'tanggal'  => 'nullable|date',
+                'siswa_id' => 'nullable|integer|min:1',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $tanggal = $request->input('tanggal', Carbon::now(self::TZ)->toDateString());
+
+            $query = AbsensiKeluar::where('tanggal', $tanggal);
+            if ($request->filled('siswa_id')) {
+                $query->where('siswa_id', $request->siswa_id);
+            }
+
+            $records = $query->orderBy('jam_keluar')->get()
+                ->map(fn($r) => $this->toApiArrayKeluar($r))->all();
+
+            return $this->response("Daftar izin keluar tanggal {$tanggal}.", Response::HTTP_OK, $records);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     // ── Helper ──────────────────────────────────────────────────────────────
+
+    private function toApiArrayKeluar(AbsensiKeluar $r): array
+    {
+        return [
+            'idKeluar'      => $r->id,
+            'siswaId'       => $r->siswa_id,
+            'tanggal'       => $r->tanggal instanceof \Carbon\Carbon ? $r->tanggal->toDateString() : $r->tanggal,
+            'jamKeluar'     => $r->jam_keluar instanceof \Carbon\Carbon ? $r->jam_keluar->toDateTimeString() : $r->jam_keluar,
+            'jenis'         => $r->jenis,
+            'keterangan'    => $r->keterangan,
+            'disetujuiOleh' => $r->disetujui_oleh,
+            'terminalId'    => $r->terminal_id,
+        ];
+    }
 
     // guru_id dari header X-Guru-Id (diinject Gateway) atau param guru_id
     private function guruIdDari(Request $request): ?int

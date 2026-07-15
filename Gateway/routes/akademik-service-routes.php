@@ -79,4 +79,8 @@ Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.akademik_pr
     Route::get('absensi/pelajaran/sekarang', [AkademikController::class, 'getPelajaranSekarang'])->middleware('check.role:Guru');
     Route::post('absensi/pelajaran/tandai', [AkademikController::class, 'tandaiPelajaran'])->middleware('check.role:Guru');
     Route::get('absensi/pelajaran/{jadwal_id}/siswa', [AkademikController::class, 'getDaftarSiswaJadwal'])->middleware('check.role:SuperAdmin,Admin,Guru');
+
+    // Absensi keluar (pulang awal / izin keluar) — disetujui wali kelas / admin
+    Route::post('absensi/keluar', [AkademikController::class, 'catatKeluar'])->middleware('check.role:SuperAdmin,Admin,Guru');
+    Route::get('absensi/keluar', [AkademikController::class, 'daftarKeluar'])->middleware('check.role:SuperAdmin,Admin,Guru');
 });
