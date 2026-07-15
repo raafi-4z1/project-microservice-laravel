@@ -532,6 +532,29 @@ powershell -ExecutionPolicy Bypass -File run-tests.ps1
 
 ---
 
+## Membangun App Android (klien)
+
+App Android dibangun dari spesifikasi (`android-app-prompt.md`) + panduan fase
+(`android-build-phases.md`) memakai Claude Code — tidak ada kode Android di repo
+ini. Untuk merakit folder dokumen yang dibutuhkan:
+
+```powershell
+# generate dulu referensi DTO (berisi akun test — gitignored)
+$env:TEST_ADMIN_PASSWORD = "PasswordSuperAdmin"
+powershell -ExecutionPolicy Bypass -File capture-api-samples.ps1
+
+# rakit bundle project Android (buat folder + CLAUDE.md + .gitignore)
+powershell -ExecutionPolicy Bypass -File setup-android-project.ps1
+```
+
+Menghasilkan `../sim-sekolah-android/` berisi `CLAUDE.md` + `docs/`
+(android-app-prompt, android-build-phases, api-sample-responses, Postman,
+ui-ux/). Lalu buka di Android Studio dan jalankan fase demi fase dari
+`docs/android-build-phases.md`. Catatan: `api-sample-responses.md` berisi akun
+test → dikirim lewat jalur lain, jangan commit.
+
+---
+
 ## Maintenance / Operasional
 
 ### Backup Database
