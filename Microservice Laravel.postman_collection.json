@@ -1936,6 +1936,189 @@
       "description": "Pembagian Kelas, Pengampu Mapel, Riwayat Akademik, dan Semester Aktif.\n\n**Akses write (POST/PATCH/DELETE):** SuperAdmin, Admin.\n**Akses read GET aktif:** Semua role yang sudah login.\n**Akses read GET riwayat:** SuperAdmin, Admin saja.\n\n**Format tahun_ajaran:** `2024/2025`\n**Semester:** `1` atau `2`\n\n**Retensi data:** Semua tabel menggunakan soft delete. Endpoint `/riwayat` mengembalikan data aktif + yang sudah dihapus, disertai field `deletedAt`.",
       "item": [
         {
+          "name": "Tetapkan Wali Kelas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guru_id\": 1,\n  \"kelas_id\": 1,\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": \"2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/wali",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "wali"
+              ]
+            },
+            "description": "Tetapkan wali kelas. **SuperAdmin/Admin.** Satu kelas satu wali per semester (409 jika sudah ada)."
+          },
+          "response": []
+        },
+        {
+          "name": "Ganti Wali Kelas",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guru_id\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/wali/1",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "wali",
+                "1"
+              ]
+            },
+            "description": "Ganti guru wali (ganti angka 1 dengan idWaliKelas). **SuperAdmin/Admin.**"
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Wali Kelas",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/wali/1",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "wali",
+                "1"
+              ]
+            },
+            "description": "Batalkan penugasan wali (soft delete). **SuperAdmin/Admin.**"
+          },
+          "response": []
+        },
+        {
+          "name": "Wali Kelas per Kelas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/kelas/1/wali?tahun_ajaran=2024/2025&semester=2",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "kelas",
+                "1",
+                "wali"
+              ],
+              "query": [
+                {
+                  "key": "tahun_ajaran",
+                  "value": "2024/2025",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "semester",
+                  "value": "2",
+                  "description": "Opsional"
+                }
+              ]
+            },
+            "description": "Wali aktif satu kelas."
+          },
+          "response": []
+        },
+        {
+          "name": "Kelas yang Diwali Guru",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/guru/1/wali?tahun_ajaran=2024/2025&semester=2",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "guru",
+                "1",
+                "wali"
+              ],
+              "query": [
+                {
+                  "key": "tahun_ajaran",
+                  "value": "2024/2025",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "semester",
+                  "value": "2",
+                  "description": "Opsional"
+                }
+              ]
+            },
+            "description": "Kelas yang diwali seorang guru."
+          },
+          "response": []
+        },
+        {
           "name": "--- SEMESTER AKTIF ---",
           "item": [
             {

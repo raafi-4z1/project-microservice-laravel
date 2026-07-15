@@ -15,6 +15,7 @@ use App\Models\JadwalPelajaran;
 use App\Models\PengaturanAbsensi;
 use App\Models\SemesterAktif;
 use App\Models\SiswaKelas;
+use App\Models\WaliKelas;
 use App\Traits\ApiResponser;
 
 /**
@@ -327,6 +328,17 @@ class AbsensiController extends Controller
                 return $this->response('Penyetuju tidak diketahui.', Response::HTTP_UNPROCESSABLE_ENTITY);
             }
 
+            // Enforcement wali kelas: jika penyetuju seorang Guru (X-Guru-Id diinject
+            // Gateway), ia HANYA boleh menyetujui siswa di kelas asuhannya.
+            // Admin/SuperAdmin tidak mengirim X-Guru-Id -> lewati (override).
+            $guruPenyetuju = $request->header('X-Guru-Id');
+            if ($guruPenyetuju) {
+                $cek = $this->pastikanWaliKelas((int) $guruPenyetuju, (int) $request->siswa_id);
+                if ($cek instanceof \Illuminate\Http\JsonResponse) {
+                    return $cek;
+                }
+            }
+
             $jamKeluar = $request->filled('jam_keluar')
                 ? Carbon::parse($request->jam_keluar, self::TZ)
                 : Carbon::now(self::TZ);
@@ -560,6 +572,38 @@ class AbsensiController extends Controller
         }
         $row['total'] = $total;
         return $row;
+    }
+
+    // Pastikan guru penyetuju adalah wali kelas dari siswa (semester aktif).
+    // Kembalikan null jika lolos, atau JsonResponse 403/422 jika ditolak.
+    private function pastikanWaliKelas(int $guruId, int $siswaId): ?\Illuminate\Http\JsonResponse
+    {
+        $semester = SemesterAktif::where('is_aktif', true)->first();
+        if (!$semester) {
+            return $this->response('Belum ada semester aktif untuk verifikasi wali kelas.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $kelas = SiswaKelas::where('siswa_id', $siswaId)
+            ->where('tahun_ajaran', $semester->tahun_ajaran)
+            ->where('semester', $semester->semester)
+            ->first();
+        if (!$kelas) {
+            return $this->response('Siswa belum terdaftar di kelas pada semester ini — tidak dapat memverifikasi wali kelas.', Response::HTTP_FORBIDDEN);
+        }
+
+        $wali = WaliKelas::where('kelas_id', $kelas->kelas_id)
+            ->where('tahun_ajaran', $semester->tahun_ajaran)
+            ->where('semester', $semester->semester)
+            ->first();
+        if (!$wali) {
+            return $this->response('Kelas siswa ini belum memiliki wali kelas. Minta admin menetapkan wali atau setujui melalui admin.', Response::HTTP_FORBIDDEN);
+        }
+
+        if ((int) $wali->guru_id !== $guruId) {
+            return $this->response('Hanya wali kelas siswa ini yang dapat menyetujui izin keluar.', Response::HTTP_FORBIDDEN);
+        }
+
+        return null;
     }
 
     private function toApiArrayKeluar(AbsensiKeluar $r): array

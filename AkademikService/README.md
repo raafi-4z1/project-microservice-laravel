@@ -63,6 +63,18 @@ Base URL: `https://gateway.test/api`
 | GET | `/akademik/guru/{id}/mapel/riwayat` | SuperAdmin, Admin | Semua mapel pernah diampu guru |
 | GET | `/akademik/mapel/{id}/guru/riwayat` | SuperAdmin, Admin | Semua guru pernah mengampu mapel |
 
+### Wali Kelas
+
+Satu kelas punya satu wali per semester. Dipakai untuk enforcement persetujuan izin keluar (pulang awal).
+
+| Method | Endpoint | Role | Keterangan |
+|--------|----------|------|------------|
+| POST | `/akademik/wali` | SuperAdmin, Admin | Tetapkan wali kelas (`guru_id`, `kelas_id`, `tahun_ajaran`, `semester`) |
+| PATCH | `/akademik/wali/{id}` | SuperAdmin, Admin | Ganti guru wali |
+| DELETE | `/akademik/wali/{id}` | SuperAdmin, Admin | Batalkan penugasan wali (soft delete) |
+| GET | `/akademik/kelas/{id}/wali` | Semua | Wali aktif satu kelas |
+| GET | `/akademik/guru/{id}/wali` | Semua | Kelas yang diwali seorang guru |
+
 ### Jam Pelajaran
 
 | Method | Endpoint | Role | Keterangan |
@@ -133,6 +145,8 @@ Guru menandai kehadiran siswa saat jam pelajarannya. Gateway meng-inject `X-Guru
 |--------|----------|------|------------|
 | POST | `/akademik/absensi/keluar` | SuperAdmin, Admin, Guru | Catat izin keluar; disetujui wali kelas/admin (`disetujui_oleh` = id user penyetuju) |
 | GET | `/akademik/absensi/keluar` | SuperAdmin, Admin, Guru | Daftar izin keluar (filter `tanggal`, `siswa_id`) |
+
+**Enforcement wali kelas:** jika penyetuju seorang **Guru**, ia hanya boleh menyetujui siswa di **kelas asuhannya** (Gateway meng-inject `X-Guru-Id`; service mencocokkan ke [Wali Kelas](#wali-kelas) kelas aktif siswa). Bukan wali → `403`. **Admin/SuperAdmin** melewati pengecekan ini (override). Kelas siswa belum punya wali → guru diblokir `403`, admin tetap bisa.
 
 ### Absensi — Rekap
 

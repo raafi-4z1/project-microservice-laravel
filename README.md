@@ -497,10 +497,10 @@ Untuk detail endpoint per service, lihat README masing-masing service:
 
 ### Testing Otomatis (PowerShell)
 
-Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (181 skenario)
+Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (186 skenario)
 mencakup auth, CRUD semua service, akademik, **absensi** (kartu/QR, keluar,
-rekap, jendela PIN, autentikasi terminal), RBAC 4 role, sesi multi-device,
-dan validasi cross-service. Kredensial dibaca dari environment variable
+rekap, jendela PIN, wali kelas, autentikasi terminal), RBAC 4 role, sesi
+multi-device, dan validasi cross-service. Kredensial dibaca dari environment variable
 (tidak ditulis di file).
 
 ```powershell

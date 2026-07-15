@@ -16,6 +16,13 @@ Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.akademik_pr
     Route::get('kelas/{kelas_id}/siswa/riwayat', [AkademikController::class, 'getRiwayatKelas'])->middleware('check.role:SuperAdmin,Admin');
     Route::get('siswa/{siswa_id}/kelas/riwayat', [AkademikController::class, 'getRiwayatSiswa'])->middleware('check.role:SuperAdmin,Admin');
 
+    // Wali Kelas — Write: SuperAdmin, Admin | Read: semua role
+    Route::post('wali', [AkademikController::class, 'assignWali'])->middleware('check.role:SuperAdmin,Admin');
+    Route::patch('wali/{id}', [AkademikController::class, 'gantiWali'])->middleware('check.role:SuperAdmin,Admin');
+    Route::delete('wali/{id}', [AkademikController::class, 'removeWali'])->middleware('check.role:SuperAdmin,Admin');
+    Route::get('kelas/{kelas_id}/wali', [AkademikController::class, 'getWaliByKelas']);
+    Route::get('guru/{guru_id}/wali', [AkademikController::class, 'getWaliByGuru']);
+
     // Pengampu Mapel — Write: SuperAdmin, Admin | Read: semua role
     Route::post('pengampu', [AkademikController::class, 'assignGuru'])->middleware('check.role:SuperAdmin,Admin');
     Route::patch('pengampu/{id}', [AkademikController::class, 'gantiGuru'])->middleware('check.role:SuperAdmin,Admin');

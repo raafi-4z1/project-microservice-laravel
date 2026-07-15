@@ -1600,7 +1600,24 @@ if ($siswaTestToken) {
     Chk "POST /absensi/pin/atur sebagai Siswa (harus 403)" $r 403
 }
 
-# 16-E. Autentikasi terminal (scan) — negatif tanpa header; positif jika terminal disediakan
+# 16-F. Wali Kelas (Admin) — dipakai enforcement izin keluar
+if ($kelasId -and $guruId) {
+    $r = Api POST "akademik/wali" @{ guru_id = $guruId; kelas_id = $kelasId; tahun_ajaran = $tahun; semester = [int]$semester }
+    Chk "POST /akademik/wali (tetapkan wali)" $r 201
+    $waliId = $null; if ($script:LAST_CHK) { $waliId = $r.data.idWaliKelas }
+    $r = Api POST "akademik/wali" @{ guru_id = $guruId; kelas_id = $kelasId; tahun_ajaran = $tahun; semester = [int]$semester }
+    Chk "POST /akademik/wali duplikat (harus 409)" $r 409
+    $r = Api POST "akademik/wali" @{ guru_id = 999999; kelas_id = $kelasId; tahun_ajaran = $tahun; semester = [int]$semester }
+    Chk "POST /akademik/wali guru tidak ada (harus 404)" $r 404
+    $r = Api GET "akademik/kelas/$kelasId/wali"
+    Chk "GET /akademik/kelas/$kelasId/wali" $r 200
+    if ($waliId) {
+        $r = Api DELETE "akademik/wali/$waliId"
+        Chk "DELETE /akademik/wali/$waliId (cleanup)" $r 202
+    }
+}
+
+# 16-G. Autentikasi terminal (scan) — negatif tanpa header; positif jika terminal disediakan
 $r = Api POST "absensi/scan" @{ kartu_uid = "SIS-XXXX" }
 Chk "POST /absensi/scan tanpa header terminal (harus 401)" $r 401
 

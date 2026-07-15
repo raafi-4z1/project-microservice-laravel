@@ -9,6 +9,7 @@ use App\Http\Controllers\JadwalPelajaranController;
 use App\Http\Controllers\NilaiController;
 use App\Http\Controllers\PengaturanNilaiController;
 use App\Http\Controllers\AbsensiController;
+use App\Http\Controllers\WaliKelasController;
 
 Route::prefix('akademik')->group(function () {
 
@@ -22,6 +23,13 @@ Route::prefix('akademik')->group(function () {
     // Riwayat lengkap (termasuk data yang sudah diubah/dibatalkan)
     Route::get('kelas/{kelas_id}/siswa/riwayat', [SiswaKelasController::class, 'getRiwayatKelas']);
     Route::get('siswa/{siswa_id}/kelas/riwayat', [SiswaKelasController::class, 'getRiwayatSiswa']);
+
+    // Wali Kelas
+    Route::post('wali', [WaliKelasController::class, 'assign']);
+    Route::patch('wali/{id}', [WaliKelasController::class, 'gantiWali']);
+    Route::delete('wali/{id}', [WaliKelasController::class, 'remove']);
+    Route::get('kelas/{kelas_id}/wali', [WaliKelasController::class, 'getByKelas']);
+    Route::get('guru/{guru_id}/wali', [WaliKelasController::class, 'getByGuru']);
 
     // Pengampu Mapel
     Route::post('pengampu', [PengampuMapelController::class, 'assign']);
