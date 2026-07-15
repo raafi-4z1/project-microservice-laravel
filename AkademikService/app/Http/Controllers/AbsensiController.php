@@ -375,7 +375,192 @@ class AbsensiController extends Controller
         }
     }
 
+    // ── Rekap absensi ─────────────────────────────────────────────────────────
+
+    private const STATUS_HARIAN    = ['hadir', 'terlambat', 'izin', 'sakit', 'alpa'];
+    private const STATUS_PELAJARAN  = ['hadir', 'izin', 'sakit', 'alpa'];
+    private const STATUS_PEGAWAI    = ['hadir', 'terlambat', 'izin', 'sakit', 'dinas_luar', 'alpa'];
+
+    // GET /akademik/absensi/rekap/harian/kelas/{kelas_id}
+    public function rekapHarianKelas(Request $request, $kelasId)
+    {
+        try {
+            $semester = $this->semesterRekap($request);
+            if (!$semester) {
+                return $this->response('Belum ada semester aktif yang ditetapkan.', Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+            [$dari, $sampai] = $this->rentangTanggal($request);
+
+            $ids = SiswaKelas::where('kelas_id', $kelasId)
+                ->where('tahun_ajaran', $semester['tahun_ajaran'])
+                ->where('semester', $semester['semester'])
+                ->pluck('siswa_id');
+
+            $agg = AbsensiHarian::whereIn('siswa_id', $ids)
+                ->whereBetween('tanggal', [$dari, $sampai])
+                ->selectRaw('siswa_id, status, COUNT(*) as c')
+                ->groupBy('siswa_id', 'status')
+                ->get();
+
+            $map = [];
+            foreach ($agg as $row) {
+                $map[$row->siswa_id][$row->status] = (int) $row->c;
+            }
+
+            $siswa = $ids->map(fn($sid) => $this->barisRekap($sid, $map[$sid] ?? [], self::STATUS_HARIAN))->values()->all();
+
+            return $this->response("Rekap harian kelas id:{$kelasId}.", Response::HTTP_OK, [
+                'kelasId'     => (int) $kelasId,
+                'tahunAjaran' => $semester['tahun_ajaran'],
+                'semester'    => $semester['semester'],
+                'dari'        => $dari,
+                'sampai'      => $sampai,
+                'siswa'       => $siswa,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // GET /akademik/absensi/rekap/harian/siswa/{siswa_id}
+    public function rekapHarianSiswa(Request $request, $siswaId)
+    {
+        try {
+            [$dari, $sampai] = $this->rentangTanggal($request);
+
+            $records = AbsensiHarian::where('siswa_id', $siswaId)
+                ->whereBetween('tanggal', [$dari, $sampai])
+                ->orderBy('tanggal')
+                ->get();
+
+            $counts = array_fill_keys(self::STATUS_HARIAN, 0);
+            foreach ($records as $r) {
+                if (isset($counts[$r->status])) $counts[$r->status]++;
+            }
+
+            $detail = $records->map(fn($r) => [
+                'tanggal'  => $r->tanggal instanceof \Carbon\Carbon ? $r->tanggal->toDateString() : $r->tanggal,
+                'jamMasuk' => $r->jam_masuk instanceof \Carbon\Carbon ? $r->jam_masuk->toDateTimeString() : $r->jam_masuk,
+                'status'   => $r->status,
+                'metode'   => $r->metode,
+            ])->all();
+
+            return $this->response("Rekap harian siswa id:{$siswaId}.", Response::HTTP_OK, [
+                'siswaId'   => (int) $siswaId,
+                'dari'      => $dari,
+                'sampai'    => $sampai,
+                'ringkasan' => $counts + ['total' => $records->count()],
+                'detail'    => $detail,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // GET /akademik/absensi/rekap/pelajaran/siswa/{siswa_id}
+    public function rekapPelajaranSiswa(Request $request, $siswaId)
+    {
+        try {
+            [$dari, $sampai] = $this->rentangTanggal($request);
+
+            $agg = AbsensiPelajaran::where('siswa_id', $siswaId)
+                ->whereBetween('tanggal', [$dari, $sampai])
+                ->selectRaw('status, COUNT(*) as c')
+                ->groupBy('status')
+                ->get();
+
+            $counts = array_fill_keys(self::STATUS_PELAJARAN, 0);
+            $total  = 0;
+            foreach ($agg as $row) {
+                if (isset($counts[$row->status])) $counts[$row->status] = (int) $row->c;
+                $total += (int) $row->c;
+            }
+
+            return $this->response("Rekap pelajaran siswa id:{$siswaId}.", Response::HTTP_OK, [
+                'siswaId'   => (int) $siswaId,
+                'dari'      => $dari,
+                'sampai'    => $sampai,
+                'ringkasan' => $counts + ['total' => $total],
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // GET /akademik/absensi/rekap/pegawai/{subjek_tipe}/{subjek_id}
+    public function rekapPegawai(Request $request, $subjekTipe, $subjekId)
+    {
+        try {
+            if (!in_array($subjekTipe, ['guru', 'karyawan'], true)) {
+                return $this->response('subjek_tipe harus guru atau karyawan.', Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+            [$dari, $sampai] = $this->rentangTanggal($request);
+
+            $records = AbsensiPegawai::where('subjek_tipe', $subjekTipe)
+                ->where('subjek_id', $subjekId)
+                ->whereBetween('tanggal', [$dari, $sampai])
+                ->orderBy('tanggal')
+                ->get();
+
+            $counts = array_fill_keys(self::STATUS_PEGAWAI, 0);
+            foreach ($records as $r) {
+                if (isset($counts[$r->status])) $counts[$r->status]++;
+            }
+
+            $detail = $records->map(fn($r) => [
+                'tanggal'   => $r->tanggal instanceof \Carbon\Carbon ? $r->tanggal->toDateString() : $r->tanggal,
+                'jamMasuk'  => $r->jam_masuk instanceof \Carbon\Carbon ? $r->jam_masuk->toDateTimeString() : $r->jam_masuk,
+                'jamPulang' => $r->jam_pulang instanceof \Carbon\Carbon ? $r->jam_pulang->toDateTimeString() : $r->jam_pulang,
+                'status'    => $r->status,
+                'metode'    => $r->metode,
+            ])->all();
+
+            return $this->response("Rekap pegawai {$subjekTipe} id:{$subjekId}.", Response::HTTP_OK, [
+                'subjekTipe' => $subjekTipe,
+                'subjekId'   => (int) $subjekId,
+                'dari'       => $dari,
+                'sampai'     => $sampai,
+                'ringkasan'  => $counts + ['total' => $records->count()],
+                'detail'     => $detail,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     // ── Helper ──────────────────────────────────────────────────────────────
+
+    // Rentang tanggal rekap; default = awal bulan berjalan s/d hari ini (WIB)
+    private function rentangTanggal(Request $request): array
+    {
+        $now    = Carbon::now(self::TZ);
+        $dari   = $request->input('tanggal_dari', $now->copy()->startOfMonth()->toDateString());
+        $sampai = $request->input('tanggal_sampai', $now->toDateString());
+        return [$dari, $sampai];
+    }
+
+    // tahun_ajaran + semester untuk rekap; dari request atau semester aktif
+    private function semesterRekap(Request $request): ?array
+    {
+        if ($request->filled('tahun_ajaran') && $request->filled('semester')) {
+            return ['tahun_ajaran' => $request->tahun_ajaran, 'semester' => (int) $request->semester];
+        }
+        $s = SemesterAktif::where('is_aktif', true)->first();
+        return $s ? ['tahun_ajaran' => $s->tahun_ajaran, 'semester' => $s->semester] : null;
+    }
+
+    // Satu baris rekap: {siswaId, hadir, ..., total} dari peta status->count
+    private function barisRekap($siswaId, array $counts, array $statuses): array
+    {
+        $row   = ['siswaId' => $siswaId];
+        $total = 0;
+        foreach ($statuses as $st) {
+            $row[$st] = $counts[$st] ?? 0;
+            $total   += $row[$st];
+        }
+        $row['total'] = $total;
+        return $row;
+    }
 
     private function toApiArrayKeluar(AbsensiKeluar $r): array
     {

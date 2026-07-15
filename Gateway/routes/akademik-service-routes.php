@@ -83,4 +83,12 @@ Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.akademik_pr
     // Absensi keluar (pulang awal / izin keluar) — disetujui wali kelas / admin
     Route::post('absensi/keluar', [AkademikController::class, 'catatKeluar'])->middleware('check.role:SuperAdmin,Admin,Guru');
     Route::get('absensi/keluar', [AkademikController::class, 'daftarKeluar'])->middleware('check.role:SuperAdmin,Admin,Guru');
+
+    // Rekap absensi — Siswa lihat miliknya via /saya; staf lihat penuh
+    Route::get('absensi/rekap/harian/saya', [AkademikController::class, 'rekapHarianSaya'])->middleware('check.role:Siswa');
+    Route::get('absensi/rekap/pelajaran/saya', [AkademikController::class, 'rekapPelajaranSaya'])->middleware('check.role:Siswa');
+    Route::get('absensi/rekap/harian/kelas/{kelas_id}', [AkademikController::class, 'rekapHarianKelas'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
+    Route::get('absensi/rekap/harian/siswa/{siswa_id}', [AkademikController::class, 'rekapHarianSiswa'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
+    Route::get('absensi/rekap/pelajaran/siswa/{siswa_id}', [AkademikController::class, 'rekapPelajaranSiswa'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
+    Route::get('absensi/rekap/pegawai/{subjek_tipe}/{subjek_id}', [AkademikController::class, 'rekapPegawai'])->middleware('check.role:SuperAdmin,Admin');
 });

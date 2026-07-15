@@ -753,6 +753,59 @@ class AkademikController extends Controller
         return $this->performRequest('GET', "{$this->reqUrl}/absensi/keluar", $request->only(['tanggal', 'siswa_id']));
     }
 
+    // ─── Rekap absensi ───────────────────────────────────────────────────────────
+
+    private const REKAP_PARAMS = ['tahun_ajaran', 'semester', 'tanggal_dari', 'tanggal_sampai'];
+
+    // GET /akademik/absensi/rekap/harian/kelas/{kelas_id}
+    public function rekapHarianKelas(Request $request, $kelasId)
+    {
+        $response = $this->performRequest('GET', "{$this->reqUrl}/absensi/rekap/harian/kelas/{$kelasId}", $request->only(self::REKAP_PARAMS));
+        return $this->enrichSiswaResponse($response);
+    }
+
+    // GET /akademik/absensi/rekap/harian/siswa/{siswa_id}
+    public function rekapHarianSiswa(Request $request, $siswaId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/absensi/rekap/harian/siswa/{$siswaId}", $request->only(self::REKAP_PARAMS));
+    }
+
+    // GET /akademik/absensi/rekap/harian/saya — Siswa
+    public function rekapHarianSaya(Request $request)
+    {
+        try {
+            $siswaId = $this->resolveSiswaId($request);
+            if (!is_int($siswaId)) return $siswaId;
+            return $this->performRequest('GET', "{$this->reqUrl}/absensi/rekap/harian/siswa/{$siswaId}", $request->only(self::REKAP_PARAMS));
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // GET /akademik/absensi/rekap/pelajaran/siswa/{siswa_id}
+    public function rekapPelajaranSiswa(Request $request, $siswaId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/absensi/rekap/pelajaran/siswa/{$siswaId}", $request->only(self::REKAP_PARAMS));
+    }
+
+    // GET /akademik/absensi/rekap/pelajaran/saya — Siswa
+    public function rekapPelajaranSaya(Request $request)
+    {
+        try {
+            $siswaId = $this->resolveSiswaId($request);
+            if (!is_int($siswaId)) return $siswaId;
+            return $this->performRequest('GET', "{$this->reqUrl}/absensi/rekap/pelajaran/siswa/{$siswaId}", $request->only(self::REKAP_PARAMS));
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // GET /akademik/absensi/rekap/pegawai/{subjek_tipe}/{subjek_id}
+    public function rekapPegawai(Request $request, $subjekTipe, $subjekId)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/absensi/rekap/pegawai/{$subjekTipe}/{$subjekId}", $request->only(self::REKAP_PARAMS));
+    }
+
     // Tambahkan namaLengkap ke tiap entri data.siswa (AkademikService hanya simpan id)
     private function enrichSiswaResponse($response)
     {
