@@ -534,7 +534,7 @@ class AkademikController extends Controller
     {
         try {
             $extraHeaders = $this->resolveGuruHeader($request);
-            if ($extraHeaders instanceof \Illuminate\Http\Response) return $extraHeaders;
+            if (!is_array($extraHeaders)) return $extraHeaders;
 
             $response = $this->performRequest('POST', "{$this->reqUrl}/nilai", $request->all(), $extraHeaders);
             $decode   = $this->decode($response);
@@ -552,7 +552,7 @@ class AkademikController extends Controller
     {
         try {
             $extraHeaders = $this->resolveGuruHeader($request);
-            if ($extraHeaders instanceof \Illuminate\Http\Response) return $extraHeaders;
+            if (!is_array($extraHeaders)) return $extraHeaders;
 
             $response = $this->performRequest('PATCH', "{$this->reqUrl}/nilai/{$id}", $request->all(), $extraHeaders);
             $decode   = $this->decode($response);
@@ -570,7 +570,7 @@ class AkademikController extends Controller
     {
         try {
             $extraHeaders = $this->resolveGuruHeader($request);
-            if ($extraHeaders instanceof \Illuminate\Http\Response) return $extraHeaders;
+            if (!is_array($extraHeaders)) return $extraHeaders;
 
             $response = $this->performRequest('DELETE', "{$this->reqUrl}/nilai/{$id}", [], $extraHeaders);
             $decode   = $this->decode($response);
@@ -681,7 +681,7 @@ class AkademikController extends Controller
     {
         try {
             $header = $this->resolveGuruHeader($request);
-            if ($header instanceof \Illuminate\Http\Response) return $header;
+            if (!is_array($header)) return $header;
 
             $response = $this->performRequest('GET', "{$this->reqUrl}/absensi/pelajaran/sekarang", [], $header);
             return $this->enrichSiswaResponse($response);
@@ -695,7 +695,7 @@ class AkademikController extends Controller
     {
         try {
             $header = $request->user()->role === 'Guru' ? $this->resolveGuruHeader($request) : [];
-            if ($header instanceof \Illuminate\Http\Response) return $header;
+            if (!is_array($header)) return $header;
 
             $response = $this->performRequest('GET', "{$this->reqUrl}/absensi/pelajaran/{$jadwalId}/siswa", $request->only(['tanggal']), $header);
             return $this->enrichSiswaResponse($response);
@@ -709,7 +709,7 @@ class AkademikController extends Controller
     {
         try {
             $header = $this->resolveGuruHeader($request);
-            if ($header instanceof \Illuminate\Http\Response) return $header;
+            if (!is_array($header)) return $header;
 
             $response = $this->performRequest('POST', "{$this->reqUrl}/absensi/pelajaran/tandai", $request->all(), $header);
             $decode   = $this->decode($response);
@@ -837,7 +837,7 @@ class AkademikController extends Controller
     // Untuk Guru role: resolve guru_id dan kembalikan sebagai header array
     // Untuk Admin/SuperAdmin: kembalikan [] (tidak perlu header)
     // Kembalikan Response jika gagal
-    private function resolveGuruHeader(Request $request): array|\Illuminate\Http\Response
+    private function resolveGuruHeader(Request $request): array|\Illuminate\Http\JsonResponse
     {
         $user = $request->user();
         if ($user->role !== 'Guru') {
