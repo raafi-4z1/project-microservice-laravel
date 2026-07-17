@@ -8,6 +8,8 @@ use App\Http\Controllers\JamPelajaranController;
 use App\Http\Controllers\JadwalPelajaranController;
 use App\Http\Controllers\NilaiController;
 use App\Http\Controllers\PengaturanNilaiController;
+use App\Http\Controllers\AbsensiController;
+use App\Http\Controllers\WaliKelasController;
 
 Route::prefix('akademik')->group(function () {
 
@@ -21,6 +23,13 @@ Route::prefix('akademik')->group(function () {
     // Riwayat lengkap (termasuk data yang sudah diubah/dibatalkan)
     Route::get('kelas/{kelas_id}/siswa/riwayat', [SiswaKelasController::class, 'getRiwayatKelas']);
     Route::get('siswa/{siswa_id}/kelas/riwayat', [SiswaKelasController::class, 'getRiwayatSiswa']);
+
+    // Wali Kelas
+    Route::post('wali', [WaliKelasController::class, 'assign']);
+    Route::patch('wali/{id}', [WaliKelasController::class, 'gantiWali']);
+    Route::delete('wali/{id}', [WaliKelasController::class, 'remove']);
+    Route::get('kelas/{kelas_id}/wali', [WaliKelasController::class, 'getByKelas']);
+    Route::get('guru/{guru_id}/wali', [WaliKelasController::class, 'getByGuru']);
 
     // Pengampu Mapel
     Route::post('pengampu', [PengampuMapelController::class, 'assign']);
@@ -72,4 +81,23 @@ Route::prefix('akademik')->group(function () {
     Route::get('nilai/raport/siswa/{siswa_id}', [NilaiController::class, 'getRaportSiswa']);
     Route::get('nilai/raport/kelas/{kelas_id}', [NilaiController::class, 'getRaportKelas']);
     Route::get('nilai/ranking/kelas/{kelas_id}',[NilaiController::class, 'getRankingKelas']);
+
+    // Absensi — pencatatan scan masuk (dipanggil Gateway setelah resolve kartu/terminal)
+    Route::post('absensi/scan-siswa',   [AbsensiController::class, 'scanSiswa']);
+    Route::post('absensi/scan-pegawai', [AbsensiController::class, 'scanPegawai']);
+
+    // Absensi per pelajaran — guru menandai siswa saat jam pelajarannya
+    Route::get('absensi/pelajaran/sekarang',          [AbsensiController::class, 'pelajaranSekarang']);
+    Route::get('absensi/pelajaran/{jadwal_id}/siswa', [AbsensiController::class, 'daftarSiswaJadwal']);
+    Route::post('absensi/pelajaran/tandai',           [AbsensiController::class, 'tandaiPelajaran']);
+
+    // Absensi keluar (pulang awal / izin keluar) — disetujui wali kelas / admin
+    Route::post('absensi/keluar', [AbsensiController::class, 'catatKeluar']);
+    Route::get('absensi/keluar',  [AbsensiController::class, 'daftarKeluar']);
+
+    // Rekap absensi
+    Route::get('absensi/rekap/harian/kelas/{kelas_id}',   [AbsensiController::class, 'rekapHarianKelas']);
+    Route::get('absensi/rekap/harian/siswa/{siswa_id}',   [AbsensiController::class, 'rekapHarianSiswa']);
+    Route::get('absensi/rekap/pelajaran/siswa/{siswa_id}',[AbsensiController::class, 'rekapPelajaranSiswa']);
+    Route::get('absensi/rekap/pegawai/{subjek_tipe}/{subjek_id}', [AbsensiController::class, 'rekapPegawai']);
 });

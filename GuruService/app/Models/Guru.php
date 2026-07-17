@@ -39,8 +39,29 @@ class Guru extends Model
         'jurusan',
         'universitas',
         'tahun_lulus',
-        'pelatihan'
+        'pelatihan',
+        // Kartu absensi & PIN (dikelola lewat alur penerbitan kartu, bukan CRUD biasa)
+        'kartu_uid',
+        'kartu_status',
+        'kartu_diterbitkan_at',
+        'pin_hash',
     ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'pin_hash',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'kartu_diterbitkan_at' => 'datetime',
+        ];
+    }
 
     /**
      * Override atribut 'foto' (path) dengan string Base64

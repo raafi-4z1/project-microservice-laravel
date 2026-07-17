@@ -60,11 +60,26 @@ class RouteServiceProvider extends ServiceProvider
                 ->middleware('api')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/siswa-service-routes.php'));
+                //Karyawan service routes registration
+            Route::prefix('api')
+                ->middleware('api')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/karyawan-service-routes.php'));
                 //Akademik service routes registration
             Route::prefix('api')
                 ->middleware('api')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/akademik-service-routes.php'));
+                //Kartu absensi (utilitas QR) registration
+            Route::prefix('api')
+                ->middleware('api')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/kartu-routes.php'));
+                //Absensi scan terminal registration
+            Route::prefix('api')
+                ->middleware('api')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/absensi-service-routes.php'));
         });
     }
 

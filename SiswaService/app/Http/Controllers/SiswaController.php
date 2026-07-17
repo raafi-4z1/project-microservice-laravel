@@ -324,8 +324,10 @@ class SiswaController extends Controller
                 $newPath  = "{$directoryStorage}/{$filename}";
                 Storage::disk('private')->put($newPath, (string) $this->convertImage($request->file('foto')));
 
-                if ($siswa->foto && Storage::disk('private')->exists($siswa->foto)) {
-                    Storage::disk('private')->delete($siswa->foto);
+                // getRawOriginal: ambil PATH asli, bukan accessor foto (base64)
+                $oldFoto = $siswa->getRawOriginal('foto');
+                if ($oldFoto && Storage::disk('private')->exists($oldFoto)) {
+                    Storage::disk('private')->delete($oldFoto);
                 }
                 $updateData['foto'] = $newPath;
             }
@@ -430,6 +432,102 @@ class SiswaController extends Controller
                 'idSiswa'     => $siswa->id,
                 'namaLengkap' => $siswa->nama_lengkap,
                 'email'       => $siswa->email,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Lookup untuk Gateway resolve kartu absensi (scan) -> siswa
+    public function lookupByKartu(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'uid' => 'required|string|max:32',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $siswa = Siswa::where('kartu_uid', $request->uid)->first();
+            if (!$siswa) {
+                return $this->response('Kartu tidak dikenali.', Response::HTTP_NOT_FOUND);
+            }
+
+            return $this->response("Kartu ditemukan.", Response::HTTP_OK, [
+                'idSiswa'     => $siswa->id,
+                'namaLengkap' => $siswa->nama_lengkap,
+                'kartuStatus' => $siswa->kartu_status,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Terbitkan/ganti kartu absensi: generate UID unik (prefix SIS-), set aktif.
+    // Re-terbitkan menimpa UID lama -> kartu fisik lama otomatis mati.
+    public function terbitkanKartu(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'idSiswa' => 'required|exists:siswas,id',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $siswa = Siswa::find($request->idSiswa);
+            if (!$siswa) {
+                return $this->response("Data sudah dihapus.", Response::HTTP_NOT_FOUND);
+            }
+
+            do {
+                $uid = 'SIS-' . strtoupper(Str::random(12));
+            } while (Siswa::where('kartu_uid', $uid)->exists());
+
+            $siswa->update([
+                'kartu_uid'            => $uid,
+                'kartu_status'         => 'aktif',
+                'kartu_diterbitkan_at' => now(),
+            ]);
+
+            return $this->response("Kartu diterbitkan.", Response::HTTP_OK, [
+                'idSiswa'            => $siswa->id,
+                'kartuUid'          => $uid,
+                'kartuStatus'       => 'aktif',
+                'kartuDiterbitkanAt'=> $siswa->kartu_diterbitkan_at,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Blokir kartu (hilang/blokir) tanpa menerbitkan yang baru -> scan ditolak.
+    public function blokirKartu(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'idSiswa' => 'required|exists:siswas,id',
+                'status'  => 'sometimes|in:hilang,blokir',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $siswa = Siswa::find($request->idSiswa);
+            if (!$siswa) {
+                return $this->response("Data sudah dihapus.", Response::HTTP_NOT_FOUND);
+            }
+            if (!$siswa->kartu_uid) {
+                return $this->response("Siswa belum memiliki kartu.", Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            $status = $request->input('status', 'hilang');
+            $siswa->update(['kartu_status' => $status]);
+
+            return $this->response("Kartu diblokir ({$status}).", Response::HTTP_OK, [
+                'idSiswa'     => $siswa->id,
+                'kartuStatus' => $status,
             ]);
         } catch (Exception $e) {
             return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);

@@ -59,6 +59,12 @@ return [
         'secret'  =>  env('SISWA_SERVICE_SECRET'),
     ],
 
+    // Karyawan API Service
+    'karyawan'  =>  [
+        'base_uri'  =>  env('KARYAWAN_SERVICE_BASE_URL'),
+        'secret'  =>  env('KARYAWAN_SERVICE_SECRET'),
+    ],
+
     // Akademik API Service
     'akademik'  =>  [
         'base_uri'  =>  env('AKADEMIK_SERVICE_BASE_URL'),

@@ -15,7 +15,12 @@ seluruh data diambil dari satu API Gateway.
 - Coroutines + Flow
 - multiplatform-settings (atau DataStore di sisi Android) untuk menyimpan
   access token & data sesi
-- Coil 3 untuk menampilkan gambar (foto dikirim sebagai data-URI base64 WebP)
+- Coil 3 untuk menampilkan gambar (foto dikirim sebagai data-URI base64 WebP);
+  aktifkan dukungan **SVG** (coil-svg) untuk menampilkan QR kartu dari `/kartu/qr`
+- **Mode Terminal (kiosk absensi):** CameraX + ML Kit Barcode Scanning untuk
+  memindai QR kartu; Play Services Location (FusedLocationProvider) untuk lat/lng
+  saat terminal mode demo (geofence). Deklarasikan izin `CAMERA` dan
+  `ACCESS_FINE_LOCATION` (lokasi hanya diminta di alur Mode Terminal demo).
 
 ## Struktur Folder (wajib diikuti)
 
@@ -29,7 +34,8 @@ semua akses data lewat interface repository di `domain`.
 app/src/main/java/com/sekolah/app/
 ├── core/
 │   ├── di/              # Koin modules (networkModule, repositoryModule, viewModelModule)
-│   ├── network/         # Ktor HttpClient, plugin auth Bearer, handler 401
+│   ├── network/         # Ktor HttpClient (Bearer + handler 401) + client TERPISAH
+│   │                    #   untuk Mode Terminal (header X-Terminal-Id/Token)
 │   ├── session/         # SessionManager (token, role) — multiplatform-settings
 │   ├── designsystem/    # Theme M3, Color, Type, komponen reusable (AppCard, EmptyState…)
 │   └── util/            # Result wrapper, formatter tanggal, validator
@@ -45,11 +51,14 @@ app/src/main/java/com/sekolah/app/
 │   ├── dashboard/
 │   ├── siswa/           # list/, detail/, form/
 │   ├── guru/
+│   ├── karyawan/        # list/, detail/, form/
 │   ├── mapel/
 │   ├── kelas/
-│   ├── akademik/        # pembagian kelas, pengampu, jam, jadwal
+│   ├── akademik/        # pembagian kelas, pengampu, wali kelas, jam, jadwal
 │   ├── nilai/           # input nilai, pengaturan bobot
 │   ├── raport/          # raport + ranking
+│   ├── absensi/         # kartu/, terminal/ (kiosk scan+PIN), pelajaran/,
+│   │                    #   pinwindow/, keluar/, rekap/
 │   ├── usermanagement/
 │   └── profil/
 └── navigation/          # NavHost, route sealed class, bottom bar / nav rail
@@ -115,7 +124,15 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
   siswa lain (`GET /siswa` → 403) dan menerima detail guru yang sudah disaring
   (lihat modul Guru) — jangan tampilkan navigasi ke detail siswa untuk role ini.
 - **Karyawan** (staf TU): read-only data master (termasuk detail siswa/guru
-  lengkap) + akademik/nilai/raport.
+  lengkap) + akademik/nilai/raport. Ikut **absen sebagai pegawai** (kartu/PIN)
+  dan bisa mengatur PIN sendiri + melihat rekap absensinya.
+- **Absensi (lintas role):** SuperAdmin/Admin mengelola kartu, wali kelas,
+  jendela PIN, dan pendaftaran terminal; **Guru** menandai absensi siswa saat
+  jam pelajarannya dan — sebagai **wali kelas** — menyetujui izin keluar siswa
+  kelas asuhannya; **Siswa** melihat rekap absensinya (`/rekap/*/saya`);
+  **Guru/Karyawan** mengatur PIN sendiri & melihat rekap pegawainya. Scan kartu
+  di gerbang/kantor dilakukan lewat **Mode Terminal** (perangkat sekolah dengan
+  autentikasi terminal, bukan login user — lihat modul Absensi).
 
 Sembunyikan menu & tombol aksi yang tidak sesuai role.
 
@@ -168,6 +185,21 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
 - **Respons detail** (menambah): `email`, `telephone`, `alamat`, `agama`,
   `namaAyah`, `namaIbu`, `pekerjaanAyah`, `pekerjaanIbu`, `noTelpAyah`, `noTelpIbu`,
   `namaWali`, `hubunganWali`, `noTelpWali`, `foto`
+
+### 4b. Karyawan (dengan foto, multipart/form-data)
+
+- `GET /karyawan/all` (list), `GET /karyawan?idKaryawan={id}` (detail),
+  `POST /karyawan` multipart, `POST /karyawan/update` (idKaryawan + field berubah),
+  `DELETE /karyawan/{id}`
+- Field tambah (multipart): email, nip, namaLengkap, jabatan (wajib); opsional:
+  statusKepegawaian, jenisKelamin (Laki-Laki|Perempuan), noTelp, alamat, foto.
+- **Respons list**: `idKaryawan`, `namaLengkap`, `nip`, `email`, `jabatan`, `statusKepegawaian`
+- **Respons detail — bergantung role!** SuperAdmin/Admin/Karyawan menerima
+  profil lengkap (tambah: `jenisKelamin`, `noTelp`, `alamat`, `foto`); role
+  **Guru/Siswa** hanya menerima field publik (`idKaryawan`, `namaLengkap`, `nip`,
+  `email`, `jabatan`, `statusKepegawaian`, `foto`) — buat field DTO detail nullable.
+- Membuat karyawan otomatis membuat akun user role Karyawan (password default =
+  email, `mustChangePassword=true`), sama seperti Guru/Siswa.
 
 ### 5. Akademik (prefix `/akademik`)
 
@@ -231,7 +263,81 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
 me-resolve nama dengan mengambil master data (`/guru/all`, `/mapel/all`,
 `/class/all`, `/siswa/all` per kelas) lalu join di repository layer — cache
 master data ini di memori per sesi agar layar jadwal/nilai/raport tidak
-memanggil API berulang.
+memanggil API berulang. (Pengecualian: absensi pelajaran & rekap kelas sudah
+menyertakan `namaLengkap` siswa.)
+
+- **Wali kelas** (SuperAdmin/Admin): `POST /akademik/wali` (guru_id, kelas_id,
+  tahun_ajaran, semester — satu wali per kelas/semester, 409 jika sudah ada),
+  `PATCH /akademik/wali/{id}` (guru_id pengganti), `DELETE /akademik/wali/{id}`,
+  `GET /akademik/kelas/{id}/wali`, `GET /akademik/guru/{id}/wali`.
+  Respons: `idWaliKelas`, `guruId`, `kelasId`, `tahunAjaran`, `semester`.
+  Wali kelas dipakai untuk enforcement persetujuan izin keluar (lihat modul Absensi).
+
+### 6. Absensi
+
+Modul absensi kartu/QR untuk siswa (gerbang) dan pegawai (guru/karyawan, kantor),
+absensi per pelajaran oleh guru, PIN saat lupa kartu, izin keluar/pulang awal,
+dan rekap. **Waktu & ambang terlambat dihitung WIB (Asia/Jakarta) oleh server.**
+
+**6a. Kartu absensi** (SuperAdmin/Admin) — Bearer:
+- `POST /siswa/kartu/terbitkan` (`{idSiswa}`), `POST /siswa/kartu/blokir`
+  (`{idSiswa, status:"hilang"|"blokir"}`); guru & karyawan serupa via
+  `/guru/kartu/*` (`idGuru`) dan `/karyawan/kartu/*` (`idKaryawan`).
+  Respons terbitkan: `idSiswa`, `kartuUid` (opaque, prefix SIS-/GUR-/KAR-),
+  `kartuStatus`, `kartuDiterbitkanAt`. Terbit-ulang menimpa UID lama.
+- `GET /kartu/qr?data=<kartuUid>` → **image/svg+xml** (BUKAN JSON) — untuk dicetak
+  ke kartu fisik. Render SVG (mis. tampilkan via WebView/`AndroidSvg`/Coil-SVG).
+
+**6b. Mode Terminal (scan di gerbang/kantor)** — autentikasi **terminal**, bukan
+Bearer. Kirim header `X-Terminal-Id` + `X-Terminal-Token` (disimpan aman di
+perangkat terminal, di-set sekali saat setup kiosk). Body pakai snake_case.
+- `POST /absensi/scan` (`{kartu_uid, lat?, lng?}`) — pindai QR kartu lalu kirim
+  `kartu_uid`. `lat`/`lng` HANYA untuk terminal mode demo (geofence); mode
+  produksi memakai allowlist IP LAN. Respons sukses: `idAbsensi`, `subjek`
+  (siswa|guru|karyawan), `siswaId`/`subjekId`, `tanggal`, `jamMasuk`, `status`
+  (`hadir`|`terlambat`), `metode`, `sudahAbsen` (true bila sudah absen hari ini).
+- `POST /absensi/pin/absen` (`{subjek_tipe:"guru"|"karyawan", nip, pin, lat?, lng?}`)
+  — absen pegawai saat lupa kartu; hanya berhasil jika ada jendela PIN aktif.
+- **Kode status terminal**: `401` tanpa/`X-Terminal-*` salah, `403` di luar
+  geofence (demo) atau di luar LAN (produksi) atau kartu tidak aktif,
+  `404` kartu tidak dikenali. Tampilkan pesan `resMsg` di layar terminal.
+
+**6c. Absensi per pelajaran** (Guru) — Bearer; server resolve guru dari akun:
+- `GET /akademik/absensi/pelajaran/sekarang` → jadwal yang sedang berlangsung +
+  daftar siswa: `{jadwalId, mapelId, kelasId, hari, pukul, tahunAjaran, semester,
+  tanggal, siswa:[{siswaId, namaLengkap, status|null, keterangan|null}]}`;
+  `data: []` jika tak ada jam pelajaran saat ini.
+- `GET /akademik/absensi/pelajaran/{jadwal_id}/siswa?tanggal=` → sama untuk jadwal
+  tertentu (guru hanya boleh jadwalnya sendiri, 403 jika bukan).
+- `POST /akademik/absensi/pelajaran/tandai`
+  (`{jadwal_id, tanggal?, absensi:[{siswa_id, status:"hadir"|"izin"|"sakit"|"alpa", keterangan?}]}`)
+  → `{jadwalId, tanggal, tersimpan, dilewati:[siswa_id di luar kelas]}`.
+
+**6d. Jendela PIN (lupa kartu)**:
+- `POST /absensi/pin/atur` (`{pin}` 4-6 digit) — **Guru/Karyawan** atur PIN sendiri.
+- `POST /absensi/pin/buka` (`{subjek_tipe, subjek_id, durasi_menit?}`) —
+  **SuperAdmin/Admin** buka jendela (default 10 mnt, sekali pakai). Respons:
+  `idPinWindow`, `subjekTipe`, `subjekId`, `berlakuSampai`, `durasiMenit`.
+
+**6e. Izin keluar / pulang awal** — Bearer:
+- `POST /akademik/absensi/keluar`
+  (`{siswa_id, jenis:"pulang_awal"|"izin_kegiatan"|"lomba"|"pulang_sakit", keterangan?}`)
+  — **SuperAdmin/Admin/Guru**. **Enforcement wali kelas:** jika penyetuju seorang
+  Guru, ia HANYA boleh menyetujui siswa di kelas asuhannya → `403` jika bukan
+  wali (atau kelas belum punya wali); Admin/SuperAdmin override. Respons:
+  `idKeluar`, `siswaId`, `tanggal`, `jamKeluar`, `jenis`, `keterangan`,
+  `disetujuiOleh`, `terminalId`.
+- `GET /akademik/absensi/keluar?tanggal=&siswa_id=` — daftar izin keluar.
+
+**6f. Rekap absensi** (rentang default = awal bulan s/d hari ini WIB; override
+`tanggal_dari`/`tanggal_sampai`):
+- `GET /akademik/absensi/rekap/harian/kelas/{id}` (Admin/Guru/Karyawan) → per
+  siswa `{siswaId, namaLengkap, hadir, terlambat, izin, sakit, alpa, total}`.
+- `GET /akademik/absensi/rekap/harian/siswa/{id}` → `{ringkasan:{...counts,total},
+  detail:[{tanggal, jamMasuk, status, metode}]}`.
+- `GET /akademik/absensi/rekap/harian/saya` (Siswa) — rekap harian sendiri.
+- `GET /akademik/absensi/rekap/pelajaran/siswa/{id}`, `/pelajaran/saya` (Siswa).
+- `GET /akademik/absensi/rekap/pegawai/{tipe}/{id}` (Admin; `tipe`=guru|karyawan).
 
 ## Konvensi data (penting)
 
@@ -277,6 +383,21 @@ memanggil API berulang.
     `tahunAjaran`). Pengecualian: `GET /akademik/siswa/belum-terdaftar` yang
     mengembalikan `tahun_ajaran`, `semester`, `total_siswa`, `total_terdaftar`,
     `total_belum`, `siswa: [...]`.
+  - REQUEST modul **absensi** campuran: endpoint **kartu**
+    (`/siswa|guru|karyawan/kartu/*`) camelCase (`idSiswa`, `status`); endpoint
+    **scan/PIN** (`/absensi/*`) dan **absensi akademik** (`/akademik/absensi/*`)
+    snake_case (`kartu_uid`, `subjek_tipe`, `siswa_id`, `jadwal_id`,
+    `tanggal_dari`, `durasi_menit`). RESPONSE tetap camelCase.
+- **Autentikasi terminal (Mode Terminal):** buat Ktor client / interceptor
+  TERPISAH dari client Bearer user, yang menyisipkan header `X-Terminal-Id` +
+  `X-Terminal-Token` (bukan Authorization). Token terminal disimpan terenkripsi
+  (Keystore/EncryptedDataStore) dan di-set sekali saat provisioning kiosk —
+  jangan campur dengan sesi login user.
+- **Zona waktu:** semua waktu absensi (`jamMasuk`, `jamKeluar`, `tanggal`,
+  `berlakuSampai`) sudah dalam WIB (Asia/Jakarta). Tampilkan apa adanya —
+  JANGAN konversi zona waktu perangkat.
+- **QR kartu:** `GET /kartu/qr` mengembalikan `image/svg+xml` (bukan envelope
+  `ApiResponse`) — tangani sebagai respons biner/teks SVG terpisah.
 - Update guru/siswa/kelas/mapel memakai `POST .../update` (bukan PUT/PATCH),
   kirim hanya field yang berubah; update akademik memakai `PATCH`.
 - Detail guru/siswa/kelas/mapel memakai query param (`?idGuru=`), bukan path param;
@@ -297,16 +418,35 @@ memanggil API berulang.
    layar Ganti Password wajib → Dashboard
 2. Home/Dashboard per role (menu grid sesuai hak akses, kartu semester aktif)
 3. Daftar + detail + form (create/edit) untuk: Mapel, Kelas, Guru (dengan
-   image picker + crop 3:4), Siswa (dengan image picker + crop 3:4)
+   image picker + crop 3:4), Siswa (dengan image picker + crop 3:4),
+   **Karyawan** (dengan image picker + crop 3:4)
 4. Akademik: pembagian kelas (assign/pindah siswa), pengampu mapel,
+   **wali kelas** (tetapkan/ganti wali per kelas — Admin),
    kelola jam pelajaran, kelola jadwal (tampilan jadwal mingguan per kelas/guru)
 5. Nilai: input nilai per kelas+mapel (khusus Guru/Admin, tabel siswa dengan
    kolom harian/UTS/UAS), pengaturan bobot nilai (Admin)
 6. Raport & ranking (tabel per kelas; untuk Siswa tampilkan raport & ranking diri sendiri)
-7. Profil & Pengaturan: data diri, ganti password, pilihan tema
-   (Terang / Gelap / Ikuti Sistem), logout, dan "Keluar dari semua perangkat"
-   (`POST /logout-all`, dengan dialog konfirmasi)
-8. Manajemen user (Admin/SuperAdmin): list, register akun, reset password, hapus akun
+7. **Absensi:**
+   - **Kelola kartu** (Admin): terbitkan/blokir/terbit-ulang kartu siswa/guru/
+     karyawan, tampilkan & cetak/bagikan QR (render SVG dari `/kartu/qr`)
+   - **Mode Terminal / Kiosk** (perangkat sekolah): layar scan QR kamera →
+     `POST /absensi/scan`, umpan balik besar & jelas (hijau hadir / kuning
+     terlambat / merah ditolak); tombol "Lupa kartu" → input NIP+PIN
+     (`/absensi/pin/absen`); provisioning: input Terminal Id + Token sekali;
+     mode demo mengirim lat/lng (izin lokasi)
+   - **Absensi pelajaran** (Guru): layar "Jam sekarang" — auto-load daftar siswa
+     kelas yang sedang diajar, ceklis status (hadir/izin/sakit/alpa) lalu submit
+     (`/pelajaran/tandai`); bisa pilih jadwal lain
+   - **Jendela PIN** (Admin): pilih pegawai → buka jendela; **Atur PIN** (Guru/
+     Karyawan di menu profil)
+   - **Izin keluar / pulang awal** (Guru wali / Admin): pilih siswa + jenis +
+     keterangan → simpan; daftar izin keluar hari ini
+   - **Rekap absensi**: harian per kelas & per siswa, pelajaran, pegawai (Admin/
+     Guru/Karyawan); Siswa & pegawai melihat **"Absensi Saya"** (`/rekap/*/saya`)
+8. Profil & Pengaturan: data diri (+ nomor kartu & tombol Atur PIN untuk pegawai),
+   ganti password, pilihan tema (Terang / Gelap / Ikuti Sistem), logout, dan
+   "Keluar dari semua perangkat" (`POST /logout-all`, dengan dialog konfirmasi)
+9. Manajemen user (Admin/SuperAdmin): list, register akun, reset password, hapus akun
 
 ## Desain UI/UX
 

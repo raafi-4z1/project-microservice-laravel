@@ -23,6 +23,8 @@ return Application::configure(basePath: dirname(__DIR__))
             // Dipasang per-group SETELAH auth:api (global tidak bekerja —
             // guard belum aktif saat middleware global berjalan)
             'force.pwd'  => \App\Http\Middleware\ForcePasswordChange::class,
+            // Autentikasi terminal absensi (scan). Dipakai di route scan (#5).
+            'auth.terminal' => \App\Http\Middleware\AuthenticateTerminal::class,
         ]);
         $middleware->append(\App\Http\Middleware\CollectForwardedIps::class);
     })

@@ -98,7 +98,8 @@ function Api {
         [string]$Path,
         [hashtable]$Body   = $null,
         [string]$Token     = $null,
-        [string]$BodyType  = "json"   # json | form
+        [string]$BodyType  = "json",  # json | form
+        [hashtable]$Headers = $null   # header tambahan (mis. X-Terminal-Id/Token)
     )
     # Pacing untuk endpoint login (throttle 5/menit) — lapis pertama cegah 429
     $isLogin = ($Path -eq "login" -or $Path -like "login`?*")
@@ -107,6 +108,7 @@ function Api {
     $tok = if ($Token) { $Token } else { $script:TOKEN }
     $headers = @{ 'Accept' = 'application/json' }
     if ($tok) { $headers['Authorization'] = "Bearer $tok" }
+    if ($Headers) { foreach ($k in $Headers.Keys) { $headers[$k] = $Headers[$k] } }
     $uri = "$($CFG.BaseUrl)/$Path"
     $bodyJson = if ($Body -ne $null) { $Body | ConvertTo-Json -Depth 6 } else { $null }
     if ($bodyJson) { $headers['Content-Type'] = 'application/json' }
@@ -1528,7 +1530,110 @@ else     { $script:FAIL++; Write-Host "  [FAIL $($r.resCode)] GET /mapel?idPelaj
 # ──────────────────────────────────────────────
 #  PHASE 16 — CLEANUP
 # ──────────────────────────────────────────────
-Section "Phase 16: Cleanup"
+Section "Phase 16: Absensi"
+
+# 16-A. Kartu absensi (SuperAdmin/Admin)
+$siswaKartuUid = $null
+if ($siswaId) {
+    $r = Api POST "siswa/kartu/terbitkan" @{ idSiswa = $siswaId }
+    Chk "POST /siswa/kartu/terbitkan (siswa $siswaId)" $r 200; if ($script:LAST_CHK) { $siswaKartuUid = $r.data.kartuUid; Info "kartuUid siswa = $siswaKartuUid" }
+
+    # QR: respon SVG (bukan JSON envelope) — cek langsung via Invoke-WebRequest
+    if ($siswaKartuUid) {
+        try {
+            $qr = Invoke-WebRequest -Uri "$($CFG.BaseUrl)/kartu/qr?data=$siswaKartuUid" -Headers @{ Authorization = "Bearer $($script:TOKEN)" } -UseBasicParsing -TimeoutSec $CFG.Timeout
+            if ($qr.StatusCode -eq 200 -and ("$($qr.Headers['Content-Type'])" -match 'svg')) {
+                $script:PASS++; Write-Host "  [PASS] GET /kartu/qr -> SVG" -ForegroundColor Green
+            } else {
+                $script:FAIL++; Write-Host "  [FAIL] GET /kartu/qr -> status $($qr.StatusCode) ct=$($qr.Headers['Content-Type'])" -ForegroundColor Red
+            }
+        } catch { $script:FAIL++; Write-Host "  [FAIL] GET /kartu/qr -- $($_.Exception.Message)" -ForegroundColor Red }
+    }
+
+    $r = Api POST "siswa/kartu/blokir" @{ idSiswa = $siswaId; status = "hilang" }
+    Chk "POST /siswa/kartu/blokir (siswa $siswaId)" $r 200
+    # Terbitkan ulang -> UID baru & aktif kembali (agar bisa dipakai uji scan)
+    $r = Api POST "siswa/kartu/terbitkan" @{ idSiswa = $siswaId }
+    Chk "POST /siswa/kartu/terbitkan ulang (aktif kembali)" $r 200; if ($script:LAST_CHK) { $siswaKartuUid = $r.data.kartuUid }
+} else { Skip "Kartu siswa" "siswaId tidak tersedia" }
+
+if ($guruId) {
+    $r = Api POST "guru/kartu/terbitkan" @{ idGuru = $guruId }
+    Chk "POST /guru/kartu/terbitkan (guru $guruId)" $r 200
+} else { Skip "Kartu guru" "guruId tidak tersedia" }
+
+# 16-B. Absensi keluar (pulang awal) — disetujui Admin/Guru (wali)
+if ($siswaId) {
+    $r = Api POST "akademik/absensi/keluar" @{ siswa_id = $siswaId; jenis = "pulang_awal"; keterangan = "test $TS" }
+    Chk "POST /akademik/absensi/keluar (pulang_awal)" $r 201
+    $r = Api POST "akademik/absensi/keluar" @{ siswa_id = $siswaId; jenis = "bolos" }
+    Chk "POST /akademik/absensi/keluar jenis invalid (harus 422)" $r 422
+    $r = Api GET "akademik/absensi/keluar"
+    Chk "GET /akademik/absensi/keluar (daftar)" $r 200
+}
+
+# 16-C. Rekap absensi (Admin)
+if ($kelasId) {
+    $r = Api GET "akademik/absensi/rekap/harian/kelas/$kelasId"
+    Chk "GET /akademik/absensi/rekap/harian/kelas/$kelasId" $r 200
+}
+if ($siswaId) {
+    $r = Api GET "akademik/absensi/rekap/harian/siswa/$siswaId"
+    Chk "GET /akademik/absensi/rekap/harian/siswa/$siswaId" $r 200
+    $r = Api GET "akademik/absensi/rekap/pelajaran/siswa/$siswaId"
+    Chk "GET /akademik/absensi/rekap/pelajaran/siswa/$siswaId" $r 200
+}
+if ($guruId) {
+    $r = Api GET "akademik/absensi/rekap/pegawai/guru/$guruId"
+    Chk "GET /akademik/absensi/rekap/pegawai/guru/$guruId" $r 200
+}
+
+# 16-D. Jendela PIN — Admin buka + batasan role
+if ($guruId) {
+    $r = Api POST "absensi/pin/buka" @{ subjek_tipe = "guru"; subjek_id = $guruId; durasi_menit = 10 }
+    Chk "POST /absensi/pin/buka (admin, guru $guruId)" $r 201
+}
+if ($siswaTestToken) {
+    $r = Api POST "absensi/pin/buka" @{ subjek_tipe = "guru"; subjek_id = 1 } -Token $siswaTestToken
+    Chk "POST /absensi/pin/buka sebagai Siswa (harus 403)" $r 403
+    $r = Api POST "absensi/pin/atur" @{ pin = "1234" } -Token $siswaTestToken
+    Chk "POST /absensi/pin/atur sebagai Siswa (harus 403)" $r 403
+}
+
+# 16-F. Wali Kelas (Admin) — dipakai enforcement izin keluar
+if ($kelasId -and $guruId) {
+    $r = Api POST "akademik/wali" @{ guru_id = $guruId; kelas_id = $kelasId; tahun_ajaran = $tahun; semester = [int]$semester }
+    Chk "POST /akademik/wali (tetapkan wali)" $r 201
+    $waliId = $null; if ($script:LAST_CHK) { $waliId = $r.data.idWaliKelas }
+    $r = Api POST "akademik/wali" @{ guru_id = $guruId; kelas_id = $kelasId; tahun_ajaran = $tahun; semester = [int]$semester }
+    Chk "POST /akademik/wali duplikat (harus 409)" $r 409
+    $r = Api POST "akademik/wali" @{ guru_id = 999999; kelas_id = $kelasId; tahun_ajaran = $tahun; semester = [int]$semester }
+    Chk "POST /akademik/wali guru tidak ada (harus 404)" $r 404
+    $r = Api GET "akademik/kelas/$kelasId/wali"
+    Chk "GET /akademik/kelas/$kelasId/wali" $r 200
+    if ($waliId) {
+        $r = Api DELETE "akademik/wali/$waliId"
+        Chk "DELETE /akademik/wali/$waliId (cleanup)" $r 202
+    }
+}
+
+# 16-G. Autentikasi terminal (scan) — negatif tanpa header; positif jika terminal disediakan
+$r = Api POST "absensi/scan" @{ kartu_uid = "SIS-XXXX" }
+Chk "POST /absensi/scan tanpa header terminal (harus 401)" $r 401
+
+if ($env:TEST_TERMINAL_ID -and $env:TEST_TERMINAL_TOKEN -and $siswaKartuUid) {
+    $th   = @{ 'X-Terminal-Id' = $env:TEST_TERMINAL_ID; 'X-Terminal-Token' = $env:TEST_TERMINAL_TOKEN }
+    $body = @{ kartu_uid = $siswaKartuUid }
+    if ($env:TEST_TERMINAL_LAT) { $body['lat'] = [double]$env:TEST_TERMINAL_LAT }
+    if ($env:TEST_TERMINAL_LNG) { $body['lng'] = [double]$env:TEST_TERMINAL_LNG }
+    $r = Api POST "absensi/scan" $body -Headers $th
+    if ($r.resCode -eq 201 -or $r.resCode -eq 200) { $script:PASS++; Write-Host "  [PASS $($r.resCode)] POST /absensi/scan (terminal) status=$($r.data.status)" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL $($r.resCode)] POST /absensi/scan (terminal) -- $($r.resMsg)" -ForegroundColor Red }
+} else {
+    Skip "POST /absensi/scan (terminal, positif)" "set TEST_TERMINAL_ID/TOKEN(/LAT/LNG) + daftarkan terminal via 'php artisan terminal:register'"
+}
+
+Section "Phase 17: Cleanup"
 
 if ($CFG.SkipCleanup) {
     Write-Host "  [SKIP] Cleanup dilewati (SkipCleanup=`$true)" -ForegroundColor Yellow

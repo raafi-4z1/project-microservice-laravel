@@ -38,6 +38,16 @@ Base URL: `https://gateway.test/api`
 | POST | `/siswa` | SuperAdmin, Admin | Tambah siswa baru + foto (multipart/form-data) |
 | POST | `/siswa/update` | SuperAdmin, Admin | Update data siswa + foto opsional |
 | DELETE | `/siswa/{id}` | SuperAdmin, Admin | Hapus siswa (soft delete) |
+| POST | `/siswa/kartu/terbitkan` | SuperAdmin, Admin | Terbitkan/ganti kartu absensi (UID prefix `SIS-`) |
+| POST | `/siswa/kartu/blokir` | SuperAdmin, Admin | Blokir kartu (`status`: `hilang`/`blokir`) |
+
+**Internal (dipanggil Gateway, tidak diekspos ke klien):**
+
+| Method | Endpoint | Keterangan |
+|--------|----------|------------|
+| GET | `/siswa/lookup-kartu?uid=` | Resolve UID kartu → siswa saat scan di terminal |
+
+> Tabel `siswas` memiliki kolom absensi: `kartu_uid`, `kartu_status` (`belum_terbit`/`aktif`/`hilang`/`blokir`), `kartu_diterbitkan_at`. Siswa absen dengan kartu (tanpa PIN). Alur lengkap: lihat [Gateway/README.md](../Gateway/README.md) & [AkademikService/README.md](../AkademikService/README.md).
 
 ---
 

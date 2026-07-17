@@ -38,6 +38,18 @@ Base URL: `https://gateway.test/api`
 | POST | `/guru` | SuperAdmin, Admin | Tambah guru baru + foto (multipart/form-data) |
 | POST | `/guru/update` | SuperAdmin, Admin | Update data guru + foto opsional |
 | DELETE | `/guru/{id}` | SuperAdmin, Admin | Hapus guru (soft delete) |
+| POST | `/guru/kartu/terbitkan` | SuperAdmin, Admin | Terbitkan/ganti kartu absensi (UID prefix `GUR-`) |
+| POST | `/guru/kartu/blokir` | SuperAdmin, Admin | Blokir kartu (`status`: `hilang`/`blokir`) |
+
+### Rute internal (dipanggil Gateway, bukan langsung dari klien)
+
+| Method | Route | Dipakai untuk |
+|--------|-------|---------------|
+| GET | `/guru/lookup-kartu?uid=` | Resolve UID kartu → guru saat scan di terminal |
+| POST | `/guru/pin/set` | Set PIN absensi (di-hash) — user-facing: `POST /absensi/pin/atur` |
+| POST | `/guru/pin/verify` | Verifikasi NIP+PIN saat absen PIN di terminal |
+
+> Tabel `gurus` memiliki kolom absensi: `kartu_uid`, `kartu_status` (`belum_terbit`/`aktif`/`hilang`/`blokir`), `kartu_diterbitkan_at`, `pin_hash` (hidden). Alur absensi lengkap: lihat [Gateway/README.md](../Gateway/README.md) & [AkademikService/README.md](../AkademikService/README.md).
 
 ---
 

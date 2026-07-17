@@ -63,6 +63,18 @@ Base URL: `https://gateway.test/api`
 | GET | `/akademik/guru/{id}/mapel/riwayat` | SuperAdmin, Admin | Semua mapel pernah diampu guru |
 | GET | `/akademik/mapel/{id}/guru/riwayat` | SuperAdmin, Admin | Semua guru pernah mengampu mapel |
 
+### Wali Kelas
+
+Satu kelas punya satu wali per semester. Dipakai untuk enforcement persetujuan izin keluar (pulang awal).
+
+| Method | Endpoint | Role | Keterangan |
+|--------|----------|------|------------|
+| POST | `/akademik/wali` | SuperAdmin, Admin | Tetapkan wali kelas (`guru_id`, `kelas_id`, `tahun_ajaran`, `semester`) |
+| PATCH | `/akademik/wali/{id}` | SuperAdmin, Admin | Ganti guru wali |
+| DELETE | `/akademik/wali/{id}` | SuperAdmin, Admin | Batalkan penugasan wali (soft delete) |
+| GET | `/akademik/kelas/{id}/wali` | Semua | Wali aktif satu kelas |
+| GET | `/akademik/guru/{id}/wali` | Semua | Kelas yang diwali seorang guru |
+
 ### Jam Pelajaran
 
 | Method | Endpoint | Role | Keterangan |
@@ -116,6 +128,42 @@ Base URL: `https://gateway.test/api`
 | GET | `/akademik/raport/saya` | Siswa | Raport diri sendiri (khusus role Siswa) |
 | GET | `/akademik/nilai/ranking/kelas/{id}` | SuperAdmin, Admin, Guru, Karyawan | Ranking siswa dalam kelas |
 | GET | `/akademik/nilai/ranking/saya` | Siswa | Posisi ranking diri sendiri (khusus role Siswa) |
+
+### Absensi — Per Pelajaran (Guru)
+
+Guru menandai kehadiran siswa saat jam pelajarannya. Gateway meng-inject `X-Guru-Id` dari akun login.
+
+| Method | Endpoint | Role | Keterangan |
+|--------|----------|------|------------|
+| GET | `/akademik/absensi/pelajaran/sekarang` | Guru | Jadwal guru yang sedang berlangsung (hari+jam WIB) + daftar siswa & status hari ini |
+| GET | `/akademik/absensi/pelajaran/{jadwal_id}/siswa` | SuperAdmin, Admin, Guru | Daftar siswa + status untuk 1 jadwal (guru hanya miliknya) |
+| POST | `/akademik/absensi/pelajaran/tandai` | Guru | Tandai status siswa untuk jadwalnya (siswa di luar kelas diabaikan) |
+
+### Absensi — Keluar (Pulang Awal / Izin)
+
+| Method | Endpoint | Role | Keterangan |
+|--------|----------|------|------------|
+| POST | `/akademik/absensi/keluar` | SuperAdmin, Admin, Guru | Catat izin keluar; disetujui wali kelas/admin (`disetujui_oleh` = id user penyetuju) |
+| GET | `/akademik/absensi/keluar` | SuperAdmin, Admin, Guru | Daftar izin keluar (filter `tanggal`, `siswa_id`) |
+
+**Enforcement wali kelas:** jika penyetuju seorang **Guru**, ia hanya boleh menyetujui siswa di **kelas asuhannya** (Gateway meng-inject `X-Guru-Id`; service mencocokkan ke [Wali Kelas](#wali-kelas) kelas aktif siswa). Bukan wali → `403`. **Admin/SuperAdmin** melewati pengecekan ini (override). Kelas siswa belum punya wali → guru diblokir `403`, admin tetap bisa.
+
+### Absensi — Rekap
+
+Rentang default = awal bulan berjalan s/d hari ini (WIB); override via `tanggal_dari` & `tanggal_sampai`. Semester dari request atau semester aktif.
+
+| Method | Endpoint | Role | Keterangan |
+|--------|----------|------|------------|
+| GET | `/akademik/absensi/rekap/harian/kelas/{id}` | SuperAdmin, Admin, Guru, Karyawan | Rekap per siswa dalam kelas (hadir/terlambat/izin/sakit/alpa) |
+| GET | `/akademik/absensi/rekap/harian/siswa/{id}` | SuperAdmin, Admin, Guru, Karyawan | Ringkasan + detail harian 1 siswa |
+| GET | `/akademik/absensi/rekap/harian/saya` | Siswa | Rekap harian diri sendiri |
+| GET | `/akademik/absensi/rekap/pelajaran/siswa/{id}` | SuperAdmin, Admin, Guru, Karyawan | Ringkasan absensi per pelajaran 1 siswa |
+| GET | `/akademik/absensi/rekap/pelajaran/saya` | Siswa | Rekap pelajaran diri sendiri |
+| GET | `/akademik/absensi/rekap/pegawai/{tipe}/{id}` | SuperAdmin, Admin | Rekap pegawai (`tipe` = `guru`\|`karyawan`) |
+
+> **Scan kartu & absen PIN** dilayani di prefix Gateway `/absensi/*` (autentikasi **terminal**, bukan Bearer) — lihat [Gateway/README.md](../Gateway/README.md). Secara internal, endpoint scan memanggil `POST absensi/scan-siswa` & `absensi/scan-pegawai` di service ini.
+
+> **Zona waktu:** service ini memakai `Asia/Jakarta`. Waktu masuk, ambang terlambat, dan batas "hari" absensi dihitung WIB.
 
 ---
 
@@ -234,6 +282,28 @@ Query params (opsional): `tahun_ajaran`, `semester`
 Query params (opsional): `tahun_ajaran`, `semester`
 
 **Response:** array siswa diurutkan dari rata-rata `nilai_akhir` tertinggi, dengan field tambahan `rankingSiswa` dan `totalSiswa`
+
+### POST /akademik/absensi/pelajaran/tandai
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `jadwal_id` | ✅ | ID jadwal pelajaran milik guru yang login |
+| `tanggal` | ❌ | Format `YYYY-MM-DD`, default hari ini (WIB) |
+| `absensi` | ✅ | Array; tiap item `{ siswa_id, status, keterangan? }` |
+| `absensi.*.status` | ✅ | `hadir` \| `izin` \| `sakit` \| `alpa` |
+
+**Response:** `jadwalId`, `tanggal`, `tersimpan` (jumlah tercatat), `dilewati` (siswa_id di luar kelas)
+
+### POST /akademik/absensi/keluar
+
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
+| `siswa_id` | ✅ | ID siswa |
+| `jenis` | ✅ | `pulang_awal` \| `izin_kegiatan` \| `lomba` \| `pulang_sakit` |
+| `keterangan` | ❌ | Catatan bebas |
+| `jam_keluar` | ❌ | Default sekarang (WIB) |
+
+**Response:** `idKeluar`, `siswaId`, `tanggal`, `jamKeluar`, `jenis`, `keterangan`, `disetujuiOleh`, `terminalId`
 
 ---
 

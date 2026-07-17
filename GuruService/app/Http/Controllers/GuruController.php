@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -314,8 +315,10 @@ class GuruController extends Controller
                 $newPath  = "{$directoryStorage}/{$filename}";
                 Storage::disk('private')->put($newPath, (string) $this->convertImage($request->file('foto')));
 
-                if ($guru->foto && Storage::disk('private')->exists($guru->foto)) {
-                    Storage::disk('private')->delete($guru->foto);
+                // getRawOriginal: ambil PATH asli, bukan accessor foto (base64)
+                $oldFoto = $guru->getRawOriginal('foto');
+                if ($oldFoto && Storage::disk('private')->exists($oldFoto)) {
+                    Storage::disk('private')->delete($oldFoto);
                 }
                 $updateData['foto'] = $newPath;
             }
@@ -426,6 +429,160 @@ class GuruController extends Controller
                 'idGuru'      => $guru->id,
                 'namaLengkap' => $guru->nama_lengkap,
                 'email'       => $guru->email,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Lookup untuk Gateway resolve kartu absensi (scan) -> guru
+    public function lookupByKartu(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'uid' => 'required|string|max:32',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $guru = Guru::where('kartu_uid', $request->uid)->first();
+            if (!$guru) {
+                return $this->response('Kartu tidak dikenali.', Response::HTTP_NOT_FOUND);
+            }
+
+            return $this->response("Kartu ditemukan.", Response::HTTP_OK, [
+                'idGuru'      => $guru->id,
+                'namaLengkap' => $guru->nama_lengkap,
+                'kartuStatus' => $guru->kartu_status,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Terbitkan/ganti kartu absensi: generate UID unik (prefix GUR-), set aktif.
+    public function terbitkanKartu(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'idGuru' => 'required|exists:gurus,id',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $guru = Guru::find($request->idGuru);
+            if (!$guru) {
+                return $this->response("Data sudah dihapus.", Response::HTTP_NOT_FOUND);
+            }
+
+            do {
+                $uid = 'GUR-' . strtoupper(Str::random(12));
+            } while (Guru::where('kartu_uid', $uid)->exists());
+
+            $guru->update([
+                'kartu_uid'            => $uid,
+                'kartu_status'         => 'aktif',
+                'kartu_diterbitkan_at' => now(),
+            ]);
+
+            return $this->response("Kartu diterbitkan.", Response::HTTP_OK, [
+                'idGuru'            => $guru->id,
+                'kartuUid'          => $uid,
+                'kartuStatus'       => 'aktif',
+                'kartuDiterbitkanAt'=> $guru->kartu_diterbitkan_at,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Blokir kartu (hilang/blokir) tanpa menerbitkan yang baru -> scan ditolak.
+    public function blokirKartu(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'idGuru' => 'required|exists:gurus,id',
+                'status' => 'sometimes|in:hilang,blokir',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $guru = Guru::find($request->idGuru);
+            if (!$guru) {
+                return $this->response("Data sudah dihapus.", Response::HTTP_NOT_FOUND);
+            }
+            if (!$guru->kartu_uid) {
+                return $this->response("Guru belum memiliki kartu.", Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            $status = $request->input('status', 'hilang');
+            $guru->update(['kartu_status' => $status]);
+
+            return $this->response("Kartu diblokir ({$status}).", Response::HTTP_OK, [
+                'idGuru'      => $guru->id,
+                'kartuStatus' => $status,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Atur/ganti PIN absensi (dipakai saat lupa kartu). Disimpan ter-hash.
+    public function setPin(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'idGuru' => 'required|exists:gurus,id',
+                'pin'    => ['required', 'regex:/^\d{4,6}$/'],
+            ], [
+                'pin.regex' => 'PIN harus 4-6 digit angka.',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $guru = Guru::find($request->idGuru);
+            if (!$guru) {
+                return $this->response("Data sudah dihapus.", Response::HTTP_NOT_FOUND);
+            }
+
+            $guru->update(['pin_hash' => Hash::make($request->pin)]);
+
+            return $this->response("PIN absensi berhasil diatur.", Response::HTTP_OK, ['idGuru' => $guru->id]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Verifikasi NIP + PIN (dipanggil Gateway saat absen via PIN). Tidak membocorkan hash.
+    public function verifyPin(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'nip' => 'required|string',
+                'pin' => 'required|string',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $guru = Guru::where('nip', $request->nip)->first();
+            if (!$guru) {
+                return $this->response('Pegawai tidak ditemukan.', Response::HTTP_NOT_FOUND);
+            }
+            if (!$guru->pin_hash) {
+                return $this->response('PIN belum diatur.', Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+            if (!Hash::check($request->pin, $guru->pin_hash)) {
+                return $this->response('PIN salah.', Response::HTTP_UNAUTHORIZED);
+            }
+
+            return $this->response('PIN valid.', Response::HTTP_OK, [
+                'idGuru'      => $guru->id,
+                'namaLengkap' => $guru->nama_lengkap,
             ]);
         } catch (Exception $e) {
             return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);

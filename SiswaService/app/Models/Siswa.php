@@ -39,9 +39,19 @@ class Siswa extends Model
         'no_telp_ibu',
         'nama_wali',
         'hubungan_wali',
-        'no_telp_wali'
+        'no_telp_wali',
+        // Kartu absensi (dikelola lewat alur penerbitan kartu, bukan CRUD biasa)
+        'kartu_uid',
+        'kartu_status',
+        'kartu_diterbitkan_at',
     ];
-    
+
+    protected function casts(): array
+    {
+        return [
+            'kartu_diterbitkan_at' => 'datetime',
+        ];
+    }
 
     /**
      * Override atribut 'foto' (path) dengan string Base64
