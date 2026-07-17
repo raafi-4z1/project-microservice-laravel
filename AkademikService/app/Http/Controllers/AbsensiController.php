@@ -12,7 +12,9 @@ use App\Models\AbsensiKeluar;
 use App\Models\AbsensiPegawai;
 use App\Models\AbsensiPelajaran;
 use App\Models\JadwalPelajaran;
+use App\Models\JamPelajaran;
 use App\Models\PengaturanAbsensi;
+use App\Models\PeriodeKhusus;
 use App\Models\SemesterAktif;
 use App\Models\SiswaKelas;
 use App\Models\WaliKelas;
@@ -69,7 +71,7 @@ class AbsensiController extends Controller
                 );
             }
 
-            $pengaturan = $this->getPengaturan($semester->tahun_ajaran, $semester->semester);
+            $pengaturan = $this->getPengaturan($semester->tahun_ajaran, $semester->semester, $tanggal);
             $batas      = $pengaturan->batas_terlambat_siswa ?? self::DEFAULT_BATAS_SISWA;
             $status     = $this->tepatAtauTerlambat($now, $tanggal, $batas);
 
@@ -129,7 +131,7 @@ class AbsensiController extends Controller
                 );
             }
 
-            $pengaturan = $this->getPengaturan($semester->tahun_ajaran, $semester->semester);
+            $pengaturan = $this->getPengaturan($semester->tahun_ajaran, $semester->semester, $tanggal);
             $batas      = $pengaturan->batas_terlambat_pegawai ?? self::DEFAULT_BATAS_PEGAWAI;
             $status     = $this->tepatAtauTerlambat($now, $tanggal, $batas);
 
@@ -181,6 +183,17 @@ class AbsensiController extends Controller
                 return $this->response('Bukan hari sekolah.', Response::HTTP_OK, []);
             }
 
+            // Periode khusus (Ramadan/ujian/libur) menentukan jam efektif & apakah KBM jalan
+            $periode = PeriodeKhusus::untukTanggal($tanggal);
+            if ($periode && !$periode->kbm_normal) {
+                return $this->response(
+                    "{$periode->nama}: KBM normal tidak berjalan, absensi pelajaran nonaktif.",
+                    Response::HTTP_OK,
+                    []
+                );
+            }
+            $periodeId = $periode?->id;
+
             $jadwal = JadwalPelajaran::with(['jamMulai', 'jamSelesai', 'pengampuMapel'])
                 ->where('hari', $hari)
                 ->whereHas('pengampuMapel', function ($q) use ($guruId, $semester) {
@@ -189,17 +202,18 @@ class AbsensiController extends Controller
                         ->where('semester', $semester->semester);
                 })
                 ->get()
-                ->first(function ($j) use ($nowTime) {
-                    return $j->jamMulai && $j->jamSelesai
-                        && $j->jamMulai->jam_mulai <= $nowTime
-                        && $j->jamSelesai->jam_selesai >= $nowTime;
+                ->first(function ($j) use ($periodeId, $hari, $nowTime) {
+                    [$mulai, $selesai] = $this->jamEfektifJadwal($j, $periodeId, $hari);
+                    return $mulai && $selesai
+                        && $mulai->jam_mulai <= $nowTime
+                        && $selesai->jam_selesai >= $nowTime;
                 });
 
             if (!$jadwal) {
                 return $this->response('Tidak ada jam pelajaran Anda saat ini.', Response::HTTP_OK, []);
             }
 
-            $data = $this->jadwalInfo($jadwal, $tanggal);
+            $data = $this->jadwalInfo($jadwal, $tanggal, $periodeId);
             $data['siswa'] = $this->siswaListPelajaran($jadwal, $tanggal);
 
             return $this->response('Jam pelajaran berlangsung.', Response::HTTP_OK, $data);
@@ -223,9 +237,10 @@ class AbsensiController extends Controller
                 return $this->response('Bukan jam pelajaran Anda.', Response::HTTP_FORBIDDEN);
             }
 
-            $tanggal = $request->input('tanggal', Carbon::now(self::TZ)->toDateString());
+            $tanggal   = $request->input('tanggal', Carbon::now(self::TZ)->toDateString());
+            $periodeId = PeriodeKhusus::untukTanggal($tanggal)?->id;
 
-            $data = $this->jadwalInfo($jadwal, $tanggal);
+            $data = $this->jadwalInfo($jadwal, $tanggal, $periodeId);
             $data['siswa'] = $this->siswaListPelajaran($jadwal, $tanggal);
 
             return $this->response("Daftar siswa jadwal id:{$jadwalId}.", Response::HTTP_OK, $data);
@@ -640,11 +655,30 @@ class AbsensiController extends Controller
         ][$now->dayOfWeek];
     }
 
-    private function jadwalInfo(JadwalPelajaran $jadwal, string $tanggal): array
+    /**
+     * Jam efektif [mulai, selesai] sebuah jadwal pada periode + hari tertentu.
+     * Jadwal menyimpan FK ke baris jam_pelajaran; yang dipakai hanyalah nomor
+     * slot (`ke`) — jam dindingnya di-resolve ulang sesuai periode & hari,
+     * sehingga jadwal tidak perlu diduplikasi saat Ramadan/jam khusus.
+     */
+    private function jamEfektifJadwal(JadwalPelajaran $jadwal, ?int $periodeId, string $hari): array
+    {
+        $keMulai   = $jadwal->jamMulai?->ke;
+        $keSelesai = $jadwal->jamSelesai?->ke;
+        if ($keMulai === null || $keSelesai === null) {
+            return [null, null];
+        }
+
+        return [
+            JamPelajaran::efektif($periodeId, $hari, $keMulai),
+            JamPelajaran::efektif($periodeId, $hari, $keSelesai),
+        ];
+    }
+
+    private function jadwalInfo(JadwalPelajaran $jadwal, string $tanggal, ?int $periodeId = null): array
     {
         $pm = $jadwal->pengampuMapel;
-        $jm = $jadwal->jamMulai;
-        $js = $jadwal->jamSelesai;
+        [$jm, $js] = $this->jamEfektifJadwal($jadwal, $periodeId, $jadwal->hari);
 
         return [
             'jadwalId'    => $jadwal->id,
@@ -652,6 +686,8 @@ class AbsensiController extends Controller
             'mapelId'     => $pm?->mapel_id,
             'kelasId'     => $pm?->kelas_id,
             'hari'        => $jadwal->hari,
+            'keMulai'     => $jadwal->jamMulai?->ke,
+            'keSelesai'   => $jadwal->jamSelesai?->ke,
             'pukul'       => ($jm && $js) ? "{$jm->jam_mulai} - {$js->jam_selesai}" : null,
             'tahunAjaran' => $pm?->tahun_ajaran,
             'semester'    => $pm?->semester,
@@ -681,11 +717,15 @@ class AbsensiController extends Controller
         ])->values()->all();
     }
 
-    private function getPengaturan(string $tahunAjaran, $semester): ?PengaturanAbsensi
+    /**
+     * Pengaturan absensi yang berlaku pada sebuah tanggal: override periode
+     * khusus (mis. Ramadan) kalau ada, kalau tidak default semester.
+     */
+    private function getPengaturan(string $tahunAjaran, $semester, string $tanggal): ?PengaturanAbsensi
     {
-        return PengaturanAbsensi::where('tahun_ajaran', $tahunAjaran)
-            ->where('semester', $semester)
-            ->first();
+        $periodeId = PeriodeKhusus::untukTanggal($tanggal)?->id;
+
+        return PengaturanAbsensi::efektif($tahunAjaran, $semester, $periodeId);
     }
 
     // hadir bila <= batas, selain itu terlambat (ambang jam dinding WIB)
