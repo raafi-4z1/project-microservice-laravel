@@ -557,6 +557,24 @@ test → dikirim lewat jalur lain, jangan commit.
 
 ## Maintenance / Operasional
 
+### Auto-alpa Absensi (wajib dijadwalkan)
+
+Siswa yang tidak punya catatan absensi pada hari sekolah ditandai `alpa`
+otomatis. **Tidak berjalan sendiri** — daftarkan lewat **Windows Task Scheduler**
+sebagai tugas harian tiap sore setelah jam pulang (mis. 15:00), menjalankan:
+
+```
+php artisan absensi:tandai-alpa
+```
+
+dari folder `AkademikService`. Uji dulu dengan `--dry-run` (tidak menyimpan apa pun).
+
+Otomatis melewati akhir pekan dan tanggal yang masuk **periode libur**, serta
+tidak menyentuh siswa yang sudah punya catatan (hadir/terlambat/izin/sakit).
+Idempotent — aman jalan berkali-kali. Isi kalender libur & periode khusus
+(Ramadan/pekan ujian) via `POST /akademik/periode` — lihat
+[AkademikService/README.md](AkademikService/README.md).
+
 ### Backup Database
 
 `backup-databases.ps1` mem-backup keenam database (nama & kredensial dibaca dari

@@ -435,8 +435,11 @@ perangkat terminal, di-set sekali saat setup kiosk). Body pakai snake_case.
 - Kode status lain yang harus ditangani: **403** = role tidak berhak (tampilkan
   pesan "tidak berhak", jangan logout — KECUALI jika `data.mustChangePassword ==
   true`: arahkan ke layar Ganti Password wajib), **409** = konflik bisnis (jadwal
-  bentrok, kelas penuh, siswa sudah terdaftar — tampilkan `resMsg` apa adanya),
-  **422** = error validasi, **429** = rate limit.
+  bentrok, kelas penuh, siswa sudah terdaftar, slot jam / periode / wali sudah
+  ada — tampilkan `resMsg` apa adanya), **422** = error validasi,
+  **429** = rate limit.
+  - Catatan: duplikat **jam pelajaran** (`periode_id`+`hari`+`ke` sama) menjawab
+    **409** (bukan 422) — samakan penanganannya dengan konflik lain.
 - `POST /login`, `POST /refresh`, dan `POST /password` dibatasi 5 percobaan/menit
   → tangani 429 dengan pesan yang ramah (`resMsg` berisi instruksi tunggu).
 

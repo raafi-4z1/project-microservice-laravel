@@ -128,6 +128,8 @@ Pemetaan slot (`ke`) → jam dinding. Bisa berbeda **per periode** (Ramadan) dan
 - Kalau sebuah periode punya set jam sendiri, set itu **menggantikan** set normal — slot yang tidak didefinisikan berarti **ditiadakan** (mis. Ramadan hanya sampai ke-6). Kalau periode tidak punya set jam, set normal dipakai.
 - **Jadwal tidak perlu diduplikasi** saat Ramadan: jadwal menyimpan slot `ke`, jam dindingnya di-resolve per tanggal.
 
+> **Perubahan kontrak:** duplikat slot (`periode_id` + `hari` + `ke` sama) kini dijawab **409 Conflict** — sebelumnya 422, karena dulu memakai rule `unique:jam_pelajaran,ke` yang harus dilepas saat `ke` boleh berulang antar periode/hari. 409 juga konsisten dengan konflik lain di modul ini (pengampu/wali sudah ada, kelas penuh).
+
 ### Jadwal Pelajaran
 
 | Method | Endpoint | Role | Keterangan |
@@ -224,12 +226,9 @@ php artisan absensi:tandai-alpa --dry-run             # lihat dulu, jangan simpa
 - **Idempotent** — aman dijalankan berkali-kali (unique `siswa_id` + `tanggal`).
 - Hanya siswa (daftarnya ada lokal di `siswa_kelas`); guru/karyawan ada di service lain.
 
-Jadwalkan tiap sore setelah jam pulang, mis. via Windows Task Scheduler:
-
-```powershell
-# Harian 15:00
-schtasks /create /tn "Absensi Auto-Alpa" /tr "php C:\path\AkademikService\artisan absensi:tandai-alpa" /sc daily /st 15:00
-```
+**Penjadwalan:** daftarkan sebagai tugas harian di **Windows Task Scheduler**
+(mis. 15:00, setelah jam pulang) yang menjalankan `php artisan absensi:tandai-alpa`
+dari folder service ini.
 
 ---
 
