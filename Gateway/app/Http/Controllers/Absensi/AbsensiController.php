@@ -168,7 +168,9 @@ class AbsensiController extends Controller
                 return $this->response('Pegawai tidak ditemukan.', Response::HTTP_NOT_FOUND);
             }
 
-            $durasi = (int) ($request->input('durasi_menit') ?: self::DEFAULT_DURASI_PIN_MENIT);
+            // Prioritas durasi: override eksplisit admin > pengaturan absensi
+            // (yang berlaku hari ini, ikut periode khusus) > default sistem.
+            $durasi = (int) ($request->input('durasi_menit') ?: $this->durasiPinEfektif());
             $durasi = max(1, min(60, $durasi));
 
             $now    = Carbon::now();
@@ -233,6 +235,26 @@ class AbsensiController extends Controller
             ]);
         } catch (Exception $e) {
             return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Durasi jendela PIN dari pengaturan absensi yang berlaku HARI INI
+     * (sudah memperhitungkan periode khusus, mis. Ramadan). Kalau AkademikService
+     * bermasalah atau belum ada pengaturan, pakai default sistem — jangan sampai
+     * admin gagal membuka jendela hanya karena pengaturan belum diisi.
+     */
+    private function durasiPinEfektif(): int
+    {
+        try {
+            $resp = $this->decode(
+                $this->performRequest('GET', "{$this->reqUrl}/pengaturan-absensi/efektif")
+            );
+            $durasi = $resp['data']['pengaturan']['durasiPinWindowMenit'] ?? null;
+
+            return $durasi ? (int) $durasi : self::DEFAULT_DURASI_PIN_MENIT;
+        } catch (Exception $e) {
+            return self::DEFAULT_DURASI_PIN_MENIT;
         }
     }
 

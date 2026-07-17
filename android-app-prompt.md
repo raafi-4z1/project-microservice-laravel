@@ -261,6 +261,13 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
   `tahunAjaran`, `semester`, `hari`, `jamMulaiId`, `jamSelesaiId`, `keMulai`,
   `keSelesai`, `pukul` (string siap tampil, contoh `"07:00:00 - 08:30:00"`),
   `ruangan`, `catatan`.
+  - **`pukul` mengikuti tanggal**: semua GET jadwal menerima query `tanggal`
+    (default hari ini WIB). `pukul` di-resolve dari periode + hari — saat
+    Ramadan otomatis jam Ramadan, hari Jumat otomatis jam Jumat. Untuk layar
+    jadwal mingguan, kirim `tanggal` sesuai minggu yang ditampilkan.
+  - Kalau slot **ditiadakan** pada periode itu (mis. Ramadan hanya sampai ke-6),
+    field `pukul` **tidak ada** di respons → tampilkan sebagai "tidak ada
+    pelajaran", bukan crash. Identitas slot tetap di `keMulai`/`keSelesai`.
 - **Pengaturan nilai** (SuperAdmin/Admin saja, termasuk GET):
   `GET|POST /akademik/pengaturan-nilai`, `PATCH /akademik/pengaturan-nilai/{id}`
   (bobot_harian + bobot_uts + bobot_uas = 100).

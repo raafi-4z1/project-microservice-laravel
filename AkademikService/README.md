@@ -141,6 +141,10 @@ Pemetaan slot (`ke`) → jam dinding. Bisa berbeda **per periode** (Ramadan) dan
 | GET | `/akademik/jadwal/kelas/{id}` | Semua | Jadwal aktif seluruh kelas |
 | GET | `/akademik/jadwal/guru/{id}` | Semua | Jadwal aktif seluruh guru |
 | GET | `/akademik/jadwal/siswa/{id}` | Semua | Jadwal aktif siswa berdasarkan kelas yang diikuti |
+
+> **`pukul` mengikuti tanggal.** Semua GET jadwal menerima query `tanggal` (default: hari ini WIB). Field `pukul` di-resolve dari **periode + hari** slot itu — jadi saat Ramadan otomatis menampilkan jam Ramadan, dan baris hari-spesifik (mis. Jumat) ikut terpakai. Jadwal sendiri **tidak diduplikasi**; identitas slot ada di `keMulai`/`keSelesai`.
+>
+> Kalau slot **ditiadakan** pada periode itu (mis. Ramadan hanya sampai ke-6), `pukul` **tidak disertakan** dalam respons — artinya jadwal tsb tidak berjalan pada tanggal itu.
 | GET | `/akademik/jadwal/pengampu/{id}/riwayat` | SuperAdmin, Admin | Riwayat jadwal pengampu |
 | GET | `/akademik/jadwal/kelas/{id}/riwayat` | SuperAdmin, Admin | Riwayat jadwal kelas |
 | GET | `/akademik/jadwal/guru/{id}/riwayat` | SuperAdmin, Admin | Riwayat jadwal guru |

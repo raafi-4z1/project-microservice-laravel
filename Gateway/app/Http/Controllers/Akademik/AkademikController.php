@@ -448,45 +448,45 @@ class AkademikController extends Controller
     }
 
     // GET /akademik/jadwal/pengampu/{id} — semua role
-    public function getJadwalByPengampu($pengampuId)
+    public function getJadwalByPengampu(Request $request, $pengampuId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/pengampu/{$pengampuId}");
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/pengampu/{$pengampuId}", $request->only(['tanggal']));
     }
 
     // GET /akademik/jadwal/kelas/{id} — semua role
     public function getJadwalByKelas(Request $request, $kelasId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']));
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
     }
 
     // GET /akademik/jadwal/guru/{id} — semua role
     public function getJadwalByGuru(Request $request, $guruId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}", $request->only(['tahun_ajaran', 'semester']));
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
     }
 
     // GET /akademik/jadwal/siswa/{id} — semua role
     public function getJadwalBySiswa(Request $request, $siswaId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/siswa/{$siswaId}", $request->only(['tahun_ajaran', 'semester']));
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/siswa/{$siswaId}", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
     }
 
     // GET /akademik/jadwal/pengampu/{id}/riwayat — SuperAdmin, Admin
-    public function getRiwayatJadwalByPengampu($pengampuId)
+    public function getRiwayatJadwalByPengampu(Request $request, $pengampuId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/pengampu/{$pengampuId}/riwayat");
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/pengampu/{$pengampuId}/riwayat", $request->only(['tanggal']));
     }
 
     // GET /akademik/jadwal/kelas/{id}/riwayat — SuperAdmin, Admin
     public function getRiwayatJadwalByKelas(Request $request, $kelasId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/kelas/{$kelasId}/riwayat", $request->only(['tahun_ajaran', 'semester']));
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/kelas/{$kelasId}/riwayat", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
     }
 
     // GET /akademik/jadwal/guru/{id}/riwayat — SuperAdmin, Admin
     public function getRiwayatJadwalByGuru(Request $request, $guruId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}/riwayat", $request->only(['tahun_ajaran', 'semester']));
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}/riwayat", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
     }
 
     // ─── Pengaturan Bobot Nilai ─────────────────────────────────────────────────

@@ -12,14 +12,13 @@ class PengaturanAbsensi extends Model
         'tahun_ajaran', 'semester', 'periode_id',
         'jam_masuk_sekolah', 'batas_terlambat_siswa',
         'jam_masuk_pegawai', 'batas_terlambat_pegawai',
-        'durasi_pin_window_menit', 'radius_geofence_m',
+        'durasi_pin_window_menit',
     ];
 
     protected $casts = [
         'semester'                => 'integer',
         'periode_id'              => 'integer',
         'durasi_pin_window_menit' => 'integer',
-        'radius_geofence_m'       => 'integer',
     ];
 
     public function periode()

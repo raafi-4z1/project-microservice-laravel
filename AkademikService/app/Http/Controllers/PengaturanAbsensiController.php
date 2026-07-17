@@ -19,8 +19,8 @@ use App\Traits\ApiResponser;
  * Keunikan (tahun_ajaran, semester, periode_id) dijaga di sini karena unique
  * MySQL menganggap NULL saling berbeda.
  *
- * Catatan: kolom `radius_geofence_m` sengaja TIDAK diekspos — radius geofence
- * dipegang per-terminal (`terminals.radius_m` di Gateway) yang lebih tepat.
+ * Catatan: radius geofence TIDAK ada di sini — dipegang per-terminal
+ * (`terminals.radius_m` di Gateway), karena tiap terminal punya lokasi sendiri.
  */
 class PengaturanAbsensiController extends Controller
 {
