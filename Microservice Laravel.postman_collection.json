@@ -3913,6 +3913,599 @@
       ]
     },
     {
+      "name": "Periode & Pengaturan Absensi",
+      "description": "Periode khusus (Ramadan/ujian/libur/kegiatan) berbasis rentang tanggal yang menyetir jam pelajaran & aturan absensi, lalu otomatis kembali normal. Resolusi: rentang TERPENDEK menang. Jadwal pelajaran tidak perlu diduplikasi — jam dinding di-resolve per (periode, hari, slot ke).",
+      "item": [
+        {
+          "name": "Periode Aktif (per tanggal)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/periode/aktif?tanggal=2026-03-02",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "periode",
+                "aktif"
+              ],
+              "query": [
+                {
+                  "key": "tanggal",
+                  "value": "2026-03-02",
+                  "description": "Default hari ini (WIB)"
+                }
+              ]
+            },
+            "description": "Periode yang berlaku pada tanggal. Kalau beberapa periode bertumpuk, yang menang adalah **rentang terpendek** (libur 1 hari mengalahkan Ramadan). Kosong = aturan normal."
+          },
+          "response": []
+        },
+        {
+          "name": "Daftar Periode",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/periode?tahun_ajaran=2024/2025&semester=2&jenis=",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "periode"
+              ],
+              "query": [
+                {
+                  "key": "tahun_ajaran",
+                  "value": "2024/2025",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "semester",
+                  "value": "2",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "jenis",
+                  "value": "",
+                  "description": "ramadan|ujian|libur|khusus"
+                }
+              ]
+            },
+            "description": "Daftar periode khusus."
+          },
+          "response": []
+        },
+        {
+          "name": "Buat Periode - Ramadan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Ramadan 1447\",\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": \"2\",\n  \"jenis\": \"ramadan\",\n  \"berlaku_dari\": \"2026-02-18\",\n  \"berlaku_sampai\": \"2026-03-19\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/periode",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "periode"
+              ]
+            },
+            "description": "**SuperAdmin/Admin.** Jam pelajaran dipendekkan (urutan mapel tetap). `kbm_normal` default true untuk ramadan."
+          },
+          "response": []
+        },
+        {
+          "name": "Buat Periode - Pekan Ujian",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Pekan Ujian Tengah Semester\",\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": \"2\",\n  \"jenis\": \"ujian\",\n  \"berlaku_dari\": \"2026-03-23\",\n  \"berlaku_sampai\": \"2026-03-28\",\n  \"keterangan\": \"UTS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/periode",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "periode"
+              ]
+            },
+            "description": "**SuperAdmin/Admin.** `kbm_normal` otomatis false -> absensi pelajaran nonaktif (guru dapat pesan periode). Absensi gerbang tetap jalan."
+          },
+          "response": []
+        },
+        {
+          "name": "Buat Periode - Libur",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Nuzulul Quran\",\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": \"2\",\n  \"jenis\": \"libur\",\n  \"berlaku_dari\": \"2026-03-05\",\n  \"berlaku_sampai\": \"2026-03-05\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/periode",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "periode"
+              ]
+            },
+            "description": "**SuperAdmin/Admin.** Libur 1 hari: isi `berlaku_dari` = `berlaku_sampai`. Auto-alpa melewati tanggal ini."
+          },
+          "response": []
+        },
+        {
+          "name": "Ubah Periode",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"berlaku_sampai\": \"2026-03-20\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/periode/1",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "periode",
+                "1"
+              ]
+            },
+            "description": "**SuperAdmin/Admin.** Ganti angka 1 dengan idPeriode."
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Periode",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/periode/1",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "periode",
+                "1"
+              ]
+            },
+            "description": "**SuperAdmin/Admin.** Soft delete."
+          },
+          "response": []
+        },
+        {
+          "name": "Pengaturan Absensi Efektif (per tanggal)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/pengaturan-absensi/efektif?tanggal=2026-03-02",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "pengaturan-absensi",
+                "efektif"
+              ],
+              "query": [
+                {
+                  "key": "tanggal",
+                  "value": "2026-03-02",
+                  "description": "Default hari ini (WIB)"
+                }
+              ]
+            },
+            "description": "Aturan yang BENAR-BENAR berlaku pada tanggal (sudah memperhitungkan periode). `sumber`: periode | default_semester | default_sistem (07:20)."
+          },
+          "response": []
+        },
+        {
+          "name": "Daftar Pengaturan Absensi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/pengaturan-absensi?tahun_ajaran=2024/2025&semester=2",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "pengaturan-absensi"
+              ],
+              "query": [
+                {
+                  "key": "tahun_ajaran",
+                  "value": "2024/2025",
+                  "description": "Opsional"
+                },
+                {
+                  "key": "semester",
+                  "value": "2",
+                  "description": "Opsional"
+                }
+              ]
+            },
+            "description": "**SuperAdmin/Admin.**"
+          },
+          "response": []
+        },
+        {
+          "name": "Buat Pengaturan - Default Semester",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": \"2\",\n  \"batas_terlambat_siswa\": \"07:20\",\n  \"batas_terlambat_pegawai\": \"07:20\",\n  \"durasi_pin_window_menit\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/pengaturan-absensi",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "pengaturan-absensi"
+              ]
+            },
+            "description": "**SuperAdmin/Admin.** Tanpa `periode_id` = default semester. 409 bila kombinasi sudah ada."
+          },
+          "response": []
+        },
+        {
+          "name": "Buat Pengaturan - Override Ramadan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": \"2\",\n  \"periode_id\": 1,\n  \"jam_masuk_sekolah\": \"07:30\",\n  \"batas_terlambat_siswa\": \"08:00\",\n  \"batas_terlambat_pegawai\": \"08:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/pengaturan-absensi",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "pengaturan-absensi"
+              ]
+            },
+            "description": "**SuperAdmin/Admin.** Dengan `periode_id` = berlaku hanya selama periode itu (mis. ambang terlambat 08:00 saat Ramadan)."
+          },
+          "response": []
+        },
+        {
+          "name": "Ubah Pengaturan Absensi",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"batas_terlambat_siswa\": \"07:15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/pengaturan-absensi/1",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "pengaturan-absensi",
+                "1"
+              ]
+            },
+            "description": "**SuperAdmin/Admin.** Hanya field jam yang bisa diubah (semester/periode tidak)."
+          },
+          "response": []
+        },
+        {
+          "name": "Hapus Pengaturan Absensi",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/pengaturan-absensi/1",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "pengaturan-absensi",
+                "1"
+              ]
+            },
+            "description": "**SuperAdmin/Admin.**"
+          },
+          "response": []
+        },
+        {
+          "name": "Jam Efektif (per tanggal)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/akademik/jam?tanggal=2026-03-02&hari=Senin",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "jam"
+              ],
+              "query": [
+                {
+                  "key": "tanggal",
+                  "value": "2026-03-02",
+                  "description": "Resolve set efektif"
+                },
+                {
+                  "key": "hari",
+                  "value": "Senin",
+                  "description": "Opsional, default dari tanggal"
+                }
+              ]
+            },
+            "description": "Set jam yang berlaku pada tanggal — ikut periode (Ramadan) & hari (Jumat lebih pendek). Tanpa `tanggal` = list mentah semua baris."
+          },
+          "response": []
+        },
+        {
+          "name": "Tambah Jam - Set Ramadan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"periode_id\": 1,\n  \"ke\": 1,\n  \"jam_mulai\": \"07:30\",\n  \"jam_selesai\": \"08:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/jam",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "jam"
+              ]
+            },
+            "description": "**SuperAdmin/Admin.** `periode_id` = set milik periode itu (menggantikan set normal). Slot yang tidak dibuat = ditiadakan pada periode tsb."
+          },
+          "response": []
+        },
+        {
+          "name": "Tambah Jam - Khusus Jumat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hari\": \"Jumat\",\n  \"ke\": 1,\n  \"jam_mulai\": \"07:00\",\n  \"jam_selesai\": \"07:40\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/akademik/jam",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "akademik",
+                "jam"
+              ]
+            },
+            "description": "**SuperAdmin/Admin.** `hari` terisi = khusus hari itu, menang atas baris semua-hari."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Kartu Absensi",
       "description": "Kelola kartu absensi (UID opaque berprefix SIS-/GUR-/KAR-) + QR. **SuperAdmin/Admin.** Terbitkan-ulang menimpa UID lama (kartu fisik lama otomatis mati). Blokir menandai hilang/blokir tanpa UID baru.",
       "item": [
