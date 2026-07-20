@@ -36,8 +36,10 @@ Klien / Frontend
 
 - **[Laragon](https://laragon.org/download/)** versi Full (sudah termasuk Apache, MySQL, PHP)
 - **PHP ≥ 8.2** — cek versi aktif di Laragon: klik kanan ikon Laragon di area notifikasi taskbar → PHP → versi
-- **Ekstensi PHP yang wajib aktif:** `pdo_mysql`, `gd`, `mbstring`, `openssl`, `fileinfo`
+- **Ekstensi PHP yang wajib aktif:** `pdo_mysql`, `gd`, `mbstring`, `openssl`, `fileinfo`, `sodium`, `curl`
   - Cek di Laragon: klik kanan ikon Laragon di area notifikasi taskbar → PHP → Extensions
+  - `sodium` **wajib** — dependensi Laravel Passport (`lcobucci/jwt`); tanpa ini `composer install` Gateway gagal. `curl` dipakai komunikasi HMAC antar-service.
+  - Cara aktifkan: buka `php.ini` (klik kanan Laragon → PHP → php.ini), hapus `;` di depan `extension=sodium` dan `extension=curl`, simpan, lalu Reload Laragon.
 - **Composer ≥ 2** — download di [getcomposer.org](https://getcomposer.org)
 - **Git**
 
@@ -173,6 +175,15 @@ Perintah di atas menghasilkan dua file:
 </VirtualHost>
 
 <VirtualHost 127.0.0.1:80>
+    ServerName karyawanservice.test
+    DocumentRoot "C:/path/to/project-microservice-laravel/KaryawanService/public"
+    <Directory "C:/path/to/project-microservice-laravel/KaryawanService/public">
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+
+<VirtualHost 127.0.0.1:80>
     ServerName akademikservice.test
     DocumentRoot "C:/path/to/project-microservice-laravel/AkademikService/public"
     <Directory "C:/path/to/project-microservice-laravel/AkademikService/public">
@@ -196,6 +207,7 @@ Jika domain `.test` tidak terbaca (error "server not found") meskipun sudah di-r
 127.0.0.1    mapelservice.test
 127.0.0.1    guruservice.test
 127.0.0.1    siswaservice.test
+127.0.0.1    karyawanservice.test
 127.0.0.1    akademikservice.test
 ```
 
@@ -240,6 +252,9 @@ GURU_SERVICE_SECRET=base64:...
 
 SISWA_SERVICE_BASE_URL=http://siswaservice.test
 SISWA_SERVICE_SECRET=base64:...
+
+KARYAWAN_SERVICE_BASE_URL=http://karyawanservice.test
+KARYAWAN_SERVICE_SECRET=base64:...
 
 AKADEMIK_SERVICE_BASE_URL=http://akademikservice.test
 AKADEMIK_SERVICE_SECRET=base64:...
@@ -394,7 +409,40 @@ php artisan migrate
 
 ---
 
-### 8. Setup AkademikService
+### 8. Setup KaryawanService
+
+```sh
+cd ../KaryawanService
+composer install
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```env
+APP_URL=http://karyawanservice.test
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=microservice-karyawan
+DB_USERNAME=root
+DB_PASSWORD=
+
+FILESYSTEM_DISK=private
+
+# Harus sama persis dengan KARYAWAN_SERVICE_SECRET di Gateway
+ACCEPTED_SECRETS=base64:...
+```
+
+```sh
+php artisan key:generate
+php artisan migrate
+```
+
+---
+
+### 9. Setup AkademikService
 
 ```sh
 cd ../AkademikService
@@ -425,7 +473,7 @@ php artisan migrate
 
 ---
 
-### 9. Verifikasi
+### 10. Verifikasi
 
 Buka browser dan akses:
 - `https://gateway.test/api/login` — harus memunculkan respons JSON (bukan halaman error 404/500)
