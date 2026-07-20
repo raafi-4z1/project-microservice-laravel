@@ -6,7 +6,10 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Models\JamPelajaran;
+use App\Models\PengaturanAbsensi;
 use App\Models\PeriodeKhusus;
 use App\Traits\ApiResponser;
 
@@ -108,7 +111,15 @@ class PeriodeKhususController extends Controller
             if (!$record) {
                 return $this->response("Periode khusus id:{$id} tidak ditemukan.", Response::HTTP_NOT_FOUND);
             }
-            $record->delete();
+
+            // Bersihkan turunan milik periode ini. FK cascade/nullOnDelete tidak
+            // terpicu karena periode pakai soft delete, jadi lakukan manual —
+            // konsisten dgn removeGuru (pengampu) yang menghapus jadwal terkait.
+            DB::transaction(function () use ($record) {
+                JamPelajaran::where('periode_id', $record->id)->delete();       // set jam periode
+                PengaturanAbsensi::where('periode_id', $record->id)->delete();  // override ambang periode
+                $record->delete();
+            });
 
             return $this->response('Periode khusus berhasil dihapus.', Response::HTTP_ACCEPTED);
         } catch (Exception $e) {

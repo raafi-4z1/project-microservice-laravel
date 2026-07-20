@@ -90,9 +90,13 @@ Rentang tanggal yang mengubah aturan akademik **sementara**, lalu **otomatis kem
 **Field:** `nama`, `tahun_ajaran`, `semester`, `jenis` (`ramadan`\|`ujian`\|`libur`\|`khusus`), `berlaku_dari`, `berlaku_sampai` (sama = 1 hari), `kbm_normal` (opsional), `keterangan`.
 **Response:** `idPeriode`, `nama`, `tahunAjaran`, `semester`, `jenis`, `berlakuDari`, `berlakuSampai`, `kbmNormal`, `keterangan`.
 
-> **Aturan resolusi:** kalau beberapa periode bertumpuk pada satu tanggal, yang menang adalah **rentang terpendek** (paling spesifik). Jadi libur 1 hari di tengah Ramadan otomatis mengalahkan Ramadan.
+> **Aturan resolusi:** kalau beberapa periode bertumpuk pada satu tanggal, yang menang adalah **rentang terpendek** (paling spesifik). Jadi libur 1 hari di tengah Ramadan otomatis mengalahkan Ramadan. Bila rentang sama panjang, `id` terbesar (terbaru) menang — deterministik.
 >
 > `kbm_normal` default: `false` untuk `ujian` & `libur` (KBM berhenti → absensi pelajaran nonaktif dengan pesan periode), `true` untuk `ramadan` & `khusus`.
+>
+> **Hapus periode** ikut menghapus **set jam** & **pengaturan absensi** miliknya (cascade di app layer — FK tidak terpicu karena periode pakai soft delete). Periode di-soft-delete dan langsung tidak lagi dianggap aktif.
+>
+> **Keterbatasan yang diketahui:** (1) resolusi periode murni berbasis tanggal — tidak memfilter `tahun_ajaran`/`semester`; pastikan rentang antar semester tidak tumpang tindih. (2) Rollback migration `jam_pelajaran` akan gagal bila sudah ada baris berperiode/berhari (memasang ulang `unique('ke')` yang kini duplikat) — rollback bukan alur normal.
 
 ### Pengaturan Absensi
 
