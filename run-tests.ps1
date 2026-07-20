@@ -99,7 +99,7 @@ function Api {
         [hashtable]$Body   = $null,
         [string]$Token     = $null,
         [string]$BodyType  = "json",  # json | form
-        [hashtable]$Headers = $null   # header tambahan (mis. X-Terminal-Id/Token)
+        [hashtable]$ExtraHeaders = $null  # header tambahan (mis. X-Terminal-Id/Token)
     )
     # Pacing untuk endpoint login (throttle 5/menit) — lapis pertama cegah 429
     $isLogin = ($Path -eq "login" -or $Path -like "login`?*")
@@ -108,7 +108,7 @@ function Api {
     $tok = if ($Token) { $Token } else { $script:TOKEN }
     $headers = @{ 'Accept' = 'application/json' }
     if ($tok) { $headers['Authorization'] = "Bearer $tok" }
-    if ($Headers) { foreach ($k in $Headers.Keys) { $headers[$k] = $Headers[$k] } }
+    if ($ExtraHeaders) { foreach ($k in $ExtraHeaders.Keys) { $headers[$k] = $ExtraHeaders[$k] } }
     $uri = "$($CFG.BaseUrl)/$Path"
     $bodyJson = if ($Body -ne $null) { $Body | ConvertTo-Json -Depth 6 } else { $null }
     if ($bodyJson) { $headers['Content-Type'] = 'application/json' }
@@ -1629,7 +1629,7 @@ if ($env:TEST_TERMINAL_ID -and $env:TEST_TERMINAL_TOKEN -and $siswaKartuUid) {
     $body = @{ kartu_uid = $siswaKartuUid }
     if ($env:TEST_TERMINAL_LAT) { $body['lat'] = [double]$env:TEST_TERMINAL_LAT }
     if ($env:TEST_TERMINAL_LNG) { $body['lng'] = [double]$env:TEST_TERMINAL_LNG }
-    $r = Api POST "absensi/scan" $body -Headers $th
+    $r = Api POST "absensi/scan" $body -ExtraHeaders $th
     if ($r.resCode -eq 201 -or $r.resCode -eq 200) { $script:PASS++; Write-Host "  [PASS $($r.resCode)] POST /absensi/scan (terminal) status=$($r.data.status)" -ForegroundColor Green }
     else { $script:FAIL++; Write-Host "  [FAIL $($r.resCode)] POST /absensi/scan (terminal) -- $($r.resMsg)" -ForegroundColor Red }
 } else {
@@ -1710,11 +1710,35 @@ if ($siswaTestToken) {
     Chk "POST /akademik/periode sebagai Siswa (harus 403)" $r 403
 }
 
-# Cleanup periode & turunannya
-if ($pengId)  { $r = Api DELETE "akademik/pengaturan-absensi/$pengId"; Chk "DELETE pengaturan-absensi (cleanup)" $r 202 }
-if ($jamPerId) { $r = Api DELETE "akademik/jam/$jamPerId"; Chk "DELETE jam periode (cleanup)" $r 202 }
-foreach ($pid in @($liburId, $perId)) {
-    if ($pid) { $r = Api DELETE "akademik/periode/$pid"; Chk "DELETE periode id=$pid (cleanup)" $r 202 }
+# Hapus periode = cascade ke jam & pengaturan turunannya (sekaligus cleanup)
+if ($perId) {
+    $r = Api DELETE "akademik/periode/$perId"
+    Chk "DELETE periode (ramadan)" $r 202
+    # jam & pengaturan milik periode harus ikut terhapus
+    $sisaJam = @((Api GET "akademik/jam`?periode_id=$perId").data).Count
+    if ($sisaJam -eq 0) { $script:PASS++; Write-Host "  [PASS] cascade: jam periode ikut terhapus" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] cascade: masih ada $sisaJam jam periode" -ForegroundColor Red }
+    $sisaPeng = @((Api GET "akademik/pengaturan-absensi`?tahun_ajaran=$(Enc $tahun)&semester=$semester").data | Where-Object { $_.periodeId -eq $perId }).Count
+    if ($sisaPeng -eq 0) { $script:PASS++; Write-Host "  [PASS] cascade: pengaturan periode ikut terhapus" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] cascade: masih ada $sisaPeng pengaturan periode" -ForegroundColor Red }
+}
+if ($liburId) { $r = Api DELETE "akademik/periode/$liburId"; Chk "DELETE periode (libur, cleanup)" $r 202 }
+
+# 16-I. durasi jendela PIN dibaca dari pengaturan absensi (bukan hardcode)
+if ($guruId) {
+    $pengDefId = $null
+    $r = Api POST "akademik/pengaturan-absensi" @{ tahun_ajaran = $tahun; semester = [int]$semester; durasi_pin_window_menit = 20 }
+    if ($r.resCode -eq 201) {
+        $pengDefId = $r.data.idPengaturanAbsensi
+        $r = Api POST "absensi/pin/buka" @{ subjek_tipe = 'guru'; subjek_id = $guruId }
+        Chk "POST /absensi/pin/buka (durasi dari pengaturan)" $r 201
+        if ($r.data.durasiMenit -eq 20) { $script:PASS++; Write-Host "  [PASS] durasi PIN ikut pengaturan (20)" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] durasi PIN = $($r.data.durasiMenit), harusnya 20" -ForegroundColor Red }
+        $r = Api POST "absensi/pin/buka" @{ subjek_tipe = 'guru'; subjek_id = $guruId; durasi_menit = 7 }
+        if ($r.data.durasiMenit -eq 7) { $script:PASS++; Write-Host "  [PASS] override durasi_menit eksplisit menang (7)" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] override durasi = $($r.data.durasiMenit), harusnya 7" -ForegroundColor Red }
+        $r = Api DELETE "akademik/pengaturan-absensi/$pengDefId"; Chk "DELETE pengaturan default (cleanup)" $r 202
+    } else { Skip "durasi PIN dari pengaturan" "gagal buat pengaturan default (mungkin sudah ada)" }
 }
 
 Section "Phase 17: Cleanup"
