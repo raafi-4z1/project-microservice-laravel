@@ -3094,7 +3094,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseURL}}/akademik/jadwal/pengampu/1",
+                  "raw": "{{baseURL}}/akademik/jadwal/pengampu/1?tanggal=",
                   "host": [
                     "{{baseURL}}"
                   ],
@@ -3103,9 +3103,16 @@
                     "jadwal",
                     "pengampu",
                     "1"
+                  ],
+                  "query": [
+                    {
+                      "key": "tanggal",
+                      "value": "",
+                      "description": "Opsional. `pukul` di-resolve untuk periode+hari pada tanggal ini (default hari ini WIB). Saat Ramadan otomatis jam Ramadan; slot yang ditiadakan -> `pukul` tidak muncul."
+                    }
                   ]
                 },
-                "description": "Ambil semua jadwal aktif untuk satu pengampu mapel. Diurutkan berdasarkan hari (Senin-Jumat) lalu jam."
+                "description": "Ambil semua jadwal aktif untuk satu pengampu mapel. Diurutkan berdasarkan hari (Senin-Jumat) lalu jam.\n\n**`pukul` mengikuti tanggal:** kirim query `tanggal` untuk melihat jam yang berlaku pada tanggal itu (ikut periode khusus & hari). Tanpa `tanggal` = hari ini WIB."
               }
             },
             {
@@ -3120,7 +3127,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseURL}}/akademik/jadwal/kelas/1",
+                  "raw": "{{baseURL}}/akademik/jadwal/kelas/1?tahun_ajaran=2024/2025&semester=1&tanggal=",
                   "host": [
                     "{{baseURL}}"
                   ],
@@ -3142,10 +3149,15 @@
                       "value": "1",
                       "description": "Filter semester: 1 atau 2",
                       "disabled": true
+                    },
+                    {
+                      "key": "tanggal",
+                      "value": "",
+                      "description": "Opsional. `pukul` di-resolve untuk periode+hari pada tanggal ini (default hari ini WIB). Saat Ramadan otomatis jam Ramadan; slot yang ditiadakan -> `pukul` tidak muncul."
                     }
                   ]
                 },
-                "description": "Ambil semua jadwal aktif untuk satu kelas. Filter opsional: tahun_ajaran, semester."
+                "description": "Ambil semua jadwal aktif untuk satu kelas. Filter opsional: tahun_ajaran, semester.\n\n**`pukul` mengikuti tanggal:** kirim query `tanggal` untuk melihat jam yang berlaku pada tanggal itu (ikut periode khusus & hari). Tanpa `tanggal` = hari ini WIB."
               }
             },
             {
@@ -3160,7 +3172,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseURL}}/akademik/jadwal/guru/1",
+                  "raw": "{{baseURL}}/akademik/jadwal/guru/1?tahun_ajaran=2024/2025&semester=1&tanggal=",
                   "host": [
                     "{{baseURL}}"
                   ],
@@ -3182,10 +3194,15 @@
                       "value": "1",
                       "description": "Filter semester: 1 atau 2",
                       "disabled": true
+                    },
+                    {
+                      "key": "tanggal",
+                      "value": "",
+                      "description": "Opsional. `pukul` di-resolve untuk periode+hari pada tanggal ini (default hari ini WIB). Saat Ramadan otomatis jam Ramadan; slot yang ditiadakan -> `pukul` tidak muncul."
                     }
                   ]
                 },
-                "description": "Ambil semua jadwal aktif untuk satu guru (lintas kelas/mapel). Filter opsional: tahun_ajaran, semester."
+                "description": "Ambil semua jadwal aktif untuk satu guru (lintas kelas/mapel). Filter opsional: tahun_ajaran, semester.\n\n**`pukul` mengikuti tanggal:** kirim query `tanggal` untuk melihat jam yang berlaku pada tanggal itu (ikut periode khusus & hari). Tanpa `tanggal` = hari ini WIB."
               }
             },
             {
@@ -3200,7 +3217,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseURL}}/akademik/jadwal/pengampu/1/riwayat",
+                  "raw": "{{baseURL}}/akademik/jadwal/pengampu/1/riwayat?tanggal=",
                   "host": [
                     "{{baseURL}}"
                   ],
@@ -3210,9 +3227,16 @@
                     "pengampu",
                     "1",
                     "riwayat"
+                  ],
+                  "query": [
+                    {
+                      "key": "tanggal",
+                      "value": "",
+                      "description": "Opsional. `pukul` di-resolve untuk periode+hari pada tanggal ini (default hari ini WIB). Saat Ramadan otomatis jam Ramadan; slot yang ditiadakan -> `pukul` tidak muncul."
+                    }
                   ]
                 },
-                "description": "Riwayat lengkap jadwal pengampu termasuk yang sudah dihapus (deletedAt tidak null). Hanya SuperAdmin dan Admin."
+                "description": "Riwayat lengkap jadwal pengampu termasuk yang sudah dihapus (deletedAt tidak null). Hanya SuperAdmin dan Admin.\n\n**`pukul` mengikuti tanggal:** kirim query `tanggal` untuk melihat jam yang berlaku pada tanggal itu (ikut periode khusus & hari). Tanpa `tanggal` = hari ini WIB."
               }
             },
             {
@@ -3227,7 +3251,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseURL}}/akademik/jadwal/kelas/1/riwayat",
+                  "raw": "{{baseURL}}/akademik/jadwal/kelas/1/riwayat?tahun_ajaran=2024/2025&semester=1&tanggal=",
                   "host": [
                     "{{baseURL}}"
                   ],
@@ -3248,10 +3272,15 @@
                       "key": "semester",
                       "value": "1",
                       "disabled": true
+                    },
+                    {
+                      "key": "tanggal",
+                      "value": "",
+                      "description": "Opsional. `pukul` di-resolve untuk periode+hari pada tanggal ini (default hari ini WIB). Saat Ramadan otomatis jam Ramadan; slot yang ditiadakan -> `pukul` tidak muncul."
                     }
                   ]
                 },
-                "description": "Riwayat lengkap jadwal kelas termasuk yang sudah dihapus. Hanya SuperAdmin dan Admin."
+                "description": "Riwayat lengkap jadwal kelas termasuk yang sudah dihapus. Hanya SuperAdmin dan Admin.\n\n**`pukul` mengikuti tanggal:** kirim query `tanggal` untuk melihat jam yang berlaku pada tanggal itu (ikut periode khusus & hari). Tanpa `tanggal` = hari ini WIB."
               }
             },
             {
@@ -3266,7 +3295,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseURL}}/akademik/jadwal/guru/1/riwayat",
+                  "raw": "{{baseURL}}/akademik/jadwal/guru/1/riwayat?tahun_ajaran=2024/2025&semester=1&tanggal=",
                   "host": [
                     "{{baseURL}}"
                   ],
@@ -3287,10 +3316,15 @@
                       "key": "semester",
                       "value": "1",
                       "disabled": true
+                    },
+                    {
+                      "key": "tanggal",
+                      "value": "",
+                      "description": "Opsional. `pukul` di-resolve untuk periode+hari pada tanggal ini (default hari ini WIB). Saat Ramadan otomatis jam Ramadan; slot yang ditiadakan -> `pukul` tidak muncul."
                     }
                   ]
                 },
-                "description": "Riwayat lengkap jadwal guru termasuk yang sudah dihapus. Hanya SuperAdmin dan Admin."
+                "description": "Riwayat lengkap jadwal guru termasuk yang sudah dihapus. Hanya SuperAdmin dan Admin.\n\n**`pukul` mengikuti tanggal:** kirim query `tanggal` untuk melihat jam yang berlaku pada tanggal itu (ikut periode khusus & hari). Tanpa `tanggal` = hari ini WIB."
               }
             },
             {
@@ -3305,7 +3339,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseURL}}/akademik/jadwal/siswa/1?tahun_ajaran=2024/2025&semester=2",
+                  "raw": "{{baseURL}}/akademik/jadwal/siswa/1?tahun_ajaran=2024/2025&semester=2&tanggal=",
                   "host": [
                     "{{baseURL}}"
                   ],
@@ -3327,10 +3361,15 @@
                       "value": "2",
                       "description": "Filter semester: 1 atau 2",
                       "disabled": true
+                    },
+                    {
+                      "key": "tanggal",
+                      "value": "",
+                      "description": "Opsional. `pukul` di-resolve untuk periode+hari pada tanggal ini (default hari ini WIB). Saat Ramadan otomatis jam Ramadan; slot yang ditiadakan -> `pukul` tidak muncul."
                     }
                   ]
                 },
-                "description": "Ambil jadwal aktif untuk satu siswa berdasarkan kelas yang sedang diikuti.\n\n**Akses:** Semua role.\n\nGanti 1 di URL dengan ID siswa. Filter tahun_ajaran dan semester opsional."
+                "description": "Ambil jadwal aktif untuk satu siswa berdasarkan kelas yang sedang diikuti.\n\n**Akses:** Semua role.\n\nGanti 1 di URL dengan ID siswa. Filter tahun_ajaran dan semester opsional.\n\n**`pukul` mengikuti tanggal:** kirim query `tanggal` untuk melihat jam yang berlaku pada tanggal itu (ikut periode khusus & hari). Tanpa `tanggal` = hari ini WIB."
               },
               "response": []
             }
