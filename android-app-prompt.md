@@ -374,6 +374,18 @@ perangkat terminal, di-set sekali saat setup kiosk). Body pakai snake_case.
 - `GET /akademik/absensi/rekap/pelajaran/siswa/{id}`, `/pelajaran/saya` (Siswa).
 - `GET /akademik/absensi/rekap/pegawai/{tipe}/{id}` (Admin; `tipe`=guru|karyawan).
 
+**6g. Enum & catatan DTO absensi (untuk menampilkan record):**
+- `status` harian/pegawai: `hadir` | `terlambat` | `izin` | `sakit` | `alpa`
+  (pegawai juga `dinas_luar`). `status` pelajaran: `hadir` | `izin` | `sakit` | `alpa`.
+- `metode`: `scan` (kartu di terminal) | `pin` (lupa kartu) | `manual` (dicatat
+  petugas) | **`turunan`** (ditandai OTOMATIS oleh sistem — auto-alpa). Tampilkan
+  `alpa` bermetode `turunan` sebagai mis. "Alpa (otomatis)".
+- **`jamMasuk` bisa `null`** — untuk `izin`/`sakit`/`alpa` (termasuk auto-alpa)
+  tidak ada jam scan. JANGAN asumsikan selalu ada; tampilkan "-" bila null.
+- **Auto-alpa** dijalankan backend terjadwal (bukan aksi app). App tidak pernah
+  memicunya — hanya menampilkan hasilnya. Hari **libur** & akhir pekan tidak
+  ditandai (tidak ada record) → di rekap, tanggal itu wajar kosong, bukan alpa.
+
 ## Konvensi data (penting)
 
 - **Semua respons Gateway memakai envelope tetap** — buat satu generic wrapper
@@ -508,6 +520,12 @@ Google "Now in Android". Ikuti panduan Material 3 (m3.material.io).
   grid menu 2 kolom dengan ikon berwarna lembut (tonal container), ringkasan
   cepat sesuai role (Guru: jadwal mengajar hari ini; Siswa: jadwal hari ini +
   rata-rata nilai terakhir).
+  - **Info hari ini (semua role):** panggil `GET /akademik/periode/aktif` dan
+    `GET /akademik/pengaturan-absensi/efektif` saat start. Bila ada periode aktif,
+    tampilkan **badge** (mis. "Ramadan — jam disesuaikan", "Pekan Ujian — KBM
+    normal libur", "Libur"); tampilkan jam masuk & ambang terlambat efektif hari
+    ini dari `/efektif`. Jadwal "hari ini" di dashboard harus memakai jam efektif
+    (kirim `tanggal` hari ini) agar ikut Ramadan/hari Jumat.
 - **Navigasi**: bottom navigation maksimal 4–5 item sesuai role
   (mis. Beranda, Akademik, Nilai, Profil); di layar lebar berubah jadi
   navigation rail (sudah diatur di bagian responsif).
