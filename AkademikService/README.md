@@ -75,14 +75,64 @@ Satu kelas punya satu wali per semester. Dipakai untuk enforcement persetujuan i
 | GET | `/akademik/kelas/{id}/wali` | Semua | Wali aktif satu kelas |
 | GET | `/akademik/guru/{id}/wali` | Semua | Kelas yang diwali seorang guru |
 
-### Jam Pelajaran
+### Periode Khusus (Ramadan / ujian / libur / kegiatan)
+
+Rentang tanggal yang mengubah aturan akademik **sementara**, lalu **otomatis kembali normal** — tidak perlu dikembalikan manual.
 
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
-| GET | `/akademik/jam` | Semua | List slot jam pelajaran |
-| POST | `/akademik/jam` | SuperAdmin, Admin | Tambah slot jam baru |
-| PATCH | `/akademik/jam/{id}` | SuperAdmin, Admin | Update slot jam |
-| DELETE | `/akademik/jam/{id}` | SuperAdmin, Admin | Hapus slot jam (gagal jika masih dipakai jadwal) |
+| GET | `/akademik/periode` | Semua | Daftar periode (filter: `tahun_ajaran`, `semester`, `jenis`) |
+| GET | `/akademik/periode/aktif?tanggal=` | Semua | Periode yang berlaku pada tanggal (default hari ini WIB) |
+| POST | `/akademik/periode` | SuperAdmin, Admin | Buat periode |
+| PATCH | `/akademik/periode/{id}` | SuperAdmin, Admin | Ubah periode |
+| DELETE | `/akademik/periode/{id}` | SuperAdmin, Admin | Hapus (soft delete) |
+
+**Field:** `nama`, `tahun_ajaran`, `semester`, `jenis` (`ramadan`\|`ujian`\|`libur`\|`khusus`), `berlaku_dari`, `berlaku_sampai` (sama = 1 hari), `kbm_normal` (opsional), `keterangan`.
+**Response:** `idPeriode`, `nama`, `tahunAjaran`, `semester`, `jenis`, `berlakuDari`, `berlakuSampai`, `kbmNormal`, `keterangan`.
+
+> **Aturan resolusi:** kalau beberapa periode bertumpuk pada satu tanggal, yang menang adalah **rentang terpendek** (paling spesifik). Jadi libur 1 hari di tengah Ramadan otomatis mengalahkan Ramadan. Bila rentang sama panjang, `id` terbesar (terbaru) menang — deterministik.
+>
+> `kbm_normal` default: `false` untuk `ujian` & `libur` (KBM berhenti → absensi pelajaran nonaktif dengan pesan periode), `true` untuk `ramadan` & `khusus`.
+>
+> **Hapus periode** ikut menghapus **set jam** & **pengaturan absensi** miliknya (cascade di app layer — FK tidak terpicu karena periode pakai soft delete). Periode di-soft-delete dan langsung tidak lagi dianggap aktif.
+>
+> **Keterbatasan yang diketahui:** (1) resolusi periode murni berbasis tanggal — tidak memfilter `tahun_ajaran`/`semester`; pastikan rentang antar semester tidak tumpang tindih. (2) Rollback migration `jam_pelajaran` akan gagal bila sudah ada baris berperiode/berhari (memasang ulang `unique('ke')` yang kini duplikat) — rollback bukan alur normal.
+
+### Pengaturan Absensi
+
+Ambang terlambat dll. Baris `periode_id = null` = default semester; `periode_id` terisi = override selama periode itu (mis. Ramadan).
+
+| Method | Endpoint | Role | Keterangan |
+|--------|----------|------|------------|
+| GET | `/akademik/pengaturan-absensi/efektif?tanggal=` | Semua | Aturan yang **benar-benar berlaku** pada tanggal (sudah hitung periode) |
+| GET | `/akademik/pengaturan-absensi` | SuperAdmin, Admin | Daftar pengaturan |
+| POST | `/akademik/pengaturan-absensi` | SuperAdmin, Admin | Buat (409 bila kombinasi semester+periode sudah ada) |
+| PATCH | `/akademik/pengaturan-absensi/{id}` | SuperAdmin, Admin | Ubah jam/ambang |
+| DELETE | `/akademik/pengaturan-absensi/{id}` | SuperAdmin, Admin | Hapus |
+
+**Field:** `tahun_ajaran`, `semester`, `periode_id` (opsional), `jam_masuk_sekolah`, `batas_terlambat_siswa`, `jam_masuk_pegawai`, `batas_terlambat_pegawai`, `durasi_pin_window_menit`.
+**Response efektif:** `tanggal`, `periode`, `sumber` (`periode`\|`default_semester`\|`default_sistem`), `pengaturan{...}`.
+
+> Belum ada baris sama sekali → sistem memakai default bawaan (**07:20** untuk siswa & pegawai). Kolom `radius_geofence_m` tidak diekspos — radius geofence dipegang per-terminal (`terminals.radius_m` di Gateway).
+
+### Jam Pelajaran
+
+Pemetaan slot (`ke`) → jam dinding. Bisa berbeda **per periode** (Ramadan) dan **per hari** (Jumat lebih pendek).
+
+| Method | Endpoint | Role | Keterangan |
+|--------|----------|------|------------|
+| GET | `/akademik/jam?tanggal=` | Semua | **Set jam efektif** pada tanggal (ikut periode + hari) |
+| GET | `/akademik/jam` | Semua | List mentah (filter: `periode_id`, `hari`) |
+| POST | `/akademik/jam` | SuperAdmin, Admin | Tambah slot (`ke`, `jam_mulai`, `jam_selesai`, `periode_id?`, `hari?`) |
+| PATCH | `/akademik/jam/{id}` | SuperAdmin, Admin | Update slot |
+| DELETE | `/akademik/jam/{id}` | SuperAdmin, Admin | Hapus slot (gagal jika masih dipakai jadwal) |
+
+- `periode_id` null = **set normal**; terisi = set milik periode itu.
+- `hari` null = berlaku semua hari; terisi = khusus hari itu (**menang** atas baris semua-hari).
+- Kalau sebuah periode punya set jam sendiri, set itu **menggantikan** set normal — slot yang tidak didefinisikan berarti **ditiadakan** (mis. Ramadan hanya sampai ke-6). Kalau periode tidak punya set jam, set normal dipakai.
+- **Jadwal tidak perlu diduplikasi** saat Ramadan: jadwal menyimpan slot `ke`, jam dindingnya di-resolve per tanggal.
+
+> **Perubahan kontrak:** duplikat slot (`periode_id` + `hari` + `ke` sama) kini dijawab **409 Conflict** — sebelumnya 422, karena dulu memakai rule `unique:jam_pelajaran,ke` yang harus dilepas saat `ke` boleh berulang antar periode/hari. 409 juga konsisten dengan konflik lain di modul ini (pengampu/wali sudah ada, kelas penuh).
 
 ### Jadwal Pelajaran
 
@@ -95,6 +145,10 @@ Satu kelas punya satu wali per semester. Dipakai untuk enforcement persetujuan i
 | GET | `/akademik/jadwal/kelas/{id}` | Semua | Jadwal aktif seluruh kelas |
 | GET | `/akademik/jadwal/guru/{id}` | Semua | Jadwal aktif seluruh guru |
 | GET | `/akademik/jadwal/siswa/{id}` | Semua | Jadwal aktif siswa berdasarkan kelas yang diikuti |
+
+> **`pukul` mengikuti tanggal.** Semua GET jadwal menerima query `tanggal` (default: hari ini WIB). Field `pukul` di-resolve dari **periode + hari** slot itu — jadi saat Ramadan otomatis menampilkan jam Ramadan, dan baris hari-spesifik (mis. Jumat) ikut terpakai. Jadwal sendiri **tidak diduplikasi**; identitas slot ada di `keMulai`/`keSelesai`.
+>
+> Kalau slot **ditiadakan** pada periode itu (mis. Ramadan hanya sampai ke-6), `pukul` **tidak disertakan** dalam respons — artinya jadwal tsb tidak berjalan pada tanggal itu.
 | GET | `/akademik/jadwal/pengampu/{id}/riwayat` | SuperAdmin, Admin | Riwayat jadwal pengampu |
 | GET | `/akademik/jadwal/kelas/{id}/riwayat` | SuperAdmin, Admin | Riwayat jadwal kelas |
 | GET | `/akademik/jadwal/guru/{id}/riwayat` | SuperAdmin, Admin | Riwayat jadwal guru |
@@ -164,6 +218,25 @@ Rentang default = awal bulan berjalan s/d hari ini (WIB); override via `tanggal_
 > **Scan kartu & absen PIN** dilayani di prefix Gateway `/absensi/*` (autentikasi **terminal**, bukan Bearer) — lihat [Gateway/README.md](../Gateway/README.md). Secara internal, endpoint scan memanggil `POST absensi/scan-siswa` & `absensi/scan-pegawai` di service ini.
 
 > **Zona waktu:** service ini memakai `Asia/Jakarta`. Waktu masuk, ambang terlambat, dan batas "hari" absensi dihitung WIB.
+
+### Auto-alpa (terjadwal)
+
+Siswa yang tidak punya catatan absensi sama sekali pada hari sekolah ditandai `alpa` (`metode = turunan`, `jam_masuk` null) oleh command:
+
+```bash
+php artisan absensi:tandai-alpa                       # hari ini (WIB)
+php artisan absensi:tandai-alpa --tanggal=2026-03-02  # tanggal tertentu
+php artisan absensi:tandai-alpa --dry-run             # lihat dulu, jangan simpan
+```
+
+- **Dilewati** kalau: akhir pekan, atau tanggal masuk periode berjenis `libur`.
+- Siswa yang sudah punya catatan apa pun (hadir/terlambat/izin/sakit) **tidak disentuh**.
+- **Idempotent** — aman dijalankan berkali-kali (unique `siswa_id` + `tanggal`).
+- Hanya siswa (daftarnya ada lokal di `siswa_kelas`); guru/karyawan ada di service lain.
+
+**Penjadwalan:** daftarkan sebagai tugas harian di **Windows Task Scheduler**
+(mis. 15:00, setelah jam pulang) yang menjalankan `php artisan absensi:tandai-alpa`
+dari folder service ini.
 
 ---
 

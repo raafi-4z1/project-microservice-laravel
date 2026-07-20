@@ -10,6 +10,8 @@ use App\Http\Controllers\NilaiController;
 use App\Http\Controllers\PengaturanNilaiController;
 use App\Http\Controllers\AbsensiController;
 use App\Http\Controllers\WaliKelasController;
+use App\Http\Controllers\PeriodeKhususController;
+use App\Http\Controllers\PengaturanAbsensiController;
 
 Route::prefix('akademik')->group(function () {
 
@@ -23,6 +25,20 @@ Route::prefix('akademik')->group(function () {
     // Riwayat lengkap (termasuk data yang sudah diubah/dibatalkan)
     Route::get('kelas/{kelas_id}/siswa/riwayat', [SiswaKelasController::class, 'getRiwayatKelas']);
     Route::get('siswa/{siswa_id}/kelas/riwayat', [SiswaKelasController::class, 'getRiwayatSiswa']);
+
+    // Pengaturan Absensi (ambang terlambat dll) — default semester + override per periode
+    Route::get('pengaturan-absensi/efektif', [PengaturanAbsensiController::class, 'efektif']);
+    Route::get('pengaturan-absensi',         [PengaturanAbsensiController::class, 'index']);
+    Route::post('pengaturan-absensi',        [PengaturanAbsensiController::class, 'store']);
+    Route::patch('pengaturan-absensi/{id}',  [PengaturanAbsensiController::class, 'update']);
+    Route::delete('pengaturan-absensi/{id}', [PengaturanAbsensiController::class, 'destroy']);
+
+    // Periode Khusus (Ramadan / ujian / libur / kegiatan khusus)
+    Route::get('periode/aktif', [PeriodeKhususController::class, 'aktif']);
+    Route::get('periode',       [PeriodeKhususController::class, 'index']);
+    Route::post('periode',      [PeriodeKhususController::class, 'store']);
+    Route::patch('periode/{id}',  [PeriodeKhususController::class, 'update']);
+    Route::delete('periode/{id}', [PeriodeKhususController::class, 'destroy']);
 
     // Wali Kelas
     Route::post('wali', [WaliKelasController::class, 'assign']);

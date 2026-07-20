@@ -99,7 +99,7 @@ function Api {
         [hashtable]$Body   = $null,
         [string]$Token     = $null,
         [string]$BodyType  = "json",  # json | form
-        [hashtable]$Headers = $null   # header tambahan (mis. X-Terminal-Id/Token)
+        [hashtable]$ExtraHeaders = $null  # header tambahan (mis. X-Terminal-Id/Token)
     )
     # Pacing untuk endpoint login (throttle 5/menit) — lapis pertama cegah 429
     $isLogin = ($Path -eq "login" -or $Path -like "login`?*")
@@ -108,7 +108,7 @@ function Api {
     $tok = if ($Token) { $Token } else { $script:TOKEN }
     $headers = @{ 'Accept' = 'application/json' }
     if ($tok) { $headers['Authorization'] = "Bearer $tok" }
-    if ($Headers) { foreach ($k in $Headers.Keys) { $headers[$k] = $Headers[$k] } }
+    if ($ExtraHeaders) { foreach ($k in $ExtraHeaders.Keys) { $headers[$k] = $ExtraHeaders[$k] } }
     $uri = "$($CFG.BaseUrl)/$Path"
     $bodyJson = if ($Body -ne $null) { $Body | ConvertTo-Json -Depth 6 } else { $null }
     if ($bodyJson) { $headers['Content-Type'] = 'application/json' }
@@ -702,9 +702,12 @@ $jam2Id = GetOrMakeJam 2 "07:45" "08:30"
 $jam3Id = GetOrMakeJam 3 "08:30" "09:15"
 Info "Jam id: ke1=$jam1Id ke2=$jam2Id ke3=$jam3Id"
 
-# 7-B. POST jam duplikat ke-1 → 422 (endpoint pakai 422 untuk konflik)
+# 7-B. POST jam duplikat ke-1 → 409 konflik.
+# (Dulu 422 karena memakai rule unique:jam_pelajaran,ke. Sejak `ke` boleh
+# berulang antar periode/hari, unique dilepas dan duplikat (periode_id, hari, ke)
+# dicek di app layer -> 409, konsisten dengan konflik lain: pengampu/wali/kelas penuh.)
 $r = Api POST "akademik/jam" @{ ke = 1; jam_mulai = "07:00"; jam_selesai = "07:45" }
-Chk "POST /akademik/jam ke-1 duplikat (harus 422)" $r 422
+Chk "POST /akademik/jam ke-1 duplikat (harus 409)" $r 409
 
 # 7-C. PATCH jam ke-1
 if ($jam1Id) {
@@ -1626,11 +1629,116 @@ if ($env:TEST_TERMINAL_ID -and $env:TEST_TERMINAL_TOKEN -and $siswaKartuUid) {
     $body = @{ kartu_uid = $siswaKartuUid }
     if ($env:TEST_TERMINAL_LAT) { $body['lat'] = [double]$env:TEST_TERMINAL_LAT }
     if ($env:TEST_TERMINAL_LNG) { $body['lng'] = [double]$env:TEST_TERMINAL_LNG }
-    $r = Api POST "absensi/scan" $body -Headers $th
+    $r = Api POST "absensi/scan" $body -ExtraHeaders $th
     if ($r.resCode -eq 201 -or $r.resCode -eq 200) { $script:PASS++; Write-Host "  [PASS $($r.resCode)] POST /absensi/scan (terminal) status=$($r.data.status)" -ForegroundColor Green }
     else { $script:FAIL++; Write-Host "  [FAIL $($r.resCode)] POST /absensi/scan (terminal) -- $($r.resMsg)" -ForegroundColor Red }
 } else {
     Skip "POST /absensi/scan (terminal, positif)" "set TEST_TERMINAL_ID/TOKEN(/LAT/LNG) + daftarkan terminal via 'php artisan terminal:register'"
+}
+
+# 16-H. Periode khusus & pengaturan absensi (Admin)
+# Pakai tanggal jauh di masa depan (2030) agar tidak mempengaruhi perilaku hari ini.
+$perId = $null; $liburId = $null; $jamPerId = $null; $pengId = $null
+
+$r = Api POST "akademik/periode" @{ nama = "Test Ramadan $TS"; tahun_ajaran = $tahun; semester = [int]$semester
+                                    jenis = 'ramadan'; berlaku_dari = '2030-02-01'; berlaku_sampai = '2030-02-28' }
+Chk "POST /akademik/periode (ramadan)" $r 201; if ($script:LAST_CHK) { $perId = $r.data.idPeriode }
+
+$r = Api POST "akademik/periode" @{ nama = "Test Libur $TS"; tahun_ajaran = $tahun; semester = [int]$semester
+                                    jenis = 'libur'; berlaku_dari = '2030-02-10'; berlaku_sampai = '2030-02-10' }
+Chk "POST /akademik/periode (libur 1 hari)" $r 201
+if ($script:LAST_CHK) {
+    $liburId = $r.data.idPeriode
+    if ($r.data.kbmNormal -eq $false) { $script:PASS++; Write-Host "  [PASS] periode libur -> kbmNormal=false otomatis" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] periode libur seharusnya kbmNormal=false" -ForegroundColor Red }
+}
+
+# Resolusi: rentang TERPENDEK menang (libur 1 hari mengalahkan Ramadan)
+if ($perId -and $liburId) {
+    $r = Api GET "akademik/periode/aktif`?tanggal=2030-02-10"
+    Chk "GET /akademik/periode/aktif (10 Feb)" $r 200
+    if ($script:LAST_CHK) {
+        if ($r.data.jenis -eq 'libur') { $script:PASS++; Write-Host "  [PASS] rentang terpendek menang: libur > ramadan" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] 10 Feb seharusnya 'libur', dapat '$($r.data.jenis)'" -ForegroundColor Red }
+    }
+    $r = Api GET "akademik/periode/aktif`?tanggal=2030-02-05"
+    Chk "GET /akademik/periode/aktif (05 Feb)" $r 200
+    if ($script:LAST_CHK) {
+        if ($r.data.jenis -eq 'ramadan') { $script:PASS++; Write-Host "  [PASS] 05 Feb -> ramadan" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] 05 Feb seharusnya 'ramadan', dapat '$($r.data.jenis)'" -ForegroundColor Red }
+    }
+}
+
+# Set jam milik periode + resolusi jam efektif per tanggal
+if ($perId) {
+    $r = Api POST "akademik/jam" @{ periode_id = $perId; ke = 1; jam_mulai = '07:30'; jam_selesai = '08:00' }
+    Chk "POST /akademik/jam (set periode)" $r 201; if ($script:LAST_CHK) { $jamPerId = $r.data.idJam }
+
+    $r = Api GET "akademik/jam`?tanggal=2030-02-05&hari=Senin"
+    Chk "GET /akademik/jam?tanggal (set efektif periode)" $r 200
+    if ($script:LAST_CHK) {
+        $ke1 = @($r.data.jam | Where-Object { $_.ke -eq 1 })[0]
+        if ($ke1 -and $ke1.jamMulai -like '07:30*') { $script:PASS++; Write-Host "  [PASS] jam efektif Ramadan ke-1 = $($ke1.jamMulai)" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] jam efektif Ramadan ke-1 seharusnya 07:30, dapat $($ke1.jamMulai)" -ForegroundColor Red }
+    }
+}
+
+# Pengaturan absensi override periode (periode-scoped: tidak menyentuh default semester)
+if ($perId) {
+    $body = @{ tahun_ajaran = $tahun; semester = [int]$semester; periode_id = $perId; batas_terlambat_siswa = '08:00' }
+    $r = Api POST "akademik/pengaturan-absensi" $body
+    Chk "POST /akademik/pengaturan-absensi (override periode)" $r 201; if ($script:LAST_CHK) { $pengId = $r.data.idPengaturanAbsensi }
+
+    $r = Api POST "akademik/pengaturan-absensi" $body
+    Chk "POST /akademik/pengaturan-absensi duplikat (harus 409)" $r 409
+
+    $r = Api GET "akademik/pengaturan-absensi/efektif`?tanggal=2030-02-05"
+    Chk "GET /akademik/pengaturan-absensi/efektif (dalam periode)" $r 200
+    if ($script:LAST_CHK) {
+        if ($r.data.sumber -eq 'periode' -and $r.data.pengaturan.batasTerlambatSiswa -like '08:00*') {
+            $script:PASS++; Write-Host "  [PASS] ambang efektif ikut periode (08:00)" -ForegroundColor Green
+        } else {
+            $script:FAIL++; Write-Host "  [FAIL] efektif: sumber=$($r.data.sumber) batas=$($r.data.pengaturan.batasTerlambatSiswa)" -ForegroundColor Red
+        }
+    }
+}
+
+# Batasan role: Siswa tidak boleh menulis periode/pengaturan
+if ($siswaTestToken) {
+    $r = Api POST "akademik/periode" @{ nama = 'x'; tahun_ajaran = $tahun; semester = [int]$semester
+                                        jenis = 'libur'; berlaku_dari = '2030-05-01'; berlaku_sampai = '2030-05-01' } -Token $siswaTestToken
+    Chk "POST /akademik/periode sebagai Siswa (harus 403)" $r 403
+}
+
+# Hapus periode = cascade ke jam & pengaturan turunannya (sekaligus cleanup)
+if ($perId) {
+    $r = Api DELETE "akademik/periode/$perId"
+    Chk "DELETE periode (ramadan)" $r 202
+    # jam & pengaturan milik periode harus ikut terhapus
+    $sisaJam = @((Api GET "akademik/jam`?periode_id=$perId").data).Count
+    if ($sisaJam -eq 0) { $script:PASS++; Write-Host "  [PASS] cascade: jam periode ikut terhapus" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] cascade: masih ada $sisaJam jam periode" -ForegroundColor Red }
+    $sisaPeng = @((Api GET "akademik/pengaturan-absensi`?tahun_ajaran=$(Enc $tahun)&semester=$semester").data | Where-Object { $_.periodeId -eq $perId }).Count
+    if ($sisaPeng -eq 0) { $script:PASS++; Write-Host "  [PASS] cascade: pengaturan periode ikut terhapus" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] cascade: masih ada $sisaPeng pengaturan periode" -ForegroundColor Red }
+}
+if ($liburId) { $r = Api DELETE "akademik/periode/$liburId"; Chk "DELETE periode (libur, cleanup)" $r 202 }
+
+# 16-I. durasi jendela PIN dibaca dari pengaturan absensi (bukan hardcode)
+if ($guruId) {
+    $pengDefId = $null
+    $r = Api POST "akademik/pengaturan-absensi" @{ tahun_ajaran = $tahun; semester = [int]$semester; durasi_pin_window_menit = 20 }
+    if ($r.resCode -eq 201) {
+        $pengDefId = $r.data.idPengaturanAbsensi
+        $r = Api POST "absensi/pin/buka" @{ subjek_tipe = 'guru'; subjek_id = $guruId }
+        Chk "POST /absensi/pin/buka (durasi dari pengaturan)" $r 201
+        if ($r.data.durasiMenit -eq 20) { $script:PASS++; Write-Host "  [PASS] durasi PIN ikut pengaturan (20)" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] durasi PIN = $($r.data.durasiMenit), harusnya 20" -ForegroundColor Red }
+        $r = Api POST "absensi/pin/buka" @{ subjek_tipe = 'guru'; subjek_id = $guruId; durasi_menit = 7 }
+        if ($r.data.durasiMenit -eq 7) { $script:PASS++; Write-Host "  [PASS] override durasi_menit eksplisit menang (7)" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] override durasi = $($r.data.durasiMenit), harusnya 7" -ForegroundColor Red }
+        $r = Api DELETE "akademik/pengaturan-absensi/$pengDefId"; Chk "DELETE pengaturan default (cleanup)" $r 202
+    } else { Skip "durasi PIN dari pengaturan" "gagal buat pengaturan default (mungkin sudah ada)" }
 }
 
 Section "Phase 17: Cleanup"

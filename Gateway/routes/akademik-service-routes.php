@@ -16,6 +16,20 @@ Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.akademik_pr
     Route::get('kelas/{kelas_id}/siswa/riwayat', [AkademikController::class, 'getRiwayatKelas'])->middleware('check.role:SuperAdmin,Admin');
     Route::get('siswa/{siswa_id}/kelas/riwayat', [AkademikController::class, 'getRiwayatSiswa'])->middleware('check.role:SuperAdmin,Admin');
 
+    // Pengaturan Absensi — Write: SuperAdmin, Admin | Read efektif: semua role
+    Route::get('pengaturan-absensi/efektif', [AkademikController::class, 'getPengaturanAbsensiEfektif']);
+    Route::get('pengaturan-absensi', [AkademikController::class, 'getPengaturanAbsensi'])->middleware('check.role:SuperAdmin,Admin');
+    Route::post('pengaturan-absensi', [AkademikController::class, 'storePengaturanAbsensi'])->middleware('check.role:SuperAdmin,Admin');
+    Route::patch('pengaturan-absensi/{id}', [AkademikController::class, 'updatePengaturanAbsensi'])->middleware('check.role:SuperAdmin,Admin');
+    Route::delete('pengaturan-absensi/{id}', [AkademikController::class, 'destroyPengaturanAbsensi'])->middleware('check.role:SuperAdmin,Admin');
+
+    // Periode Khusus (Ramadan/ujian/libur/kegiatan) — Write: SuperAdmin, Admin | Read: semua role
+    Route::get('periode/aktif', [AkademikController::class, 'getPeriodeAktif']);
+    Route::get('periode', [AkademikController::class, 'getPeriode']);
+    Route::post('periode', [AkademikController::class, 'storePeriode'])->middleware('check.role:SuperAdmin,Admin');
+    Route::patch('periode/{id}', [AkademikController::class, 'updatePeriode'])->middleware('check.role:SuperAdmin,Admin');
+    Route::delete('periode/{id}', [AkademikController::class, 'destroyPeriode'])->middleware('check.role:SuperAdmin,Admin');
+
     // Wali Kelas — Write: SuperAdmin, Admin | Read: semua role
     Route::post('wali', [AkademikController::class, 'assignWali'])->middleware('check.role:SuperAdmin,Admin');
     Route::patch('wali/{id}', [AkademikController::class, 'gantiWali'])->middleware('check.role:SuperAdmin,Admin');

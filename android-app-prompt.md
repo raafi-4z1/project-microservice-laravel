@@ -221,9 +221,37 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
   `GET /akademik/kelas/{id}/pengampu`, `GET /akademik/guru/{id}/mapel`,
   `GET /akademik/mapel/{id}/guru`, plus varian `/riwayat` (SuperAdmin/Admin).
   Respons: `idPengampuMapel`, `guruId`, `mapelId`, `kelasId`, `tahunAjaran`, `semester`.
-- **Jam pelajaran**: `GET|POST /akademik/jam`, `PATCH|DELETE /akademik/jam/{id}`
-  (ke 1–10, jam_mulai/jam_selesai "HH:MM").
-  Respons: `idJam`, `ke`, `jamMulai`, `jamSelesai`.
+- **Periode khusus** (Ramadan/ujian/libur/kegiatan) — rentang tanggal yang
+  mengubah aturan sementara lalu otomatis kembali normal:
+  `GET /akademik/periode` (filter tahun_ajaran/semester/jenis),
+  `GET /akademik/periode/aktif?tanggal=` (periode yang berlaku; **rentang
+  terpendek menang** — libur 1 hari mengalahkan Ramadan),
+  `POST /akademik/periode` (nama, tahun_ajaran, semester, jenis
+  `ramadan|ujian|libur|khusus`, berlaku_dari, berlaku_sampai, kbm_normal?,
+  keterangan?), `PATCH|DELETE /akademik/periode/{id}` (SuperAdmin/Admin).
+  Respons: `idPeriode`, `nama`, `tahunAjaran`, `semester`, `jenis`,
+  `berlakuDari`, `berlakuSampai`, `kbmNormal`, `keterangan`.
+  **`kbmNormal:false`** (ujian/libur) → endpoint absensi pelajaran mengembalikan
+  `data: []` + pesan periode; tampilkan sebagai empty state, bukan error.
+- **Pengaturan absensi**: `GET /akademik/pengaturan-absensi/efektif?tanggal=`
+  (semua role — aturan yang benar-benar berlaku; `sumber` =
+  `periode|default_semester|default_sistem`, isi `pengaturan{jamMasukSekolah,
+  batasTerlambatSiswa, jamMasukPegawai, batasTerlambatPegawai,
+  durasiPinWindowMenit}`); `GET|POST /akademik/pengaturan-absensi`,
+  `PATCH|DELETE /akademik/pengaturan-absensi/{id}` (SuperAdmin/Admin —
+  `periode_id` null = default semester, terisi = override periode; 409 bila
+  kombinasi sudah ada).
+- **Jam pelajaran**: `GET /akademik/jam?tanggal=` → **set jam EFEKTIF** pada
+  tanggal itu (sudah ikut periode + hari) — respons `{tanggal, hari, periode,
+  jam:[...]}`. `GET /akademik/jam` (list mentah, filter `periode_id`/`hari`),
+  `POST /akademik/jam` (ke 1–10, jam_mulai/jam_selesai "HH:MM", `periode_id?`,
+  `hari?`), `PATCH|DELETE /akademik/jam/{id}`.
+  Respons: `idJam`, `periodeId`, `hari`, `ke`, `jamMulai`, `jamSelesai`.
+  - `periode_id` null = set normal; `hari` null = semua hari (baris ber-`hari`
+    spesifik **menang**, mis. Jumat lebih pendek).
+  - **Jangan cache jam lintas tanggal** — jam bisa berbeda per tanggal (Ramadan)
+    dan per hari (Jumat). Untuk menampilkan jadwal hari tertentu, ambil jam
+    efektif tanggal itu; `pukul` di respons absensi pelajaran sudah ter-resolve.
 - **Jadwal**: `POST /akademik/jadwal` (pengampu_mapel_id, hari Senin–Jumat,
   jam_mulai_id, jam_selesai_id, ruangan?, catatan? — server menolak 409 jika
   bentrok kelas/guru), `PATCH|DELETE /akademik/jadwal/{id}`,
@@ -233,6 +261,13 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
   `tahunAjaran`, `semester`, `hari`, `jamMulaiId`, `jamSelesaiId`, `keMulai`,
   `keSelesai`, `pukul` (string siap tampil, contoh `"07:00:00 - 08:30:00"`),
   `ruangan`, `catatan`.
+  - **`pukul` mengikuti tanggal**: semua GET jadwal menerima query `tanggal`
+    (default hari ini WIB). `pukul` di-resolve dari periode + hari — saat
+    Ramadan otomatis jam Ramadan, hari Jumat otomatis jam Jumat. Untuk layar
+    jadwal mingguan, kirim `tanggal` sesuai minggu yang ditampilkan.
+  - Kalau slot **ditiadakan** pada periode itu (mis. Ramadan hanya sampai ke-6),
+    field `pukul` **tidak ada** di respons → tampilkan sebagai "tidak ada
+    pelajaran", bukan crash. Identitas slot tetap di `keMulai`/`keSelesai`.
 - **Pengaturan nilai** (SuperAdmin/Admin saja, termasuk GET):
   `GET|POST /akademik/pengaturan-nilai`, `PATCH /akademik/pengaturan-nilai/{id}`
   (bobot_harian + bobot_uts + bobot_uas = 100).
@@ -407,8 +442,11 @@ perangkat terminal, di-set sekali saat setup kiosk). Body pakai snake_case.
 - Kode status lain yang harus ditangani: **403** = role tidak berhak (tampilkan
   pesan "tidak berhak", jangan logout — KECUALI jika `data.mustChangePassword ==
   true`: arahkan ke layar Ganti Password wajib), **409** = konflik bisnis (jadwal
-  bentrok, kelas penuh, siswa sudah terdaftar — tampilkan `resMsg` apa adanya),
-  **422** = error validasi, **429** = rate limit.
+  bentrok, kelas penuh, siswa sudah terdaftar, slot jam / periode / wali sudah
+  ada — tampilkan `resMsg` apa adanya), **422** = error validasi,
+  **429** = rate limit.
+  - Catatan: duplikat **jam pelajaran** (`periode_id`+`hari`+`ke` sama) menjawab
+    **409** (bukan 422) — samakan penanganannya dengan konflik lain.
 - `POST /login`, `POST /refresh`, dan `POST /password` dibatasi 5 percobaan/menit
   → tangani 429 dengan pesan yang ramah (`resMsg` berisi instruksi tunggu).
 
@@ -422,7 +460,11 @@ perangkat terminal, di-set sekali saat setup kiosk). Body pakai snake_case.
    **Karyawan** (dengan image picker + crop 3:4)
 4. Akademik: pembagian kelas (assign/pindah siswa), pengampu mapel,
    **wali kelas** (tetapkan/ganti wali per kelas — Admin),
-   kelola jam pelajaran, kelola jadwal (tampilan jadwal mingguan per kelas/guru)
+   **periode khusus** (Ramadan/pekan ujian/libur — Admin: kalender rentang
+   tanggal + set jam periode + ambang absensi periode),
+   kelola jam pelajaran (set normal + per hari + per periode),
+   kelola jadwal (tampilan jadwal mingguan per kelas/guru — jam mengikuti
+   tanggal yang dipilih)
 5. Nilai: input nilai per kelas+mapel (khusus Guru/Admin, tabel siswa dengan
    kolom harian/UTS/UAS), pengaturan bobot nilai (Admin)
 6. Raport & ranking (tabel per kelas; untuk Siswa tampilkan raport & ranking diri sendiri)

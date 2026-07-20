@@ -335,10 +335,11 @@ class AkademikController extends Controller
         return $this->performRequest('GET', "{$this->reqUrl}/semester/riwayat");
     }
 
-    // GET /akademik/jam — semua role
-    public function getJamPelajaran()
+    // GET /akademik/jam — semua role.
+    // ?tanggal= -> set jam EFEKTIF pada tanggal itu (ikut periode khusus & hari)
+    public function getJamPelajaran(Request $request)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jam");
+        return $this->performRequest('GET', "{$this->reqUrl}/jam", $request->only(['tanggal', 'hari', 'periode_id']));
     }
 
     // POST /akademik/jam — SuperAdmin, Admin
@@ -447,45 +448,45 @@ class AkademikController extends Controller
     }
 
     // GET /akademik/jadwal/pengampu/{id} — semua role
-    public function getJadwalByPengampu($pengampuId)
+    public function getJadwalByPengampu(Request $request, $pengampuId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/pengampu/{$pengampuId}");
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/pengampu/{$pengampuId}", $request->only(['tanggal']));
     }
 
     // GET /akademik/jadwal/kelas/{id} — semua role
     public function getJadwalByKelas(Request $request, $kelasId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']));
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
     }
 
     // GET /akademik/jadwal/guru/{id} — semua role
     public function getJadwalByGuru(Request $request, $guruId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}", $request->only(['tahun_ajaran', 'semester']));
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
     }
 
     // GET /akademik/jadwal/siswa/{id} — semua role
     public function getJadwalBySiswa(Request $request, $siswaId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/siswa/{$siswaId}", $request->only(['tahun_ajaran', 'semester']));
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/siswa/{$siswaId}", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
     }
 
     // GET /akademik/jadwal/pengampu/{id}/riwayat — SuperAdmin, Admin
-    public function getRiwayatJadwalByPengampu($pengampuId)
+    public function getRiwayatJadwalByPengampu(Request $request, $pengampuId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/pengampu/{$pengampuId}/riwayat");
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/pengampu/{$pengampuId}/riwayat", $request->only(['tanggal']));
     }
 
     // GET /akademik/jadwal/kelas/{id}/riwayat — SuperAdmin, Admin
     public function getRiwayatJadwalByKelas(Request $request, $kelasId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/kelas/{$kelasId}/riwayat", $request->only(['tahun_ajaran', 'semester']));
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/kelas/{$kelasId}/riwayat", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
     }
 
     // GET /akademik/jadwal/guru/{id}/riwayat — SuperAdmin, Admin
     public function getRiwayatJadwalByGuru(Request $request, $guruId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}/riwayat", $request->only(['tahun_ajaran', 'semester']));
+        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}/riwayat", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
     }
 
     // ─── Pengaturan Bobot Nilai ─────────────────────────────────────────────────
@@ -718,6 +719,128 @@ class AkademikController extends Controller
                     'tanggal'   => $decode['data']['tanggal'] ?? null,
                     'tersimpan' => $decode['data']['tersimpan'] ?? null,
                 ]);
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // ─── Pengaturan Absensi (ambang terlambat, durasi PIN) ───────────────────────
+
+    // GET /akademik/pengaturan-absensi/efektif?tanggal= — aturan yang berlaku pada tanggal
+    public function getPengaturanAbsensiEfektif(Request $request)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/pengaturan-absensi/efektif", $request->only(['tanggal', 'tahun_ajaran', 'semester']));
+    }
+
+    // GET /akademik/pengaturan-absensi — SuperAdmin, Admin
+    public function getPengaturanAbsensi(Request $request)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/pengaturan-absensi", $request->only(['tahun_ajaran', 'semester']));
+    }
+
+    // POST /akademik/pengaturan-absensi — SuperAdmin, Admin
+    public function storePengaturanAbsensi(Request $request)
+    {
+        try {
+            $response = $this->performRequest('POST', "{$this->reqUrl}/pengaturan-absensi", $request->all());
+            $decode   = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_CREATED) {
+                $this->auditLog('created', 'pengaturan_absensi', $decode['data']['idPengaturanAbsensi'] ?? null,
+                    $request->only(['tahun_ajaran', 'semester', 'periode_id', 'batas_terlambat_siswa', 'batas_terlambat_pegawai']));
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // PATCH /akademik/pengaturan-absensi/{id} — SuperAdmin, Admin
+    public function updatePengaturanAbsensi(Request $request, $id)
+    {
+        try {
+            $response = $this->performRequest('PATCH', "{$this->reqUrl}/pengaturan-absensi/{$id}", $request->all());
+            $decode   = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_OK) {
+                $this->auditLog('updated', 'pengaturan_absensi', $id,
+                    $request->only(['batas_terlambat_siswa', 'batas_terlambat_pegawai', 'durasi_pin_window_menit']));
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // DELETE /akademik/pengaturan-absensi/{id} — SuperAdmin, Admin
+    public function destroyPengaturanAbsensi($id)
+    {
+        try {
+            $response = $this->performRequest('DELETE', "{$this->reqUrl}/pengaturan-absensi/{$id}");
+            $decode   = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_ACCEPTED) {
+                $this->auditLog('deleted', 'pengaturan_absensi', $id, []);
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // ─── Periode Khusus (Ramadan / ujian / libur / kegiatan) ─────────────────────
+
+    // GET /akademik/periode — daftar periode (filter: tahun_ajaran, semester, jenis)
+    public function getPeriode(Request $request)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/periode", $request->only(['tahun_ajaran', 'semester', 'jenis']));
+    }
+
+    // GET /akademik/periode/aktif?tanggal= — periode yang berlaku pada tanggal
+    public function getPeriodeAktif(Request $request)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/periode/aktif", $request->only(['tanggal']));
+    }
+
+    // POST /akademik/periode — SuperAdmin, Admin
+    public function storePeriode(Request $request)
+    {
+        try {
+            $response = $this->performRequest('POST', "{$this->reqUrl}/periode", $request->all());
+            $decode   = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_CREATED) {
+                $this->auditLog('created', 'periode_khusus', $decode['data']['idPeriode'] ?? null,
+                    $request->only(['nama', 'jenis', 'berlaku_dari', 'berlaku_sampai']));
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // PATCH /akademik/periode/{id} — SuperAdmin, Admin
+    public function updatePeriode(Request $request, $id)
+    {
+        try {
+            $response = $this->performRequest('PATCH', "{$this->reqUrl}/periode/{$id}", $request->all());
+            $decode   = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_OK) {
+                $this->auditLog('updated', 'periode_khusus', $id,
+                    $request->only(['nama', 'jenis', 'berlaku_dari', 'berlaku_sampai', 'kbm_normal']));
+            }
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // DELETE /akademik/periode/{id} — SuperAdmin, Admin
+    public function destroyPeriode($id)
+    {
+        try {
+            $response = $this->performRequest('DELETE', "{$this->reqUrl}/periode/{$id}");
+            $decode   = $this->decode($response);
+            if (($decode['resCode'] ?? null) === Response::HTTP_ACCEPTED) {
+                $this->auditLog('deleted', 'periode_khusus', $id, []);
             }
             return $response;
         } catch (Exception $e) {

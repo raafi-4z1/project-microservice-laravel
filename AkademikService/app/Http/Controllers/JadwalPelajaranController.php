@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -10,11 +11,14 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\JadwalPelajaran;
 use App\Models\JamPelajaran;
 use App\Models\PengampuMapel;
+use App\Models\PeriodeKhusus;
 use App\Traits\ApiResponser;
 
 class JadwalPelajaranController extends Controller
 {
     use ApiResponser;
+
+    private const TZ = 'Asia/Jakarta';
 
     public function store(Request $request)
     {
@@ -222,6 +226,8 @@ class JadwalPelajaranController extends Controller
     public function getByPengampu(Request $request, $pengampuId)
     {
         try {
+            $this->setPeriodeDari($request);
+
             $records = JadwalPelajaran::with(['jamMulai', 'jamSelesai', 'pengampuMapel'])
                 ->where('pengampu_mapel_id', $pengampuId)
                 ->orderByRaw("FIELD(hari,'Senin','Selasa','Rabu','Kamis','Jumat')")
@@ -246,6 +252,8 @@ class JadwalPelajaranController extends Controller
             if ($validate->fails()) {
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
             }
+
+            $this->setPeriodeDari($request);
 
             $records = JadwalPelajaran::with(['jamMulai', 'jamSelesai', 'pengampuMapel'])
                 ->whereHas('pengampuMapel', function ($q) use ($kelasId, $request) {
@@ -276,6 +284,8 @@ class JadwalPelajaranController extends Controller
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
             }
 
+            $this->setPeriodeDari($request);
+
             $records = JadwalPelajaran::with(['jamMulai', 'jamSelesai', 'pengampuMapel'])
                 ->whereHas('pengampuMapel', function ($q) use ($guruId, $request) {
                     $q->where('guru_id', $guruId);
@@ -304,6 +314,8 @@ class JadwalPelajaranController extends Controller
             if ($validate->fails()) {
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
             }
+
+            $this->setPeriodeDari($request);
 
             $records = JadwalPelajaran::with(['jamMulai', 'jamSelesai', 'pengampuMapel'])
                 ->whereHas('pengampuMapel', function ($pm) use ($siswaId, $request) {
@@ -334,6 +346,8 @@ class JadwalPelajaranController extends Controller
     public function getRiwayatByPengampu(Request $request, $pengampuId)
     {
         try {
+            $this->setPeriodeDari($request);
+
             $records = JadwalPelajaran::withTrashed()
                 ->with(['jamMulai', 'jamSelesai', 'pengampuMapel' => fn($q) => $q->withTrashed()])
                 ->where('pengampu_mapel_id', $pengampuId)
@@ -359,6 +373,8 @@ class JadwalPelajaranController extends Controller
             if ($validate->fails()) {
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
             }
+
+            $this->setPeriodeDari($request);
 
             $records = JadwalPelajaran::withTrashed()
                 ->with(['jamMulai', 'jamSelesai', 'pengampuMapel' => fn($q) => $q->withTrashed()])
@@ -389,6 +405,8 @@ class JadwalPelajaranController extends Controller
             if ($validate->fails()) {
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
             }
+
+            $this->setPeriodeDari($request);
 
             $records = JadwalPelajaran::withTrashed()
                 ->with(['jamMulai', 'jamSelesai', 'pengampuMapel' => fn($q) => $q->withTrashed()])
@@ -454,11 +472,44 @@ class JadwalPelajaranController extends Controller
         return $query->exists();
     }
 
+    // ─── Resolusi jam per tanggal (periode khusus + hari) ────────────────────────
+
+    private ?int $periodeId = null;
+    private bool $periodeResolved = false;
+
+    /**
+     * Tetapkan periode acuan dari query `tanggal` (default: hari ini WIB).
+     * Dipanggil di awal endpoint GET agar `pukul` mencerminkan jam yang benar
+     * pada tanggal itu (mis. Ramadan) — bukan selalu jam set normal.
+     */
+    private function setPeriodeDari(Request $request): void
+    {
+        $tanggal = $request->input('tanggal') ?: Carbon::now(self::TZ)->toDateString();
+        $this->periodeId = PeriodeKhusus::untukTanggal($tanggal)?->id;
+        $this->periodeResolved = true;
+    }
+
+    private function periodeAktif(): ?int
+    {
+        if (!$this->periodeResolved) {
+            $this->periodeId = PeriodeKhusus::untukTanggal(Carbon::now(self::TZ)->toDateString())?->id;
+            $this->periodeResolved = true;
+        }
+        return $this->periodeId;
+    }
+
     private function toApiArray($record): array
     {
         $jm = $record->relationLoaded('jamMulai')    ? $record->jamMulai    : null;
         $js = $record->relationLoaded('jamSelesai')  ? $record->jamSelesai  : null;
         $pm = $record->relationLoaded('pengampuMapel') ? $record->pengampuMapel : null;
+
+        // Jadwal menyimpan FK slot; jam dindingnya di-resolve per (periode, hari, ke).
+        // `pukul` hilang bila slot itu ditiadakan pada periode tsb (mis. Ramadan
+        // hanya sampai ke-6) — pakai keMulai/keSelesai sebagai identitas slot.
+        $periodeId = $this->periodeAktif();
+        $eM = $jm ? JamPelajaran::efektif($periodeId, $record->hari, $jm->ke) : null;
+        $eS = $js ? JamPelajaran::efektif($periodeId, $record->hari, $js->ke) : null;
 
         return array_filter([
             'idJadwal'        => $record->id,
@@ -473,7 +524,7 @@ class JadwalPelajaranController extends Controller
             'jamSelesaiId'    => $record->jam_selesai_id,
             'keMulai'         => $jm?->ke,
             'keSelesai'       => $js?->ke,
-            'pukul'           => ($jm && $js) ? ($jm->jam_mulai . ' - ' . $js->jam_selesai) : null,
+            'pukul'           => ($eM && $eS) ? ($eM->jam_mulai . ' - ' . $eS->jam_selesai) : null,
             'ruangan'         => $record->ruangan,
             'catatan'         => $record->catatan,
             'deletedAt'       => $record->deleted_at?->toDateTimeString(),
