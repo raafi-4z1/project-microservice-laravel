@@ -9,3 +9,7 @@ absensi-schema.md
 
 # Output backup database (berisi data) — skrip backup-databases.ps1 boleh commit
 db-backups/
+
+# Artefak uji manual (mis. foto untuk uji upload) — jangan masuk repo
+test_photo.jpg
+test_*.jpg

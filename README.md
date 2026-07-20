@@ -115,8 +115,15 @@ Perintah di atas menghasilkan dua file:
 3. Isi dengan konfigurasi berikut (sesuaikan path ke lokasi project kamu):
 
 ```apache
-# Ganti "C:/path/to/project-microservice-laravel" dengan path project kamu
-# Contoh: C:/Users/NamaKamu/Documents/project-microservice-laravel
+# Ganti path di baris "Define BASE" dengan lokasi project kamu — CUKUP SEKALI.
+# Contoh: Define BASE "C:/Users/NamaKamu/Documents/project-microservice-laravel"
+Define BASE "C:/path/to/project-microservice-laravel"
+
+# Aturan direktori ditulis SEKALI — berlaku rekursif untuk semua service di bawah BASE
+<Directory "${BASE}">
+    AllowOverride All
+    Require all granted
+</Directory>
 
 # ─── GATEWAY: HTTP → HTTPS redirect ─────────────────────────────────────────
 <VirtualHost *:80>
@@ -125,71 +132,47 @@ Perintah di atas menghasilkan dua file:
 </VirtualHost>
 
 # ─── GATEWAY: HTTPS (satu-satunya yang diakses client/browser) ───────────────
+# Untuk akses dari HP/LAN (mis. demo Android via IP), tambahkan alias HANYA di sini:
+#   ServerAlias 192.168.x.x
 <VirtualHost *:443>
     ServerName gateway.test
-    DocumentRoot "C:/path/to/project-microservice-laravel/Gateway/public"
+    DocumentRoot "${BASE}/Gateway/public"
     SSLEngine on
     SSLCertificateFile    "C:/laragon/etc/ssl/mkcert/gateway.test.pem"
     SSLCertificateKeyFile "C:/laragon/etc/ssl/mkcert/gateway.test-key.pem"
-    <Directory "C:/path/to/project-microservice-laravel/Gateway/public">
-        AllowOverride All
-        Require all granted
-    </Directory>
 </VirtualHost>
 
-# ─── SERVICE INTERNAL: hanya localhost (127.0.0.1), tidak bisa diakses dari LAN ──
+# ─── SERVICE INTERNAL: hanya localhost (127.0.0.1), TIDAK diekspos ke LAN ──────
+# Jangan ubah ke *:80 atau tambah alias IP — otorisasi antar-service via HMAC
+# mengandalkan service ini hanya bisa dijangkau lewat Gateway.
 <VirtualHost 127.0.0.1:80>
     ServerName classmicroservices.test
-    DocumentRoot "C:/path/to/project-microservice-laravel/ClassMicroservices/public"
-    <Directory "C:/path/to/project-microservice-laravel/ClassMicroservices/public">
-        AllowOverride All
-        Require all granted
-    </Directory>
+    DocumentRoot "${BASE}/ClassMicroservices/public"
 </VirtualHost>
 
 <VirtualHost 127.0.0.1:80>
     ServerName mapelservice.test
-    DocumentRoot "C:/path/to/project-microservice-laravel/MapelService/public"
-    <Directory "C:/path/to/project-microservice-laravel/MapelService/public">
-        AllowOverride All
-        Require all granted
-    </Directory>
+    DocumentRoot "${BASE}/MapelService/public"
 </VirtualHost>
 
 <VirtualHost 127.0.0.1:80>
     ServerName guruservice.test
-    DocumentRoot "C:/path/to/project-microservice-laravel/GuruService/public"
-    <Directory "C:/path/to/project-microservice-laravel/GuruService/public">
-        AllowOverride All
-        Require all granted
-    </Directory>
+    DocumentRoot "${BASE}/GuruService/public"
 </VirtualHost>
 
 <VirtualHost 127.0.0.1:80>
     ServerName siswaservice.test
-    DocumentRoot "C:/path/to/project-microservice-laravel/SiswaService/public"
-    <Directory "C:/path/to/project-microservice-laravel/SiswaService/public">
-        AllowOverride All
-        Require all granted
-    </Directory>
+    DocumentRoot "${BASE}/SiswaService/public"
 </VirtualHost>
 
 <VirtualHost 127.0.0.1:80>
     ServerName karyawanservice.test
-    DocumentRoot "C:/path/to/project-microservice-laravel/KaryawanService/public"
-    <Directory "C:/path/to/project-microservice-laravel/KaryawanService/public">
-        AllowOverride All
-        Require all granted
-    </Directory>
+    DocumentRoot "${BASE}/KaryawanService/public"
 </VirtualHost>
 
 <VirtualHost 127.0.0.1:80>
     ServerName akademikservice.test
-    DocumentRoot "C:/path/to/project-microservice-laravel/AkademikService/public"
-    <Directory "C:/path/to/project-microservice-laravel/AkademikService/public">
-        AllowOverride All
-        Require all granted
-    </Directory>
+    DocumentRoot "${BASE}/AkademikService/public"
 </VirtualHost>
 ```
 
