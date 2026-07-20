@@ -12,7 +12,7 @@
 #   powershell -ExecutionPolicy Bypass -File run-tests.ps1
 #
 # Uji dari PC lain di LAN: arahkan ke IP backend + Host header gateway.test
-#   $env:TEST_BASE_URL = "https://192.168.12.168/api"
+#   $env:TEST_BASE_URL = "https://192.168.x.x/api"   # ganti dengan IP server
 #   (SSL bypass sudah aktif; jika cert bukan untuk IP, request tetap jalan)
 $CFG = @{
     BaseUrl       = $(if ($env:TEST_BASE_URL) { $env:TEST_BASE_URL } else { "https://gateway.test/api" })

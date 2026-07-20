@@ -55,7 +55,7 @@ function Get-EnvValue([string]$envPath, [string]$key) {
     return $val.Trim('"').Trim("'")
 }
 
-$Services = @("Gateway","AkademikService","GuruService","SiswaService","MapelService","ClassMicroservices")
+$Services = @("Gateway","AkademikService","GuruService","SiswaService","KaryawanService","MapelService","ClassMicroservices")
 
 $stamp = Get-Date -Format "yyyy-MM-dd_HHmmss"
 
