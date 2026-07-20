@@ -81,15 +81,15 @@ Laravel "SIM Sekolah". Semua request lewat Gateway.
 - ./gradlew assembleRelease -> build rilis (Fase 9)
 
 ## Urutan fase (satu fase = satu sesi = satu commit)
-0. Persiapan (manual)                     5. Nilai + bobot
-1. Scaffold project                       6. Raport & ranking (+ mode /saya)
-2. Core network + Auth                    6A. Karyawan (master data)
-3. Master data (Mapel/Kelas/Guru/Siswa)   6B. Absensi: kartu, wali, rekap
-4. Akademik dasar (+ cache ID->nama)      6C. Absensi: pelajaran, keluar, PIN
-                                          6D. Absensi: Mode Terminal (kiosk)
-                                          7. User mgmt + profil + tema
-                                          8. QA per role + responsif
-                                          9. Build rilis (opsional)
+0.  Persiapan (manual)                    6A.  Karyawan (master data)
+1.  Scaffold project                      6B.  Absensi: kartu, wali, rekap
+2.  Core network + Auth                   6C.  Absensi: pelajaran, keluar, PIN
+3.  Master data (Mapel/Kelas/Guru/Siswa)  6C-2. Periode khusus, jam per periode/
+4.  Akademik dasar (+ cache ID->nama)           hari, pengaturan absensi
+5.  Nilai + bobot                         6D.  Absensi: Mode Terminal (kiosk)
+6.  Raport & ranking (+ mode /saya)       7.   User mgmt + profil + tema
+                                          8.   QA per role + responsif
+                                          9.   Build rilis (opsional)
 
 Salin prompt tiap fase dari docs/android-build-phases.md, mulai dengan Plan Mode.
 
