@@ -588,6 +588,24 @@ test → dikirim lewat jalur lain, jangan commit.
 
 ## Maintenance / Operasional
 
+### Cek Skrip Sebelum Commit
+
+```powershell
+powershell -ExecutionPolicy Bypass -File lint-scripts.ps1
+```
+
+Memeriksa semua `.ps1` di root terhadap bug halus yang pernah lolos ke runtime:
+
+| Kode | Arti |
+|------|------|
+| `UNDEF` | Fungsi dipakai tapi tidak terdefinisi di file itu (mis. helper milik skrip lain) |
+| `COLLIDE` | Parameter tertimpa variabel lokal — PowerShell **tidak** membedakan huruf besar/kecil, jadi `$Headers` dan `$headers` adalah variabel yang **sama** |
+| `RESERVED` | Assignment ke variabel otomatis (`$pid`, `$host`, `$error`, dll.) |
+| `ENCODING` | Karakter non-ASCII di dalam string pada file **tanpa BOM** — PowerShell 5.1 membaca `.ps1` sebagai ANSI sehingga string putus dan parser kacau |
+| `PARSE` | Error sintaks |
+
+Exit code 0 = bersih, 1 = ada temuan. Kalau kena `ENCODING`: simpan file sebagai **UTF-8 with BOM**, atau pakai ASCII saja di dalam string (karakter non-ASCII di **komentar** tetap aman).
+
 ### Auto-alpa Absensi (wajib dijadwalkan)
 
 Siswa yang tidak punya catatan absensi pada hari sekolah ditandai `alpa`
