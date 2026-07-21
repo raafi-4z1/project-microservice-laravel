@@ -78,7 +78,9 @@ $TS = (Get-Date -Format "HHmmss")
 # jendela 60s dan kena 429. Guard ini menahan login ke-5 sampai yang tertua lewat.
 function Wait-LoginSlot {
     $cutoff = (Get-Date).AddSeconds(-60)
-    $script:LOGINS = @($script:LOGINS | Where-Object { $_ -gt $cutoff })
+    # Saring bertipe DateTime saja — pernah ada objek non-DateTime masuk ke daftar
+    # dan membuat perbandingan '-gt' melempar error (pacing jadi tidak andal).
+    $script:LOGINS = @($script:LOGINS | Where-Object { $_ -is [DateTime] -and $_ -gt $cutoff })
     if ($script:LOGINS.Count -ge 4) {
         $oldest = [DateTime]($script:LOGINS | Sort-Object | Select-Object -First 1)
         $wait = [int][math]::Ceiling(($oldest.AddSeconds(61) - (Get-Date)).TotalSeconds)
@@ -87,7 +89,9 @@ function Wait-LoginSlot {
             Start-Sleep -Seconds $wait
         }
         $cutoff = (Get-Date).AddSeconds(-60)
-        $script:LOGINS = @($script:LOGINS | Where-Object { $_ -gt $cutoff })
+        # Saring bertipe DateTime saja — pernah ada objek non-DateTime masuk ke daftar
+    # dan membuat perbandingan '-gt' melempar error (pacing jadi tidak andal).
+    $script:LOGINS = @($script:LOGINS | Where-Object { $_ -is [DateTime] -and $_ -gt $cutoff })
     }
     $script:LOGINS += (Get-Date)
 }
@@ -1718,7 +1722,11 @@ if ($perId) {
     $sisaJam = @((Api GET "akademik/jam`?periode_id=$perId").data).Count
     if ($sisaJam -eq 0) { $script:PASS++; Write-Host "  [PASS] cascade: jam periode ikut terhapus" -ForegroundColor Green }
     else { $script:FAIL++; Write-Host "  [FAIL] cascade: masih ada $sisaJam jam periode" -ForegroundColor Red }
-    $sisaPeng = @((Api GET "akademik/pengaturan-absensi`?tahun_ajaran=$(Enc $tahun)&semester=$semester").data | Where-Object { $_.periodeId -eq $perId }).Count
+    # Enc() hanya ada di capture-api-samples.ps1 — di sini pakai encoder .NET langsung.
+    # (tahun_ajaran "2024/2025" HARUS di-encode; tanpa itu query rusak dan assertion
+    #  di bawah lulus semu karena respons kosong.)
+    $taEnc = [uri]::EscapeDataString($tahun)
+    $sisaPeng = @((Api GET "akademik/pengaturan-absensi`?tahun_ajaran=$taEnc&semester=$semester").data | Where-Object { $_.periodeId -eq $perId }).Count
     if ($sisaPeng -eq 0) { $script:PASS++; Write-Host "  [PASS] cascade: pengaturan periode ikut terhapus" -ForegroundColor Green }
     else { $script:FAIL++; Write-Host "  [FAIL] cascade: masih ada $sisaPeng pengaturan periode" -ForegroundColor Red }
 }

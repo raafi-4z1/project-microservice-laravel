@@ -438,6 +438,41 @@ class SiswaController extends Controller
         }
     }
 
+    /**
+     * Lookup NAMA siswa secara batch berdasarkan daftar id.
+     * Dipakai Gateway untuk melengkapi nama pada respons akademik/absensi yang
+     * hanya berisi id — menggantikan pola lama "ambil SEMUA siswa lalu petakan",
+     * yang mentransfer seluruh tabel hanya untuk mencari puluhan nama.
+     */
+    public function byIds(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'ids'   => 'required|array|min:1|max:1000',
+                'ids.*' => 'integer|min:1',
+            ], [
+                'ids.max' => 'Maksimal 1000 id per permintaan.',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $ids = array_values(array_unique($request->ids));
+
+            $siswa = Siswa::whereIn('id', $ids)
+                ->get(['id', 'nama_lengkap', 'nisn'])
+                ->map(fn($s) => [
+                    'idSiswa'     => $s->id,
+                    'namaLengkap' => $s->nama_lengkap,
+                    'nisn'        => $s->nisn,
+                ]);
+
+            return $this->response('Nama siswa (batch).', Response::HTTP_OK, $siswa);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     // Lookup untuk Gateway resolve kartu absensi (scan) -> siswa
     public function lookupByKartu(Request $request)
     {

@@ -46,6 +46,9 @@ Base URL: `https://gateway.test/api`
 | Method | Endpoint | Keterangan |
 |--------|----------|------------|
 | GET | `/siswa/lookup-kartu?uid=` | Resolve UID kartu → siswa saat scan di terminal |
+| POST | `/siswa/by-ids` | Lookup **batch** nama siswa (`{ids:[...]}`, maks 1000) → `[{idSiswa, namaLengkap, nisn}]` |
+
+> `by-ids` dipakai Gateway untuk melengkapi `namaLengkap` pada respons akademik/absensi yang hanya berisi id (mis. daftar siswa saat absensi pelajaran, rekap kelas). Menggantikan pola lama "ambil SEMUA siswa lalu petakan" yang mentransfer seluruh tabel hanya untuk mencari puluhan nama — beban turun sebanding jumlah siswa sekolah.
 
 > Tabel `siswas` memiliki kolom absensi: `kartu_uid`, `kartu_status` (`belum_terbit`/`aktif`/`hilang`/`blokir`), `kartu_diterbitkan_at`. Siswa absen dengan kartu (tanpa PIN). Alur lengkap: lihat [Gateway/README.md](../Gateway/README.md) & [AkademikService/README.md](../AkademikService/README.md).
 

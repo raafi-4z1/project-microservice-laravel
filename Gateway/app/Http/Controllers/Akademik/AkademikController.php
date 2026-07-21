@@ -1018,7 +1018,9 @@ class AkademikController extends Controller
         return $this->performRequest('GET', "{$this->reqUrl}/absensi/rekap/pegawai/{$subjekTipe}/{$subjekId}", $request->only(self::REKAP_PARAMS));
     }
 
-    // Tambahkan namaLengkap ke tiap entri data.siswa (AkademikService hanya simpan id)
+    // Tambahkan namaLengkap ke tiap entri data.siswa (AkademikService hanya simpan id).
+    // Hanya id yang ada di respons yang di-lookup (batch) — jangan tarik seluruh
+    // tabel siswa hanya untuk mencari beberapa puluh nama.
     private function enrichSiswaResponse($response)
     {
         $decode = $this->decode($response);
@@ -1028,11 +1030,18 @@ class AkademikController extends Controller
                 : response($response);
         }
 
+        $ids = array_values(array_unique(array_filter(
+            array_column($decode['data']['siswa'], 'siswaId')
+        )));
+        if (empty($ids)) {
+            return $this->response($decode['resMsg'] ?? 'Ok', Response::HTTP_OK, $decode['data']);
+        }
+
         $siswaResp = $this->decode(
-            $this->callService($this->siswaBaseUri, $this->siswaSecret, 'GET', "{$this->siswaReqUrl}/all", ['per_page' => 9999])
+            $this->callService($this->siswaBaseUri, $this->siswaSecret, 'POST', "{$this->siswaReqUrl}/by-ids", ['ids' => $ids])
         );
         $map = [];
-        foreach (($siswaResp['data']['data'] ?? []) as $s) {
+        foreach (($siswaResp['data'] ?? []) as $s) {
             $map[$s['idSiswa'] ?? null] = $s['namaLengkap'] ?? null;
         }
 
@@ -1120,7 +1129,11 @@ class AkademikController extends Controller
 
             $enrolledIds = $enrolledResp['data'] ?? [];
 
-            // Ambil semua siswa aktif dari SiswaService
+            // Ambil semua siswa aktif dari SiswaService.
+            // SENGAJA memakai /all (bukan /by-ids seperti enrichSiswaResponse): fitur ini
+            // mencari siswa yang BELUM terdaftar = seluruh siswa MINUS yang terdaftar,
+            // jadi daftar lengkap memang dibutuhkan dan id targetnya belum diketahui.
+            // Endpoint admin, jarang dipakai (saat pembagian kelas per semester).
             $siswaResp = $this->decode(
                 $this->callService($this->siswaBaseUri, $this->siswaSecret, 'GET', "{$this->siswaReqUrl}/all", ['per_page' => 9999])
             );
