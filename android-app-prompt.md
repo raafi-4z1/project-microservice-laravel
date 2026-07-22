@@ -308,10 +308,10 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
 **PENTING — respons akademik hanya berisi ID relasi** (`guruId`, `mapelId`,
 `kelasId`, `siswaId`), TIDAK ada nama guru/mapel/siswa ter-embed. App wajib
 me-resolve nama dengan mengambil master data (`/guru/all`, `/mapel/all`,
-`/class/all`, `/siswa/all` per kelas) lalu join di repository layer — cache
-master data ini di memori per sesi agar layar jadwal/nilai/raport tidak
-memanggil API berulang. (Pengecualian: absensi pelajaran & rekap kelas sudah
-menyertakan `namaLengkap` siswa.)
+`/class/all`, `/siswa/all` per kelas) lalu join di repository layer — lihat
+[Strategi Cache & Data Lokal](#strategi-cache--data-lokal). (Pengecualian:
+absensi pelajaran & rekap kelas **sudah** menyertakan `namaLengkap` siswa, jadi
+dua layar itu tidak perlu master data sama sekali.)
 
 - **Wali kelas** (SuperAdmin/Admin): `POST /akademik/wali` (guru_id, kelas_id,
   tahun_ajaran, semester — satu wali per kelas/semester, 409 jika sudah ada),
@@ -473,6 +473,58 @@ perangkat terminal, di-set sekali saat setup kiosk). Body pakai snake_case.
     **409** (bukan 422) — samakan penanganannya dengan konflik lain.
 - `POST /login`, `POST /refresh`, dan `POST /password` dibatasi 5 percobaan/menit
   → tangani 429 dengan pesan yang ramah (`resMsg` berisi instruksi tunggu).
+
+## Strategi Cache & Data Lokal
+
+**Prinsip pemilahan:** jangan pakai "seberapa sering berubah", tapi **"seberapa
+buruk kalau datanya basi"**. Basi = nama salah tampil sebentar → boleh cache.
+Basi = orang mengambil keputusan salah → jangan cache.
+
+| Data | Simpan lokal? | Refresh kapan |
+|------|---------------|---------------|
+| Token, role, profil user | ✅ wajib (terenkripsi) | login + app start |
+| Semester aktif | ✅ | app start (ganti ~2x/tahun) |
+| Master data **id → nama** (guru/mapel/kelas/siswa) | ✅ | app start / TTL ~15 mnt / pull-to-refresh |
+| Periode aktif + pengaturan absensi efektif | ✅ **di-key per tanggal** | app start & saat tanggal berganti |
+| Jam efektif | ✅ **per (tanggal, hari)** | saat tanggal berubah |
+| Struktur jadwal (mapel/kelas/hari/slot `ke`) | ✅ | app start / per semester |
+| Foto profil | ✅ disk, key `id + updatedAt` | saat berubah |
+| Terminal Id + Token (Mode Terminal) | ✅ permanen, terenkripsi | hanya saat provisioning ulang |
+| **Absensi, nilai, rekap** | ❌ jangan jadikan sumber kebenaran | tiap layar dibuka |
+| **Scan / tandai / PIN / izin keluar** (semua write) | ❌ | wajib online |
+
+Alasan baris merah: kalau guru melihat daftar absensi yang basi, ia bisa menandai
+ulang siswa yang sudah ditandai, atau mengira siswa belum hadir padahal sudah
+scan. Itu keputusan salah, bukan sekadar tampilan salah.
+
+**Alur agar panggilan Gateway minim.** Saat app start (splash) cukup 4 panggilan,
+lalu hasilnya dipakai seharian:
+
+```
+GET /user                                   -> validasi token + role
+GET /akademik/semester/aktif                -> default tahun_ajaran/semester
+GET /akademik/periode/aktif                 -> badge Ramadan/ujian/libur
+GET /akademik/pengaturan-absensi/efektif    -> jam masuk & ambang hari ini
+```
+
+Master data diambil **lazy** (saat pertama dibutuhkan) lalu dipakai ulang.
+Layar transaksional selalu ambil segar.
+
+**Aturan keras:**
+- **Cache HANYA `id → nama`.** JANGAN simpan detail pribadi siswa (`alamat`,
+  `noTelpAyah`/`noTelpIbu`, data wali, `tanggalLahir`) di penyimpanan lokal —
+  itu data pribadi anak di bawah umur; kalau perangkat hilang, ikut bocor. Ambil
+  detail lengkap hanya saat layar detail dibuka, jangan diendapkan.
+- **Cache yang bergantung tanggal wajib di-key oleh tanggal** (jam efektif,
+  periode, pengaturan). Saat tengah malam lewat / tanggal berubah, buang cache
+  itu. Menampilkan jam Ramadan di hari biasa adalah bug.
+- **Jangan bangun offline-first sync engine.** Server berada di LAN sekolah;
+  kompleksitasnya tidak sepadan. Untuk aksi tulis: wajib online, tampilkan error
+  yang jelas ("tidak ada koneksi ke server sekolah"), jangan antrekan diam-diam.
+
+**Implementasi:** v1 cukup **in-memory per sesi** (map di repository, hidup
+selama proses app). Naikkan ke DataStore/Room + TTL hanya kalau memang terasa
+kurang — jangan mulai dari sana.
 
 ## Layar yang dibutuhkan
 
