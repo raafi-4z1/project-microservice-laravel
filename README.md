@@ -586,6 +586,32 @@ test → dikirim lewat jalur lain, jangan commit.
 
 ---
 
+## Hardening Sebelum Dipakai Produksi
+
+`.env.example` disetel untuk **development**. Sebelum server dipakai sungguhan
+(dipasang di sekolah), wajib ubah di **SETIAP** service:
+
+```env
+APP_ENV=production
+APP_DEBUG=false        # WAJIB — kalau true, setiap error menampilkan stack trace
+                       # berisi path file, query SQL, dan potongan konfigurasi
+```
+
+Checklist lain:
+
+- [ ] `SUPERADMIN_PASSWORD` diganti (jangan pakai contoh di `.env.example`)
+- [ ] `APP_KEY` di-generate tiap service (`php artisan key:generate`)
+- [ ] Secret HMAC (`*_SERVICE_SECRET` ↔ `ACCEPTED_SECRETS`) diisi nilai acak yang
+      kuat dan **sama persis** antar pasangan — jangan pakai placeholder
+- [ ] Service internal tetap `127.0.0.1` di vhost (jangan `*:80`) — hanya Gateway
+      yang boleh diakses klien
+- [ ] Backup terjadwal (`backup-databases.ps1`) + auto-alpa terjadwal
+- [ ] Kalau nanti ada frontend web: batasi CORS (`config/cors.php`) ke domain
+      sekolah saja — default Laravel mengizinkan semua origin (aman untuk API
+      Bearer, tapi sebaiknya diperketat)
+
+---
+
 ## Maintenance / Operasional
 
 ### Cek Skrip Sebelum Commit
