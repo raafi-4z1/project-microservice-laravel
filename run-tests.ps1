@@ -645,6 +645,83 @@ if ($siswaNama) {
 } else { Skip "GET /siswa/all?search=" "tidak ada siswa" }
 
 # ──────────────────────────────────────────────
+#  PHASE 5.5 — KARYAWAN (READ + VALIDATION)
+# ──────────────────────────────────────────────
+Section "Phase 5.5: Karyawan (Read + Validation)"
+
+# 5.5-A. GET /karyawan/all
+$r = Api GET "karyawan/all"
+Chk "GET /karyawan/all" $r 200; if ($script:LAST_CHK) {
+    Info "Total karyawan: $($r.data.total)"
+}
+
+$karyawanId = $null
+$karyawanNama = $null
+if ($r.data -and $r.data.data -and $r.data.data.Count -gt 0) {
+    $karyawanId   = $r.data.data[0].idKaryawan
+    $karyawanNama = $r.data.data[0].namaLengkap
+    Info "Gunakan idKaryawan=$karyawanId"
+}
+
+# 5.5-B. GET /karyawan?idKaryawan={id}
+if ($karyawanId) {
+    $r = Api GET "karyawan`?idKaryawan=$karyawanId"
+    Chk "GET /karyawan?idKaryawan=$karyawanId (show)" $r 200
+} else { Skip "GET /karyawan?idKaryawan=" "tidak ada karyawan" }
+
+# 5.5-C. POST /karyawan tanpa field wajib → 422 (validasi berjalan).
+# CATATAN: 'foto' di KaryawanService bersifat 'sometimes' (beda dgn Guru yang wajib),
+# jadi jangan pakai "tanpa foto" sebagai pemicu 422 — request itu akan SUKSES 201
+# dan meninggalkan record sampah. Pakai 'jabatan' yang hilang + email invalid.
+$r = Api POST "karyawan" @{ email = "bukan-email"; namaLengkap = "Karyawan Test" }
+Chk "POST /karyawan tanpa jabatan/nip + email invalid (harus 422)" $r 422
+
+# 5.5-D. GET /karyawan/all dengan pagination
+$r = Api GET "karyawan/all`?per_page=2&page=1"
+Chk "GET /karyawan/all?per_page=2 (pagination)" $r 200
+
+# 5.5-E. POST /karyawan/update — ID tidak ada → 404/422
+$r = Api POST "karyawan/update" @{ idKaryawan = 99999; jabatan = "Test Update" }
+$ok = ($r.resCode -eq 404 -or $r.resCode -eq 422)
+if ($ok) { $script:PASS++; Write-Host "  [PASS $($r.resCode)] POST /karyawan/update idKaryawan=99999 (tidak ada)" -ForegroundColor Green }
+else     { $script:FAIL++; Write-Host "  [FAIL $($r.resCode)] POST /karyawan/update idKaryawan=99999 -- $($r.resMsg)" -ForegroundColor Red }
+
+# 5.5-F. DELETE /karyawan/{id} — ID tidak ada → 404/422
+$r = Api DELETE "karyawan/99999"
+$ok = ($r.resCode -eq 404 -or $r.resCode -eq 422)
+if ($ok) { $script:PASS++; Write-Host "  [PASS $($r.resCode)] DELETE /karyawan/99999 (tidak ada)" -ForegroundColor Green }
+else     { $script:FAIL++; Write-Host "  [FAIL $($r.resCode)] DELETE /karyawan/99999 -- $($r.resMsg)" -ForegroundColor Red }
+
+# 5.5-G. GET /karyawan/all?search=
+if ($karyawanNama) {
+    $kata = ($karyawanNama -split ' ')[0]
+    $r = Api GET "karyawan/all`?search=$kata"
+    Chk "GET /karyawan/all?search=$kata" $r 200; if ($script:LAST_CHK) {
+        if ($r.data.total -ge 1) { $script:PASS++; Write-Host "  [PASS] Search karyawan '$kata' menemukan $($r.data.total) hasil" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] Search karyawan '$kata' total=0 (harus >= 1)" -ForegroundColor Red }
+    }
+} else { Skip "GET /karyawan/all?search=" "tidak ada karyawan" }
+
+# 5.5-H. GET /karyawan/all?search= lebih dari 100 karakter → 422
+$longSearch = "x" * 101
+$r = Api GET "karyawan/all`?search=$longSearch"
+Chk "GET /karyawan/all?search >100 karakter (harus 422)" $r 422
+
+# 5.5-I. INTEGRITAS ROUTE — path ngawur wajib 404.
+# Kalau config cache di server basi, config('gateway.*_prefix') terbaca kosong dan
+# route service turun ke akar /api (mis. DELETE /api/{id} jadi catch-all). Gejalanya:
+# path ngawur membalas 401/405, bukan 404. Lihat README "Deploy / Update ke Server".
+$r = Api GET "endpoint-ngawur-cek-integritas-route"
+if ($r.resCode -eq 404) {
+    $script:PASS++; Write-Host "  [PASS 404] Integritas route: path ngawur -> 404" -ForegroundColor Green
+} else {
+    $script:FAIL++
+    Write-Host "  [FAIL $($r.resCode)/404] Integritas route: path ngawur harus 404, dapat $($r.resCode)" -ForegroundColor Red
+    Write-Host "         -> Ada route bocor ke akar /api. Bersihkan cache di server:" -ForegroundColor Yellow
+    Write-Host "            php artisan config:clear && php artisan route:clear" -ForegroundColor Yellow
+}
+
+# ──────────────────────────────────────────────
 #  PHASE 6 — SEMESTER AKTIF
 # ──────────────────────────────────────────────
 Section "Phase 6: Semester Aktif"

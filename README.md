@@ -126,9 +126,14 @@ Define BASE "C:/path/to/project-microservice-laravel"
 </Directory>
 
 # ─── GATEWAY: HTTP → HTTPS redirect ─────────────────────────────────────────
+# Pakai %{HTTP_HOST}, JANGAN hardcode "https://gateway.test/". Client LAN/HP
+# menembak lewat IP; kalau di-hardcode mereka dilempar ke nama gateway.test yang
+# tidak bisa di-resolve di device. Dengan %{HTTP_HOST}, http://<IP>/api/... akan
+# diarahkan ke https://<IP>/api/... (host aslinya dipertahankan).
 <VirtualHost *:80>
     ServerName gateway.test
-    Redirect permanent / https://gateway.test/
+    RewriteEngine On
+    RewriteRule ^/?(.*) https://%{HTTP_HOST}/$1 [R=301,L]
 </VirtualHost>
 
 # ─── GATEWAY: HTTPS (satu-satunya yang diakses client/browser) ───────────────
@@ -605,6 +610,14 @@ Checklist lain:
       kuat dan **sama persis** antar pasangan — jangan pakai placeholder
 - [ ] Service internal tetap `127.0.0.1` di vhost (jangan `*:80`) — hanya Gateway
       yang boleh diakses klien
+- [ ] **MySQL jangan dengar di LAN.** Semua service ada di mesin yang sama, jadi
+      port 3306 tidak perlu terbuka keluar. Di `my.ini` set `bind-address=127.0.0.1`
+      lalu restart MySQL. Cek dari PC lain — harus GAGAL konek:
+      `Test-NetConnection <IP-SERVER> -Port 3306`
+      (Terdeteksi terbuka saat uji server; akses tetap ditolak oleh grant user-host,
+      tapi permukaan serangannya tidak perlu ada.)
+- [ ] Setelah `git pull` di server: bersihkan cache config & route
+      (lihat *Deploy / Update ke Server*) — kode baru tidak aktif tanpa ini
 - [ ] Backup terjadwal (`backup-databases.ps1`) + auto-alpa terjadwal
 - [ ] Kalau nanti ada frontend web: batasi CORS (`config/cors.php`) ke domain
       sekolah saja — default Laravel mengizinkan semua origin (aman untuk API
@@ -613,6 +626,40 @@ Checklist lain:
 ---
 
 ## Maintenance / Operasional
+
+### Deploy / Update ke Server (WAJIB: bersihkan cache)
+
+Setelah `git pull` di server, **selalu** jalankan ini di **setiap** service +
+Gateway. Kalau dilewat, Laravel tetap memakai `vendor/` dan
+`bootstrap/cache/config.php` lama — kode baru sudah ada di disk tapi tidak dipakai:
+
+```bash
+composer install          # vendor/ tidak ikut git; dependensi baru tidak ada tanpa ini
+php artisan config:clear
+php artisan route:clear
+php artisan cache:clear
+php artisan migrate --force
+```
+
+**Gejala kalau `composer install` dilewat:** `GET /api/kartu/qr` membalas
+**501** `"Package QR belum terpasang"` — package `simplesoftwareio/simple-qrcode`
+sudah tercatat di `composer.json`/`composer.lock` tapi belum ter-install di server.
+
+**Gejala kalau lupa** (pernah terjadi, terdeteksi saat uji server):
+`config('gateway.karyawan_prefix')` terbaca kosong karena config cache dibuat
+sebelum KaryawanService ada. Akibatnya seluruh route Karyawan turun satu level —
+`/api/karyawan/all` jadi **404**, dan `Route::delete('/{id}')` merosot jadi
+**`DELETE /api/{id}`**, sebuah catch-all yang mencocoki path apa pun.
+
+Cara cek cepat dari PC lain (tanpa perlu login):
+
+```powershell
+# Harus 404. Kalau 401/405 -> ada route yang bocor ke akar /api, cache basi.
+curl.exe -sk -o NUL -w "%{http_code}`n" https://<IP-SERVER>/api/endpoint-ngawur
+
+# Harus 401 (route ada, butuh token). Kalau 404 -> prefix karyawan hilang.
+curl.exe -sk -o NUL -w "%{http_code}`n" https://<IP-SERVER>/api/karyawan/all
+```
 
 ### Cek Skrip Sebelum Commit
 
