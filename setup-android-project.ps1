@@ -99,26 +99,46 @@ Salin prompt tiap fase dari docs/android-build-phases.md, mulai dengan Plan Mode
 - JANGAN commit docs/api-sample-responses.md (berisi akun test) - sudah di .gitignore.
 - Kalau ragu bentuk data, cek docs/api-sample-responses.md dulu, bukan menebak.
 '@
-Set-Content -LiteralPath (Join-Path $Target "CLAUDE.md") -Encoding UTF8 -Value $claude
+# CLAUDE.md: jangan timpa kalau sudah ada — biasanya sudah diedit (mis. IP LAN).
+$claudePath = Join-Path $Target "CLAUDE.md"
+if (Test-Path $claudePath) {
+    Write-Host "  [SKIP] CLAUDE.md sudah ada (tidak ditimpa - simpan editanmu)" -ForegroundColor DarkGray
+} else {
+    Set-Content -LiteralPath $claudePath -Encoding UTF8 -Value $claude
+    Write-Host "  [OK]  CLAUDE.md" -ForegroundColor Green
+}
 
-# --- .gitignore untuk project Android ---
-$gi = @'
-# Dikirim lewat jalur lain (berisi akun test + capture DB dev) - jangan commit
-docs/api-sample-responses.md
-
-# Android / Gradle
-.gradle/
-build/
-/build/
-local.properties
-*.keystore
-*.jks
-key.properties
-.idea/
-.DS_Store
-captures/
-'@
-Set-Content -LiteralPath (Join-Path $Target ".gitignore") -Encoding UTF8 -Value $gi
+# --- .gitignore: MERGE, jangan timpa (Android Studio membuat .gitignore sendiri) ---
+$giLines = @(
+    '# Dikirim lewat jalur lain (berisi akun test + capture DB dev) - jangan commit'
+    'docs/api-sample-responses.md'
+    ''
+    '# Android / Gradle'
+    '.gradle/'
+    'build/'
+    '/build/'
+    'local.properties'
+    '*.keystore'
+    '*.jks'
+    'key.properties'
+    '.idea/'
+    '.DS_Store'
+    'captures/'
+)
+$giPath = Join-Path $Target ".gitignore"
+if (Test-Path $giPath) {
+    $existing = @(Get-Content -LiteralPath $giPath)
+    $toAdd = @($giLines | Where-Object { $_ -ne '' -and $existing -notcontains $_ })
+    if ($toAdd.Count -gt 0) {
+        Add-Content -LiteralPath $giPath -Encoding UTF8 -Value (@('', '# --- ditambahkan setup-android-project ---') + $toAdd)
+        Write-Host "  [OK]  .gitignore (ditambah $($toAdd.Count) baris, isi lama dipertahankan)" -ForegroundColor Green
+    } else {
+        Write-Host "  [SKIP] .gitignore sudah lengkap" -ForegroundColor DarkGray
+    }
+} else {
+    Set-Content -LiteralPath $giPath -Encoding UTF8 -Value $giLines
+    Write-Host "  [OK]  .gitignore" -ForegroundColor Green
+}
 
 Write-Host ""
 Write-Host "Selesai. Bundle siap di: $Target" -ForegroundColor Cyan
