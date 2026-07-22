@@ -36,11 +36,32 @@ seluruh data diambil dari satu API Gateway.
 
 ## Struktur Folder (wajib diikuti)
 
-Single-module, package-by-feature, dengan pemisahan layer yang ketat agar
-kelak folder `core/network`, `core/session`, `domain`, dan `data` bisa
-dipindah ke `commonMain` modul shared KMP tanpa refactor. Aturan keras:
-composable dan ViewModel TIDAK boleh memakai Ktor/DTO secara langsung —
-semua akses data lewat interface repository di `domain`.
+**Single-module Android yang "KMP-ready"** — BUKAN project KMP dengan source set
+(`commonMain`/`androidMain`/`iosMain`). Alasannya: target saat ini hanya Android,
+dan fitur beratnya (Mode Terminal: CameraX + ML Kit, FusedLocation, Keystore)
+memang Android-only sehingga tak ada yang bisa dibagi dari sana. Source set KMP
+sekarang hanya menambah kerumitan Gradle tanpa manfaat nyata.
+
+Yang dijaga adalah **disiplin batas layer**, supaya `core/network`, `core/session`,
+`domain`, dan `data` bisa dipindah ke `commonMain` kelak **tanpa refactor**.
+Karena itu library yang dipakai sudah multiplatform semua (Ktor,
+kotlinx.serialization, Koin, multiplatform-settings — sebabnya Hilt/Dagger
+dilarang).
+
+**Dua aturan keras (ini yang menentukan migrasi KMP berhasil atau tidak):**
+
+1. **Ke bawah:** composable dan ViewModel TIDAK boleh memakai Ktor/DTO secara
+   langsung — semua akses data lewat interface repository di `domain`.
+2. **Ke atas:** `domain/` dan `data/` DILARANG meng-import `android.*` atau
+   `androidx.*` (termasuk `Context`, `Uri`, `Bitmap`, `android.util.Log`).
+   Pakai Kotlin murni + `kotlinx-datetime`; untuk logging pakai abstraksi
+   sendiri. Satu import Android di layer ini membuat migrasi ke `commonMain`
+   gagal — dan biasanya baru ketahuan saat sudah terlambat.
+
+**Yang memang TIDAK akan pindah ke `commonMain`** (Android-only, dan itu wajar):
+`feature/` (UI Compose), `core/designsystem`, seluruh Mode Terminal (kamera/QR/
+lokasi), dan penyimpanan token berbasis Keystore — kelak jadi `expect/actual`
+kalau benar-benar ada target iOS.
 
 ```
 app/src/main/java/com/sekolah/app/
