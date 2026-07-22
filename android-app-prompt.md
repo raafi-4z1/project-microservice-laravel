@@ -6,6 +6,18 @@ seluruh data diambil dari satu API Gateway.
 
 ## Tech Stack (wajib)
 
+- **Jenis aplikasi: NATIVE Android (Kotlin)** — bukan Flutter/React Native/WebView.
+  Alasan: Mode Terminal butuh akses kamera (CameraX + ML Kit) yang stabil dan
+  kiosk-friendly, plus struktur KMP-ready agar layer domain/data bisa dipakai
+  ulang kelak.
+- **Target perangkat & versi:**
+  - `minSdk 24` (Android 7.0) — mencakup hampir semua HP guru/siswa yang masih
+    beredar; jangan lebih tinggi tanpa alasan kuat
+  - `compileSdk` & `targetSdk` = versi stabil terbaru saat build (jangan tebak
+    angkanya — pakai yang terpasang di SDK Manager lalu verifikasi lewat build)
+  - **JDK 17**, Gradle Kotlin DSL + version catalog
+  - Satu APK untuk semua role; **Mode Terminal adalah layar di dalam app yang
+    sama** (dipicu setelah provisioning), bukan aplikasi terpisah
 - Kotlin, struktur project KMP-ready: layer domain/data (model, repository,
   networking, session) dipisah dari layer UI agar kelak bisa di-share ke iOS/desktop
 - Arsitektur MVVM + Repository pattern, unidirectional data flow (UI State via StateFlow)
