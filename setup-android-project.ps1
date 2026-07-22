@@ -80,6 +80,14 @@ Laravel "SIM Sekolah". Semua request lewat Gateway.
 - ./gradlew installDebug    -> pasang ke emulator/device
 - ./gradlew assembleRelease -> build rilis (Fase 9)
 
+## Setelan editor (dua tool, folder yang sama)
+- VS Code        : tempat Claude Code bekerja (edit kode, git, terminal)
+- Android Studio : Compose Preview, emulator, Logcat, debug, Profiler
+- PENTING untuk Claude Code: setiap kali build.gradle.kts atau
+  libs.versions.toml diubah, INGATKAN user untuk klik "Gradle Sync" di
+  Android Studio - sinkronisasi tidak selalu otomatis dan Preview akan
+  memakai dependensi lama sampai di-sync.
+
 ## Urutan fase (satu fase = satu sesi = satu commit)
 0.  Persiapan (manual)                    6A.  Karyawan (master data)
 1.  Scaffold project                      6B.  Absensi: kartu, wali, rekap
