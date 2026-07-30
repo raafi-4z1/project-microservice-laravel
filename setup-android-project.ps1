@@ -65,7 +65,10 @@ Laravel "SIM Sekolah". Semua request lewat Gateway.
 - `docs/api-sample-responses.md` - capture response ASLI + tabel akun test
   (acuan DTO - jangan menebak bentuk request/response, cek di sini)
 - `docs/Microservice Laravel.postman_collection.json` - semua request siap coba
-- `docs/ui-ux/` - screenshot acuan desain
+- `docs/ui-ux/design-notes.md` - ACUAN DESAIN (warna, font, navigasi per role,
+  layar kunci, state offline). Baca tiap fase yang menyentuh UI.
+- `docs/ui-ux/` - aset siap pakai kalau tersedia (tema Material 3, font, app
+  icon, screenshot referensi) - PAKAI yang ada, jangan bikin sendiri
 
 ## Jaringan (backend)
 - Base URL dari emulator Android : https://10.0.2.2/api
@@ -162,7 +165,11 @@ if ($missing.Count -gt 0) {
 }
 Write-Host ""
 Write-Host "Langkah berikutnya:" -ForegroundColor White
-Write-Host "  1. Taruh screenshot desain di docs/ui-ux/"
+Write-Host "  1. Lengkapi docs/ui-ux/ (opsional): design-notes.md, tema Material 3,"
+Write-Host "     font, app icon, screenshot referensi. Dipakai otomatis di Fase 1."
 Write-Host "  2. Edit CLAUDE.md -> sesuaikan IP backend LAN (baris IP-SERVER)"
-Write-Host "  3. Buat project Android di folder ini (Android Studio), atau init git"
-Write-Host "  4. Mulai Fase 1: salin prompt dari docs/android-build-phases.md ke Claude Code (Plan Mode)"
+Write-Host "  3. Buka folder ini di VS CODE -> Claude Code -> Fase 1 (Plan Mode):"
+Write-Host "     salin prompt dari docs/android-build-phases.md"
+Write-Host "     (Claude Code yang men-scaffold Gradle; JANGAN pakai 'New Project'"
+Write-Host "      di Android Studio - itu bikin folder baru terpisah)"
+Write-Host "  4. Sesudah assembleDebug hijau: Android Studio -> File -> Open -> folder ini"

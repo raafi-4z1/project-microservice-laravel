@@ -585,9 +585,21 @@ powershell -ExecutionPolicy Bypass -File setup-android-project.ps1
 
 Menghasilkan `../sim-sekolah-android/` berisi `CLAUDE.md` + `docs/`
 (android-app-prompt, android-build-phases, api-sample-responses, Postman,
-ui-ux/). Lalu buka di Android Studio dan jalankan fase demi fase dari
-`docs/android-build-phases.md`. Catatan: `api-sample-responses.md` berisi akun
-test → dikirim lewat jalur lain, jangan commit.
+ui-ux/).
+
+**Urutan kerja (penting):** project Android di-scaffold oleh Claude Code, bukan
+wizard Android Studio.
+
+1. Buka folder `sim-sekolah-android` di **VS Code** → jalankan Claude Code →
+   salin prompt Fase 1 dari `docs/android-build-phases.md` (Plan Mode).
+2. Setelah `./gradlew assembleDebug` hijau, buka folder yang **sama** di Android
+   Studio lewat **File → Open** (JANGAN "New Project" — itu membuat folder baru
+   dan Anda berakhir dengan dua project terpisah).
+3. Lanjut fase demi fase dari `docs/android-build-phases.md`.
+
+Catatan: `api-sample-responses.md` berisi akun test → dikirim lewat jalur lain,
+jangan commit. Aset desain (tema Material 3 final, font, app icon) sudah
+disiapkan di `docs/ui-ux/` dan dipakai otomatis di Fase 1.
 
 ---
 

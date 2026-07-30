@@ -64,7 +64,7 @@ lokasi), dan penyimpanan token berbasis Keystore — kelak jadi `expect/actual`
 kalau benar-benar ada target iOS.
 
 ```
-app/src/main/java/com/sekolah/app/
+app/src/main/java/id/sch/sman1tanjung/sim/
 ├── core/
 │   ├── di/              # Koin modules (networkModule, repositoryModule, viewModelModule)
 │   ├── network/         # Ktor HttpClient (Bearer + handler 401) + client TERPISAH
@@ -103,9 +103,11 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
 
 ## Backend / API
 
-- Satu base URL Gateway, contoh dev: `https://gateway.test/api`
-  (buat base URL configurable via BuildConfig/setting, karena saat development
-  memakai sertifikat lokal mkcert — sediakan opsi trust-all HANYA untuk build debug)
+- Satu base URL Gateway. Untuk deployment ini backend ada di SERVER LAN, bukan PC
+  dev, jadi debug default = `https://192.168.12.181/api` (HP fisik & emulator sama-
+  sama menjangkaunya di LAN). Buat base URL configurable via BuildConfig/setting.
+  Sertifikat server untuk `gateway.test` diakses lewat IP → sediakan opsi trust-all
+  HANYA untuk build debug.
 - Autentikasi: OAuth2 Laravel Passport — `POST /login` (body: email, password,
   device_name). **Kirim `device_name: "android"`** agar sesi app tidak saling
   tendang dengan sesi web. Respons sukses: `data.token` (Bearer token),

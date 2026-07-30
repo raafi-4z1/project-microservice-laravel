@@ -13,3 +13,6 @@ db-backups/
 # Artefak uji manual (mis. foto untuk uji upload) — jangan masuk repo
 test_photo.jpg
 test_*.jpg
+
+# Config Claude Code lokal (berisi path absolut khas mesin) - jangan commit
+.claude/
