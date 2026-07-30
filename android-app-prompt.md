@@ -108,13 +108,21 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
   sama menjangkaunya di LAN). Buat base URL configurable via BuildConfig/setting.
   Sertifikat server untuk `gateway.test` diakses lewat IP → sediakan opsi trust-all
   HANYA untuk build debug.
-  **JEBAKAN:** trust-all TrustManager saja TIDAK cukup. Cert diterbitkan untuk nama
-  `gateway.test` sedangkan app menembak `192.168.12.181`, jadi verifikasi *hostname*
-  tetap gagal (`javax.net.ssl.SSLPeerUnverifiedException: Hostname 192.168.12.181
-  not verified`). Di build debug matikan JUGA hostname verification pada engine Ktor
-  (OkHttp: `hostnameVerifier { _, _ -> true }`; CIO: konfigurasi `https` serupa).
-  Alternatif tanpa bypass: terbitkan ulang cert di server agar memuat IP —
-  `mkcert gateway.test 192.168.12.181`.
+  **DUA masalah TLS terpisah — sering tertukar:**
+  1. *Hostname mismatch*: cert untuk `gateway.test`, app menembak `192.168.12.181`
+     → `SSLPeerUnverifiedException: Hostname 192.168.12.181 not verified`.
+     Solusi permanen: terbitkan ulang cert di server memuat IP
+     (`mkcert gateway.test 192.168.12.181`), atau matikan hostname verification
+     di build debug (OkHttp: `hostnameVerifier { _, _ -> true }`).
+  2. *CA tidak dipercaya*: mkcert memakai CA lokal yang HANYA ter-install di PC dev.
+     Perangkat Android tidak mengenalnya → `Trust anchor for certification path not
+     found`, **bahkan setelah cert memuat IP**. Menerbitkan ulang cert TIDAK
+     menyelesaikan ini.
+     Pilihan: (a) trust-all TrustManager di build debug — paling praktis; atau
+     (b) salin `rootCA.pem` mkcert ke device lalu percayai lewat
+     `network_security_config.xml` dengan `<debug-overrides>` — lebih bersih,
+     tanpa trust-all.
+  Build release WAJIB validasi normal (tanpa bypass apa pun).
 - Autentikasi: OAuth2 Laravel Passport — `POST /login` (body: email, password,
   device_name). **Kirim `device_name: "android"`** agar sesi app tidak saling
   tendang dengan sesi web. Respons sukses: `data.token` (Bearer token),
