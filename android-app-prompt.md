@@ -108,6 +108,13 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
   sama menjangkaunya di LAN). Buat base URL configurable via BuildConfig/setting.
   Sertifikat server untuk `gateway.test` diakses lewat IP → sediakan opsi trust-all
   HANYA untuk build debug.
+  **JEBAKAN:** trust-all TrustManager saja TIDAK cukup. Cert diterbitkan untuk nama
+  `gateway.test` sedangkan app menembak `192.168.12.181`, jadi verifikasi *hostname*
+  tetap gagal (`javax.net.ssl.SSLPeerUnverifiedException: Hostname 192.168.12.181
+  not verified`). Di build debug matikan JUGA hostname verification pada engine Ktor
+  (OkHttp: `hostnameVerifier { _, _ -> true }`; CIO: konfigurasi `https` serupa).
+  Alternatif tanpa bypass: terbitkan ulang cert di server agar memuat IP —
+  `mkcert gateway.test 192.168.12.181`.
 - Autentikasi: OAuth2 Laravel Passport — `POST /login` (body: email, password,
   device_name). **Kirim `device_name: "android"`** agar sesi app tidak saling
   tendang dengan sesi web. Respons sukses: `data.token` (Bearer token),
