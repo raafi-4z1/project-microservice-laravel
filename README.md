@@ -108,6 +108,25 @@ Perintah di atas menghasilkan dua file:
 
 > Setelah `mkcert -install`, browser (Chrome/Edge/Firefox) otomatis mempercayai sertifikat yang dibuat mkcert — tidak perlu install manual ke Windows.
 
+**Kalau server diakses dari perangkat lain di LAN (HP/tablet, app Android):**
+sertakan IP server saat generate, supaya tidak kena *hostname mismatch* ketika
+diakses lewat IP:
+
+```powershell
+cd C:\laragon\etc\ssl\mkcert
+mkcert gateway.test 192.168.12.181     # ganti dengan IP server
+```
+
+Hasilnya bernama **`gateway.test+1.pem`** dan **`gateway.test+1-key.pem`**
+(akhiran `+1` karena ada dua nama) — sesuaikan path di vhost, lalu restart Apache.
+
+> **Penting:** ini hanya mengatasi *hostname mismatch*. CA milik mkcert tetap
+> tidak dikenal perangkat lain, jadi HP/app Android masih akan menolak dengan
+> `Trust anchor for certification path not found`. Untuk klien Android: pakai
+> trust-all di build **debug** saja, atau pasang `rootCA.pem` mkcert ke device
+> lewat `network_security_config.xml` (`<debug-overrides>`). Build rilis wajib
+> sertifikat yang benar-benar tepercaya.
+
 #### 2b. Buat file konfigurasi Virtual Host
 
 1. Klik kanan ikon Laragon di area notifikasi taskbar (pojok kanan bawah layar, di sebelah jam) → **Apache** → **sites-enabled** → folder akan terbuka
