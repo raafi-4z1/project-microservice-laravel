@@ -606,15 +606,20 @@ Menghasilkan `../sim-sekolah-android/` berisi `CLAUDE.md` + `docs/`
 (android-app-prompt, android-build-phases, api-sample-responses, Postman,
 ui-ux/).
 
-**Urutan kerja (penting):** project Android di-scaffold oleh Claude Code, bukan
-wizard Android Studio.
+**Urutan kerja (penting):**
 
-1. Buka folder `sim-sekolah-android` di **VS Code** → jalankan Claude Code →
-   salin prompt Fase 1 dari `docs/android-build-phases.md` (Plan Mode).
-2. Setelah `./gradlew assembleDebug` hijau, buka folder yang **sama** di Android
-   Studio lewat **File → Open** (JANGAN "New Project" — itu membuat folder baru
-   dan Anda berakhir dengan dua project terpisah).
-3. Lanjut fase demi fase dari `docs/android-build-phases.md`.
+1. **Sekali di awal** — buat kerangka project lewat Android Studio **New Project**
+   (Empty Activity/Compose, package `id.sch.sman1tanjung.sim`, minSdk 24, Kotlin
+   DSL) di folder `sim-sekolah-android`. Wizard dipakai karena `gradle-wrapper.jar`
+   adalah file biner dan pemilihan versi AGP/Kotlin/Compose paling aman diserahkan
+   ke Studio. Pastikan **Run ▶** berhasil sebelum lanjut.
+   (Folder harus kosong saat wizard jalan — pindahkan `CLAUDE.md` + `docs/`
+   sementara, kembalikan setelah project jadi.)
+2. Buka folder itu di **VS Code** → jalankan Claude Code → salin prompt Fase 1
+   dari `docs/android-build-phases.md` (Plan Mode). Claude Code merombak struktur,
+   menambah dependensi, memasang tema/font/icon.
+3. Lanjut fase demi fase. Android Studio selanjutnya hanya untuk Compose Preview,
+   emulator, Logcat, dan Gradle Sync.
 
 Catatan: `api-sample-responses.md` berisi akun test → dikirim lewat jalur lain,
 jangan commit. Aset desain (tema Material 3 final, font, app icon) sudah
