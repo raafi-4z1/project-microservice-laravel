@@ -32,10 +32,10 @@ class RuangKelasController extends Controller
                 );
             }
 
-            $columns = ['id', 'nama_kelas', 'tingkat', 'jurusan', 'limit_siswa', 'deleted_at'];
+            $columns = ['id', 'nama_kelas', 'tingkat', 'jurusan', 'limit_siswa'];
             $perPage  = $request->input('per_page', 5);
 
-            $query = RuangKelas::select($columns)->withTrashed();
+            $query = RuangKelas::select($columns);
 
             // Cari di nama kelas atau jurusan
             if ($request->filled('search')) {
