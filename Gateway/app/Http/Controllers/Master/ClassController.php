@@ -24,7 +24,9 @@ class ClassController extends Controller
 
     public function index(Request $request)
     {
-        return $this->performRequest($request->method(), "{$this->reqUrl}/all", $request->only(['page', 'per_page', 'search']));
+        // tingkat & jurusan diteruskan agar klien bisa memuat daftar kelas satu
+        // angkatan saja (mis. dropdown laporan) tanpa menarik seluruh kelas.
+        return $this->performRequest($request->method(), "{$this->reqUrl}/all", $request->only(['page', 'per_page', 'search', 'tingkat', 'jurusan']));
     }
 
     public function show(Request $request)

@@ -459,12 +459,15 @@ class SiswaController extends Controller
 
             $ids = array_values(array_unique($request->ids));
 
+            // 'status' disertakan agar pemanggil bisa menyaring siswa non-aktif
+            // (Lulus/Berhenti/Pindah) — dipakai laporan ranking se-angkatan.
             $siswa = Siswa::whereIn('id', $ids)
-                ->get(['id', 'nama_lengkap', 'nisn'])
+                ->get(['id', 'nama_lengkap', 'nisn', 'status'])
                 ->map(fn($s) => [
                     'idSiswa'     => $s->id,
                     'namaLengkap' => $s->nama_lengkap,
                     'nisn'        => $s->nisn,
+                    'status'      => $s->status,
                 ]);
 
             return $this->response('Nama siswa (batch).', Response::HTTP_OK, $siswa);

@@ -22,6 +22,8 @@ class RuangKelasController extends Controller
                 'page'     => 'sometimes|numeric|min:1',
                 'per_page' => 'sometimes|numeric|min:1',
                 'search'   => 'sometimes|string|max:100',
+                'tingkat'  => 'sometimes|in:1,2,3',
+                'jurusan'  => 'sometimes|string|max:20',
             ]);
 
             if ($validate->fails()) {
@@ -36,6 +38,15 @@ class RuangKelasController extends Controller
             $perPage  = $request->input('per_page', 5);
 
             $query = RuangKelas::select($columns);
+
+            // Filter tepat untuk laporan se-angkatan (Gateway: ranking/angkatan)
+            // — supaya tidak perlu menarik seluruh kelas lalu menyaring di memori.
+            if ($request->filled('tingkat')) {
+                $query->where('tingkat', $request->tingkat);
+            }
+            if ($request->filled('jurusan')) {
+                $query->where('jurusan', strtoupper($request->jurusan));
+            }
 
             // Cari di nama kelas atau jurusan
             if ($request->filled('search')) {

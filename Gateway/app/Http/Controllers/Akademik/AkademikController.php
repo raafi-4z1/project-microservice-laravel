@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Akademik;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Validator;
 use App\Traits\ApiResponser;
 use App\Traits\LogsAudit;
 use App\Http\Controllers\Controller;
@@ -686,6 +687,171 @@ class AkademikController extends Controller
         $header = $this->resolveGuruHeader($request);
         if (!is_array($header)) return $header;
         return $this->performRequest('GET', "{$this->reqUrl}/nilai/ranking/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']), $header);
+    }
+
+    // Skala predikat (default sekolah). Ambang bawah -> huruf, urut menurun.
+    private const SKALA_PREDIKAT = [90 => 'A', 80 => 'B', 70 => 'C', 60 => 'D', 0 => 'E'];
+
+    private function predikat(float $nilai): string
+    {
+        foreach (self::SKALA_PREDIKAT as $min => $huruf) {
+            if ($nilai >= $min) return $huruf;
+        }
+        return 'E';
+    }
+
+    /**
+     * GET /akademik/nilai/ranking/angkatan — SuperAdmin, Admin
+     *   ?tingkat=3&jurusan=MIPA&tahun_ajaran=..&semester=..&detail=0|1
+     *
+     * Laporan peringkat satu angkatan (satu tingkat pada TA berjalan), opsional
+     * dipersempit per jurusan. Orkestrasi lintas service:
+     *   1. ClassService  : tingkat(+jurusan) -> daftar kelas
+     *   2. AkademikService: rata-rata per siswa (mapel belum dinilai = 0)
+     *   3. SiswaService  : nama + status (batch by-ids)
+     * Peringkat dihitung DI SINI karena aturan seri memakai urutan alfabet nama,
+     * dan nama hanya ada setelah langkah 3.
+     */
+    public function getRankingAngkatan(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'tingkat'      => 'required|in:1,2,3',
+                'jurusan'      => 'sometimes|string|max:20',
+                'tahun_ajaran' => ['sometimes', 'regex:/^\d{4}\/\d{4}$/'],
+                'semester'     => 'sometimes|in:1,2',
+                'detail'       => 'sometimes|in:0,1',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            // Periode: pakai yang diminta, atau semester aktif
+            $ta  = $request->input('tahun_ajaran');
+            $sem = $request->input('semester');
+            if (!$ta || !$sem) {
+                $aktif = $this->decode($this->performRequest('GET', "{$this->reqUrl}/semester/aktif"));
+                if (($aktif['resCode'] ?? null) !== Response::HTTP_OK) {
+                    return $this->response('Belum ada semester aktif; kirim tahun_ajaran & semester secara eksplisit.', Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+                $ta  = $ta  ?: $aktif['data']['tahunAjaran'];
+                $sem = $sem ?: $aktif['data']['semester'];
+            }
+            $detail = (string) $request->input('detail', '0') === '1';
+
+            // 1. Kelas pada tingkat (+jurusan) ini
+            $paramKelas = ['tingkat' => $request->tingkat, 'per_page' => 200];
+            if ($request->filled('jurusan')) {
+                $paramKelas['jurusan'] = strtoupper($request->jurusan);
+            }
+            $kelasResp = $this->decode(
+                $this->callService($this->classBaseUri, $this->classSecret, 'GET', "{$this->classReqUrl}/all", $paramKelas)
+            );
+            $kelasRows = $kelasResp['data']['data'] ?? [];
+            if (empty($kelasRows)) {
+                return $this->response('Tidak ada kelas pada tingkat/jurusan tersebut.', Response::HTTP_NOT_FOUND);
+            }
+            $namaKelas = [];
+            foreach ($kelasRows as $k) {
+                $namaKelas[(int) $k['idKelas']] = $k['namaKelas'] ?? null;
+            }
+
+            // 2. Rata-rata per siswa dari AkademikService
+            $rekap = $this->decode($this->performRequest('GET', "{$this->reqUrl}/nilai/angkatan/rekap", [
+                'kelas_ids'    => implode(',', array_keys($namaKelas)),
+                'tahun_ajaran' => $ta,
+                'semester'     => $sem,
+                'detail'       => $detail ? 1 : 0,
+            ]));
+            if (($rekap['resCode'] ?? null) !== Response::HTTP_OK) {
+                return $this->response($rekap['resMsg'] ?? 'Gagal mengambil rekap nilai.', $rekap['resCode'] ?? Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
+            $baris = $rekap['data']['siswa'] ?? [];
+            if (empty($baris)) {
+                return $this->response('Belum ada siswa terdaftar pada angkatan tersebut.', Response::HTTP_OK, [
+                    'tingkat' => (int) $request->tingkat,
+                    'jurusan' => $request->filled('jurusan') ? strtoupper($request->jurusan) : null,
+                    'tahunAjaran' => $ta, 'semester' => (int) $sem,
+                    'rataRataAngkatan' => null, 'totalSiswa' => 0, 'ranking' => [],
+                ]);
+            }
+
+            // 3. Nama + status siswa (batch)
+            $ids = array_values(array_unique(array_column($baris, 'siswaId')));
+            $siswaResp = $this->decode(
+                $this->callService($this->siswaBaseUri, $this->siswaSecret, 'POST', "{$this->siswaReqUrl}/by-ids", ['ids' => $ids])
+            );
+            $infoSiswa = [];
+            foreach (($siswaResp['data'] ?? []) as $s) {
+                $infoSiswa[(int) $s['idSiswa']] = $s;
+            }
+
+            // Buang siswa non-aktif (Lulus/Berhenti/Pindah) SEBELUM peringkat dihitung
+            $peserta = [];
+            foreach ($baris as $b) {
+                $info = $infoSiswa[(int) $b['siswaId']] ?? null;
+                if (!$info || ($info['status'] ?? 'Aktif') !== 'Aktif') {
+                    continue;
+                }
+                $row = [
+                    'siswaId'      => (int) $b['siswaId'],
+                    'namaLengkap'  => $info['namaLengkap'] ?? null,
+                    'nisn'         => $info['nisn'] ?? null,
+                    'kelas'        => $namaKelas[(int) $b['kelasId']] ?? null,
+                    'rataRata'     => (float) $b['rataRata'],
+                    'predikat'     => $this->predikat((float) $b['rataRata']),
+                    'jumlahMapel'  => $b['jumlahMapel'] ?? null,
+                    'belumDinilai' => $b['belumDinilai'] ?? null,
+                ];
+                if ($detail && isset($b['nilai'])) {
+                    $row['nilai'] = array_map(fn($n) => $n + [
+                        'predikat' => $this->predikat((float) $n['nilaiAkhir']),
+                    ], $b['nilai']);
+                }
+                $peserta[] = $row;
+            }
+
+            if (empty($peserta)) {
+                return $this->response('Tidak ada siswa aktif pada angkatan tersebut.', Response::HTTP_OK, [
+                    'tingkat' => (int) $request->tingkat,
+                    'jurusan' => $request->filled('jurusan') ? strtoupper($request->jurusan) : null,
+                    'tahunAjaran' => $ta, 'semester' => (int) $sem,
+                    'rataRataAngkatan' => null, 'totalSiswa' => 0, 'ranking' => [],
+                ]);
+            }
+
+            // Urut: rata-rata menurun, seri -> alfabet nama
+            usort($peserta, function ($a, $b) {
+                return $b['rataRata'] <=> $a['rataRata']
+                    ?: strcasecmp((string) $a['namaLengkap'], (string) $b['namaLengkap']);
+            });
+
+            // Peringkat kompetisi standar: seri = peringkat sama, berikutnya melompat
+            $peringkat = 0;
+            $sebelum   = null;
+            foreach ($peserta as $i => &$p) {
+                if ($sebelum === null || $p['rataRata'] < $sebelum) {
+                    $peringkat = $i + 1;
+                    $sebelum   = $p['rataRata'];
+                }
+                $p = ['peringkat' => $peringkat] + $p;
+            }
+            unset($p);
+
+            $rataAngkatan = round(array_sum(array_column($peserta, 'rataRata')) / count($peserta), 2);
+
+            return $this->response('Peringkat se-angkatan.', Response::HTTP_OK, [
+                'tingkat'          => (int) $request->tingkat,
+                'jurusan'          => $request->filled('jurusan') ? strtoupper($request->jurusan) : null,
+                'tahunAjaran'      => $ta,
+                'semester'         => (int) $sem,
+                'rataRataAngkatan' => $rataAngkatan,
+                'totalSiswa'       => count($peserta),
+                'ranking'          => $peserta,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     // ─── Absensi per pelajaran ──────────────────────────────────────────────────

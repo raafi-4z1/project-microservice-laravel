@@ -1564,9 +1564,9 @@ if ($testUserEmail -and $newSelfPw) {
 }
 
 # ──────────────────────────────────────────────
-#  PHASE 14.6 — RBAC per-role: guru dibatasi kelas ajar/wali, /saya pegawai & siswa
+#  PHASE 14.6 — RBAC per-role: data sekelas = WALI saja, /saya pegawai & siswa
 # ──────────────────────────────────────────────
-Section "Phase 14.6: RBAC Guru per Kelas + Endpoint /saya"
+Section "Phase 14.6: RBAC Guru per Kelas (wali) + Endpoint /saya"
 
 # Butuh akun GURU & SISWA yang benar-benar terhubung ke record domain
 # (dibuat oleh seed-test-accounts.ps1). Tanpa itu, resolusi email->id gagal
@@ -1582,32 +1582,56 @@ $guruTok = if ($rGuru.resCode -eq 200) { $rGuru.data.token } else { $null }
 if ($guruTok) {
     Info "Login guru nyata OK ($guruEmail)"
 
-    # Cari kelas yang PASTI bukan milik guru ini: kelas tanpa pengampu sama sekali
-    # pada semester berjalan (kalau tak ada pengampu, guru manapun bukan pengajarnya).
-    $kelasBukan = $null
+    # id domain guru diambil dari /rekap/pegawai/saya (subjekId) — endpoint itu
+    # memang meresolve email token -> guru, jadi sekalian dipakai di sini.
+    $rSelf = Api GET "akademik/absensi/rekap/pegawai/saya" -Token $guruTok
+    $guruDomainId = if ($rSelf.resCode -eq 200) { $rSelf.data.subjekId } else { $null }
+    Info "guru domain id = $guruDomainId"
+
+    # Aturan: data SE-KELAS (semua mapel) hanya untuk WALI kelas. Pengampu saja
+    # TIDAK cukup. Jadi pembandingnya: satu kelas yang guru ini wali-i (harus 200)
+    # dan satu kelas yang ia BUKAN wali-nya (harus 403) — termasuk kelas yang
+    # hanya ia ampu, yang justru kasus paling penting.
+    $qp = "tahun_ajaran=$([uri]::EscapeDataString($tahun))&semester=$semester"
+    $kelasWali = $null; $kelasBukanWali = $null
     $rAll = Api GET "class/all`?per_page=100"
     foreach ($k in @($rAll.data.data)) {
-        $rp = Api GET "akademik/kelas/$($k.idKelas)/pengampu`?tahun_ajaran=$([uri]::EscapeDataString($tahun))&semester=$semester"
-        if (@($rp.data).Count -eq 0) { $kelasBukan = $k.idKelas; break }
+        $rw = Api GET "akademik/kelas/$($k.idKelas)/wali`?$qp"
+        $adaWaliGuruIni = @($rw.data | Where-Object { $_.guruId -eq $guruDomainId }).Count -gt 0
+        if ($adaWaliGuruIni -and -not $kelasWali)      { $kelasWali = $k.idKelas }
+        if (-not $adaWaliGuruIni -and -not $kelasBukanWali) { $kelasBukanWali = $k.idKelas }
+        if ($kelasWali -and $kelasBukanWali) { break }
     }
 
-    if ($kelasBukan) {
-        # Guru TIDAK mengampu/mewali kelas ini -> semua endpoint akademik harus 403
+    if ($kelasBukanWali) {
         foreach ($ep in @(
-            "akademik/raport/kelas/$kelasBukan",
-            "akademik/nilai/kelas/$kelasBukan",
-            "akademik/nilai/ranking/kelas/$kelasBukan",
-            "akademik/absensi/rekap/harian/kelas/$kelasBukan"
+            "akademik/raport/kelas/$kelasBukanWali",
+            "akademik/nilai/kelas/$kelasBukanWali",
+            "akademik/nilai/ranking/kelas/$kelasBukanWali",
+            "akademik/absensi/rekap/harian/kelas/$kelasBukanWali"
         )) {
-            $r = Api GET "$ep`?tahun_ajaran=$([uri]::EscapeDataString($tahun))&semester=$semester" -Token $guruTok
-            Chk "Guru -> $ep (bukan kelasnya, harus 403)" $r 403
+            $r = Api GET "$ep`?$qp" -Token $guruTok
+            Chk "Guru -> $ep (bukan WALI, harus 403)" $r 403
         }
-
         # Admin tetap bebas ke kelas yang sama
-        $r = Api GET "akademik/raport/kelas/$kelasBukan`?tahun_ajaran=$([uri]::EscapeDataString($tahun))&semester=$semester"
+        $r = Api GET "akademik/raport/kelas/$kelasBukanWali`?$qp"
         Chk "Admin -> raport kelas yang sama (harus tetap 200)" $r 200
     } else {
-        Skip "Guru 403 pada kelas non-ajar" "tidak ada kelas tanpa pengampu untuk dijadikan pembanding"
+        Skip "Guru 403 pada kelas non-wali" "tidak ada kelas pembanding"
+    }
+
+    if ($kelasWali) {
+        foreach ($ep in @(
+            "akademik/raport/kelas/$kelasWali",
+            "akademik/nilai/kelas/$kelasWali",
+            "akademik/nilai/ranking/kelas/$kelasWali",
+            "akademik/absensi/rekap/harian/kelas/$kelasWali"
+        )) {
+            $r = Api GET "$ep`?$qp" -Token $guruTok
+            Chk "Guru -> $ep (WALI, harus 200)" $r 200
+        }
+    } else {
+        Skip "Guru 200 pada kelas wali" "guru test belum menjadi wali kelas manapun pada semester ini"
     }
 
     # Rekap absensi diri sendiri untuk pegawai
@@ -1642,6 +1666,78 @@ if ($rSiswa.resCode -eq 200) {
     Chk "Siswa -> /siswa?idSiswa= (privasi, harus 403)" $r 403
 } else {
     Skip "GET /siswa/saya" "akun siswa test tidak tersedia — jalankan seed-test-accounts.ps1"
+}
+
+# ──────────────────────────────────────────────
+#  PHASE 14.7 — Laporan peringkat se-angkatan (Admin)
+# ──────────────────────────────────────────────
+Section "Phase 14.7: Ranking Se-Angkatan"
+
+$qpAng = "tahun_ajaran=$([uri]::EscapeDataString($tahun))&semester=$semester"
+
+# Validasi parameter
+$r = Api GET "akademik/nilai/ranking/angkatan"
+Chk "GET ranking/angkatan tanpa tingkat (harus 422)" $r 422
+$r = Api GET "akademik/nilai/ranking/angkatan`?tingkat=9"
+Chk "GET ranking/angkatan tingkat=9 invalid (harus 422)" $r 422
+
+# Cari tingkat yang punya siswa dengan nilai
+$tingkatAda = $null
+foreach ($tk in @(1, 2, 3)) {
+    $r = Api GET "akademik/nilai/ranking/angkatan`?tingkat=$tk&$qpAng"
+    if ($r.resCode -eq 200 -and $r.data.totalSiswa -gt 0) { $tingkatAda = $tk; break }
+}
+
+if ($tingkatAda) {
+    $r = Api GET "akademik/nilai/ranking/angkatan`?tingkat=$tingkatAda&$qpAng"
+    Chk "GET ranking/angkatan tingkat=$tingkatAda" $r 200; if ($script:LAST_CHK) {
+        $rk = @($r.data.ranking)
+        Info "totalSiswa=$($r.data.totalSiswa) rataRataAngkatan=$($r.data.rataRataAngkatan)"
+
+        # Peringkat kompetisi: menurun, seri sama, maksimum = jumlah siswa
+        $urutTurun = $true
+        for ($i = 1; $i -lt $rk.Count; $i++) {
+            if ($rk[$i].rataRata -gt $rk[$i-1].rataRata) { $urutTurun = $false; break }
+        }
+        if ($urutTurun) { $script:PASS++; Write-Host "  [PASS] ranking urut rata-rata menurun" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] ranking TIDAK urut menurun" -ForegroundColor Red }
+
+        $maxPrk = ($rk | Measure-Object -Property peringkat -Maximum).Maximum
+        if ($maxPrk -le $rk.Count) { $script:PASS++; Write-Host "  [PASS] peringkat maksimum ($maxPrk) <= jumlah siswa ($($rk.Count))" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] peringkat maksimum $maxPrk > jumlah siswa $($rk.Count)" -ForegroundColor Red }
+
+        # Rata-rata sama -> peringkat WAJIB sama
+        $seriKonsisten = $true
+        foreach ($grp in ($rk | Group-Object -Property rataRata)) {
+            if (@($grp.Group | Select-Object -ExpandProperty peringkat -Unique).Count -gt 1) { $seriKonsisten = $false }
+        }
+        if ($seriKonsisten) { $script:PASS++; Write-Host "  [PASS] rata-rata sama -> peringkat sama" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] ada rata-rata sama dengan peringkat berbeda" -ForegroundColor Red }
+
+        # Predikat & nama terisi
+        $lengkap = @($rk | Where-Object { $_.predikat -and $_.namaLengkap }).Count -eq $rk.Count
+        if ($lengkap) { $script:PASS++; Write-Host "  [PASS] semua entri punya namaLengkap + predikat" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] ada entri tanpa namaLengkap/predikat" -ForegroundColor Red }
+    }
+
+    # detail=1 menyertakan nilai per mapel + predikat
+    $r = Api GET "akademik/nilai/ranking/angkatan`?tingkat=$tingkatAda&$qpAng&detail=1"
+    Chk "GET ranking/angkatan detail=1" $r 200; if ($script:LAST_CHK) {
+        $first = @($r.data.ranking)[0]
+        if ($first.nilai -and @($first.nilai).Count -gt 0 -and @($first.nilai)[0].predikat) {
+            $script:PASS++; Write-Host "  [PASS] detail=1 memuat nilai per mapel + predikat" -ForegroundColor Green
+        } else {
+            $script:FAIL++; Write-Host "  [FAIL] detail=1 tidak memuat nilai per mapel" -ForegroundColor Red
+        }
+    }
+} else {
+    Skip "Isi ranking se-angkatan" "belum ada siswa bernilai pada tingkat manapun"
+}
+
+# Hanya Admin/SuperAdmin
+if ($guruTok) {
+    $r = Api GET "akademik/nilai/ranking/angkatan`?tingkat=1&$qpAng" -Token $guruTok
+    Chk "Guru -> ranking/angkatan (harus 403)" $r 403
 }
 
 # ──────────────────────────────────────────────

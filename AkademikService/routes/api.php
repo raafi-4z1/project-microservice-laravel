@@ -97,6 +97,8 @@ Route::prefix('akademik')->group(function () {
     Route::get('nilai/raport/siswa/{siswa_id}', [NilaiController::class, 'getRaportSiswa']);
     Route::get('nilai/raport/kelas/{kelas_id}', [NilaiController::class, 'getRaportKelas']);
     Route::get('nilai/ranking/kelas/{kelas_id}',[NilaiController::class, 'getRankingKelas']);
+    // Data mentah laporan se-angkatan (peringkat dihitung Gateway, lihat controller)
+    Route::get('nilai/angkatan/rekap',          [NilaiController::class, 'rekapAngkatan']);
 
     // Absensi — pencatatan scan masuk (dipanggil Gateway setelah resolve kartu/terminal)
     Route::post('absensi/scan-siswa',   [AbsensiController::class, 'scanSiswa']);

@@ -13,7 +13,15 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * Gateway HANYA mengirim header X-Guru-Id ketika user yang login berrole Guru.
  * Jadi: header kosong = pemanggil admin/karyawan/internal -> tidak dibatasi.
- * Header ada = guru -> hanya boleh kelas yang ia AMPU (pengampu) atau ia WALI-i.
+ *
+ * ATURAN LEVEL-KELAS = WALI SAJA.
+ * Data sekelas untuk SEMUA mapel (raport, ranking, daftar nilai, rekap absensi
+ * harian) hanya boleh dibuka guru yang menjadi WALI kelas itu — bukan sekadar
+ * pengampu. Guru pengampu cukup melihat mapelnya sendiri lewat
+ * `nilai/pengampu/{id}` (dicek terpisah oleh pastikanGuruBolehAksesPengampu).
+ *
+ * Alur absensi per pelajaran (`absensi/pelajaran/*`) TIDAK memakai trait ini —
+ * di sana guru pengampu memang berhak mengabsen siswa di jam pelajarannya.
  *
  * Controller pemakai WAJIB juga `use ApiResponser` (dipakai untuk $this->response).
  */
@@ -44,7 +52,8 @@ trait OtorisasiGuru
     }
 
     /**
-     * Pastikan guru boleh membaca data kelas ini.
+     * Pastikan guru boleh membaca data SE-KELAS (semua mapel) di kelas ini.
+     * Syaratnya: ia WALI kelas tersebut. Pengampu saja TIDAK cukup.
      * null = boleh; JsonResponse 403 = ditolak.
      */
     protected function pastikanGuruBolehAksesKelas(Request $request, int $kelasId): ?\Illuminate\Http\JsonResponse
@@ -59,16 +68,6 @@ trait OtorisasiGuru
             return $this->response('Belum ada semester aktif untuk memverifikasi akses guru.', Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $mengampu = PengampuMapel::where('guru_id', $guruId)
-            ->where('kelas_id', $kelasId)
-            ->where('tahun_ajaran', $ta)
-            ->where('semester', $sem)
-            ->exists();
-
-        if ($mengampu) {
-            return null;
-        }
-
         $wali = WaliKelas::where('guru_id', $guruId)
             ->where('kelas_id', $kelasId)
             ->where('tahun_ajaran', $ta)
@@ -80,7 +79,7 @@ trait OtorisasiGuru
         }
 
         return $this->response(
-            'Anda bukan pengampu maupun wali kelas ini pada periode tersebut.',
+            'Data sekelas hanya dapat dibuka oleh wali kelas. Untuk mata pelajaran yang Anda ampu, gunakan endpoint nilai per pengampu.',
             Response::HTTP_FORBIDDEN
         );
     }
@@ -109,9 +108,12 @@ trait OtorisasiGuru
     }
 
     /**
-     * Daftar kelas_id yang boleh diakses guru pada periode berjalan
-     * (gabungan kelas yang diampu + kelas yang diwali-i).
+     * Daftar kelas_id yang guru ini WALI-i pada periode berjalan.
      * Dipakai untuk MEMFILTER daftar, bukan menolak (mis. daftar izin keluar).
+     *
+     * Sengaja wali saja, bukan pengampu: izin keluar hanya boleh DISETUJUI wali
+     * kelas (lihat AbsensiController::pastikanWaliKelas), jadi menampilkan siswa
+     * dari kelas yang cuma ia ampu hanya memberi baris yang tak bisa ia tindak.
      *
      * @return array<int>
      */
@@ -122,14 +124,10 @@ trait OtorisasiGuru
             return [];
         }
 
-        $ampu = PengampuMapel::where('guru_id', $guruId)
-            ->where('tahun_ajaran', $ta)->where('semester', $sem)
-            ->pluck('kelas_id')->all();
-
-        $wali = WaliKelas::where('guru_id', $guruId)
-            ->where('tahun_ajaran', $ta)->where('semester', $sem)
-            ->pluck('kelas_id')->all();
-
-        return array_values(array_unique(array_map('intval', array_merge($ampu, $wali))));
+        return array_values(array_unique(array_map('intval',
+            WaliKelas::where('guru_id', $guruId)
+                ->where('tahun_ajaran', $ta)->where('semester', $sem)
+                ->pluck('kelas_id')->all()
+        )));
     }
 }

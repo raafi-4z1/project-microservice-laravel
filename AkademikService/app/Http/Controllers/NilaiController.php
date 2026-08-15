@@ -460,6 +460,101 @@ class NilaiController extends Controller
         }
     }
 
+    /**
+     * GET /nilai/angkatan/rekap?kelas_ids=1,2,3&tahun_ajaran=&semester=&detail=0|1
+     *
+     * Data MENTAH per siswa untuk laporan se-angkatan. Sengaja TIDAK memberi
+     * peringkat: aturan seri memakai urutan alfabet nama, sedangkan nama ada di
+     * SiswaService — jadi peringkat dihitung Gateway setelah nama & status siswa
+     * diketahui. Service ini hanya bertanggung jawab atas nilai.
+     *
+     * Aturan: mapel yang BELUM dinilai dihitung 0. Karena itu penyebut rata-rata
+     * adalah jumlah pengampu (mapel) di kelas tsb, bukan jumlah baris nilai.
+     */
+    public function rekapAngkatan(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'kelas_ids'    => 'required|string',
+                'tahun_ajaran' => ['required', 'regex:/^\d{4}\/\d{4}$/'],
+                'semester'     => 'required|in:1,2',
+                'detail'       => 'sometimes|in:0,1',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $kelasIds = array_values(array_filter(array_map(
+                'intval', explode(',', $request->kelas_ids)
+            )));
+            if (empty($kelasIds)) {
+                return $this->response('kelas_ids tidak berisi id yang valid.', Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            $ta     = $request->tahun_ajaran;
+            $sem    = $request->semester;
+            $detail = (string) $request->input('detail', '0') === '1';
+
+            // Mapel (pengampu) yang berlaku per kelas -> penyebut rata-rata
+            $pengampuPerKelas = PengampuMapel::whereIn('kelas_id', $kelasIds)
+                ->where('tahun_ajaran', $ta)->where('semester', $sem)
+                ->get(['id', 'kelas_id', 'mapel_id'])
+                ->groupBy('kelas_id');
+
+            $siswaKelasRows = SiswaKelas::whereIn('kelas_id', $kelasIds)
+                ->where('tahun_ajaran', $ta)->where('semester', $sem)
+                ->get(['id', 'siswa_id', 'kelas_id']);
+
+            // Semua nilai terkait, diambil sekali lalu dipetakan di memori
+            $nilaiMap = Nilai::whereIn('siswa_kelas_id', $siswaKelasRows->pluck('id'))
+                ->get(['siswa_kelas_id', 'pengampu_mapel_id', 'nilai_akhir'])
+                ->groupBy('siswa_kelas_id');
+
+            $hasil = $siswaKelasRows->map(function ($sk) use ($pengampuPerKelas, $nilaiMap, $detail) {
+                $pengampu = $pengampuPerKelas[$sk->kelas_id] ?? collect();
+                $nilaiSk  = ($nilaiMap[$sk->id] ?? collect())->keyBy('pengampu_mapel_id');
+
+                $perMapel = $pengampu->map(function ($pm) use ($nilaiSk) {
+                    // Belum dinilai / nilai_akhir null -> 0 (aturan sekolah)
+                    $na = $nilaiSk[$pm->id]->nilai_akhir ?? null;
+                    return [
+                        'pengampuMapelId' => $pm->id,
+                        'mapelId'         => $pm->mapel_id,
+                        'nilaiAkhir'      => $na === null ? 0.0 : (float) $na,
+                        'dinilai'         => $na !== null,
+                    ];
+                })->values();
+
+                $jumlahMapel = $perMapel->count();
+                $rataRata = $jumlahMapel > 0
+                    ? round($perMapel->avg('nilaiAkhir'), 2)
+                    : 0.0;
+
+                $row = [
+                    'siswaId'      => (int) $sk->siswa_id,
+                    'kelasId'      => (int) $sk->kelas_id,
+                    'siswaKelasId' => (int) $sk->id,
+                    'jumlahMapel'  => $jumlahMapel,
+                    'belumDinilai' => $perMapel->where('dinilai', false)->count(),
+                    'rataRata'     => (float) $rataRata,
+                ];
+                if ($detail) {
+                    $row['nilai'] = $perMapel->all();
+                }
+                return $row;
+            })->values();
+
+            return $this->response('Rekap nilai se-angkatan.', Response::HTTP_OK, [
+                'tahunAjaran' => $ta,
+                'semester'    => (int) $sem,
+                'kelasIds'    => $kelasIds,
+                'siswa'       => $hasil,
+            ]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     // Hitung nilai_akhir berdasarkan bobot yang dikonfigurasi; kembalikan null jika ada komponen kosong
     private function hitungNilaiAkhir(?float $harian, ?float $uts, ?float $uas, string $tahunAjaran, $semester): ?float
     {

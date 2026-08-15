@@ -654,6 +654,18 @@
                   "value": "",
                   "description": "Cari di nama kelas atau jurusan (partial match)",
                   "disabled": true
+                },
+                {
+                  "key": "tingkat",
+                  "value": "",
+                  "description": "filter 1/2/3 (X/XI/XII)",
+                  "disabled": true
+                },
+                {
+                  "key": "jurusan",
+                  "value": "",
+                  "description": "filter MIPA/IPS",
+                  "disabled": true
                 }
               ]
             },
@@ -3691,7 +3703,7 @@
                     }
                   ]
                 },
-                "description": "Ambil semua nilai untuk seluruh mapel dalam satu kelas.\n\n**Akses:** SuperAdmin, Admin.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional."
+                "description": "Ambil semua nilai untuk seluruh mapel dalam satu kelas.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Akses:** SuperAdmin, Admin, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
               },
               "response": []
             },
@@ -3851,7 +3863,7 @@
                     }
                   ]
                 },
-                "description": "Ambil raport seluruh siswa dalam satu kelas — semua mapel dengan nilai dan rata-rata.\n\n**Akses:** SuperAdmin, Admin.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional."
+                "description": "Ambil raport seluruh siswa dalam satu kelas — semua mapel dengan nilai dan rata-rata.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Akses:** SuperAdmin, Admin, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
               },
               "response": []
             },
@@ -3929,7 +3941,7 @@
                     }
                   ]
                 },
-                "description": "Ambil ranking siswa dalam satu kelas berdasarkan rata-rata nilai_akhir.\n\n**Akses:** SuperAdmin, Admin.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Response:** array siswa urut dari tertinggi, dengan field rankingSiswa dan totalSiswa."
+                "description": "Ambil ranking siswa dalam satu kelas berdasarkan rata-rata nilai_akhir.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Response:** array siswa urut dari tertinggi, dengan field rankingSiswa dan totalSiswa.\n\n**Akses:** SuperAdmin, Admin, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
               },
               "response": []
             },
@@ -3969,6 +3981,60 @@
                   ]
                 },
                 "description": "Ambil posisi ranking diri sendiri di kelas. **Khusus role Siswa.**\n\nFilter tahun_ajaran dan semester opsional.\n\n**Response:** rankingSiswa, totalSiswa, beserta array seluruh siswa di kelas."
+              },
+              "response": []
+            },
+            {
+              "name": "GET Ranking Se-Angkatan",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/nilai/ranking/angkatan?tingkat=3&jurusan=MIPA&tahun_ajaran=2024/2025&semester=2&detail=0",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "nilai",
+                    "ranking",
+                    "angkatan"
+                  ],
+                  "query": [
+                    {
+                      "key": "tingkat",
+                      "value": "3",
+                      "description": "WAJIB. 1=X, 2=XI, 3=XII"
+                    },
+                    {
+                      "key": "jurusan",
+                      "value": "MIPA",
+                      "description": "opsional; kosongkan untuk gabungan se-tingkat"
+                    },
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "opsional; default semester aktif"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "2",
+                      "description": "opsional; default semester aktif"
+                    },
+                    {
+                      "key": "detail",
+                      "value": "0",
+                      "description": "1 = sertakan nilai per mapel tiap siswa"
+                    }
+                  ]
+                },
+                "description": "Laporan peringkat **satu angkatan** (satu tingkat pada TA berjalan), opsional dipersempit per jurusan.\n\n**Akses:** SuperAdmin, Admin saja.\n\n**Aturan perhitungan:**\n1. Mapel yang **belum dinilai dihitung 0** (bukan diabaikan) — penyebut rata-rata adalah jumlah pengampu di kelas, bukan jumlah baris nilai. Lihat `belumDinilai`/`jumlahMapel`.\n2. Siswa **non-aktif** (Lulus/Berhenti/Pindah) dibuang SEBELUM peringkat dihitung.\n3. Peringkat kompetisi standar: rata-rata sama -> **peringkat sama**, ditampilkan urut alfabet nama; peringkat berikutnya **melompat** (mis. 1, 2, 2, 4, 5).\n4. `rataRataAngkatan` = rata-rata dari rata-rata seluruh siswa aktif.\n\n**Predikat:** A >=90, B >=80, C >=70, D >=60, E <60.\n\n`detail=1` menambahkan array `nilai` per siswa (per mapel + predikat) untuk cetak laporan lengkap."
               },
               "response": []
             }
@@ -5292,7 +5358,7 @@
                     }
                   ]
                 },
-                "description": "Rekap per siswa dalam 1 kelas (hadir/terlambat/izin/sakit/alpa + total), namaLengkap disertakan. **SuperAdmin/Admin/Guru/Karyawan.**"
+                "description": "Rekap per siswa dalam 1 kelas (hadir/terlambat/izin/sakit/alpa + total), namaLengkap disertakan.\n\n**Akses:** SuperAdmin, Admin, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
               },
               "response": []
             },

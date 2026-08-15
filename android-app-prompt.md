@@ -169,14 +169,23 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
 - **Guru**: read-only data master; boleh input/update/hapus nilai — HANYA untuk
   mapel yang diampunya sendiri (server memvalidasi via lookup email, 403 jika
   bukan pengampunya); lihat jadwal mengajar.
-  **Baca akademik dibatasi per kelas**: server menolak (403) kelas yang guru itu
-  tidak ampu maupun tidak wali-i, pada `raport/kelas/{id}`, `nilai/kelas/{id}`,
-  `nilai/ranking/kelas/{id}`, `absensi/rekap/harian/kelas/{id}`, dan
-  `nilai/pengampu/{id}`. Konsekuensi UI: **batasi dropdown "pilih kelas" ke kelas
-  ajar/wali guru** (ambil dari jadwal/pengampu miliknya), jangan tawarkan semua
-  kelas lalu menabrak 403. Tetap tangani 403 dengan anggun sebagai jaring pengaman.
+  **Data SE-KELAS hanya untuk WALI kelas.** Server menolak (403) bila guru bukan
+  wali kelas itu — berlaku pada `raport/kelas/{id}`, `nilai/kelas/{id}`,
+  `nilai/ranking/kelas/{id}`, `absensi/rekap/harian/kelas/{id}`. **Mengampu satu
+  mapel di kelas itu TIDAK cukup.** Untuk mapel yang ia ampu, guru memakai
+  `nilai/pengampu/{id}` (403 bila bukan pengampunya).
+  Konsekuensi UI:
+  - Layar **Nilai (Input/Daftar)** untuk guru → berbasis **mapel sendiri**:
+    ambil daftar pengampu via `GET /akademik/guru/{id}/mapel`, lalu
+    `nilai/pengampu/{id}`. Jangan pakai `nilai/kelas/{id}`.
+  - Dropdown kelas pada **Raport · Ranking · Rekap kelas** → **hanya kelas yang
+    ia WALI-i** (`GET /akademik/guru/{id}/wali`), bukan gabungan ampu+wali.
+  - Tetap tangani 403 dengan anggun sebagai jaring pengaman.
   `GET /akademik/absensi/keluar` untuk guru **difilter server-side** ke siswa di
-  kelas ampu/wali-nya — klien tidak perlu memfilter lagi.
+  kelas yang ia **wali**-i — klien tidak perlu memfilter lagi. (Wajar: hanya wali
+  yang boleh menyetujui izin keluar.)
+  **Absensi per pelajaran tidak berubah** — `absensi/pelajaran/sekarang` dan
+  `absensi/pelajaran/tandai` tetap untuk guru **pengampu** di jam pelajarannya.
 - **Siswa**: read-only terbatas; punya endpoint khusus `nilai/saya`, `raport/saya`,
   `ranking/saya`, `GET /siswa/saya` (profil diri + `foto`), dan jadwal kelasnya.
   **Privasi**: Siswa TIDAK bisa membuka detail siswa lain (`GET /siswa` → 403) dan
@@ -348,6 +357,22 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
   `/raport/saya`, `GET /akademik/nilai/ranking/kelas/{id}`, `/nilai/ranking/saya`.
   Query `tahun_ajaran` dan `semester` **WAJIB** di semua endpoint raport/ranking
   (422 jika kosong) — isi otomatis dari semester aktif.
+- **Laporan peringkat SE-ANGKATAN** (layar khusus **SuperAdmin/Admin**):
+  `GET /akademik/nilai/ranking/angkatan?tingkat=3&jurusan=MIPA&tahun_ajaran=..&semester=..&detail=0|1`
+  - `tingkat` **wajib** (1=X, 2=XI, 3=XII); `jurusan` opsional (kosong = gabungan
+    se-tingkat); periode opsional (default semester aktif); `detail=1` menambah
+    array `nilai` per siswa untuk cetak laporan lengkap.
+  - Respons: `{ tingkat, jurusan, tahunAjaran, semester, rataRataAngkatan,
+    totalSiswa, ranking: [{ peringkat, siswaId, namaLengkap, nisn, kelas,
+    rataRata, predikat, jumlahMapel, belumDinilai, nilai?: [{pengampuMapelId,
+    mapelId, nilaiAkhir, dinilai, predikat}] }] }`
+  - **Perilaku yang harus ditampilkan apa adanya, jangan "diperbaiki" di klien:**
+    mapel yang belum dinilai dihitung **0** (lihat `belumDinilai`/`jumlahMapel` —
+    tampilkan sebagai peringatan bahwa nilai belum lengkap); siswa non-aktif sudah
+    dibuang server; **peringkat bisa kembar dan melompat** (mis. 1, 2, 2, 4, 5) —
+    jangan pakai indeks baris sebagai nomor peringkat.
+  - Predikat: A ≥90, B ≥80, C ≥70, D ≥60, E <60.
+  - Daftar kelas satu angkatan untuk dropdown: `GET /class/all?tingkat=3&jurusan=MIPA`.
   - Respons raport siswa: `{ siswaId, tahunAjaran, semester, bobot: {bobotHarian,
     bobotUts, bobotUas}, nilai: [{idNilai, pengampuMapelId, guruId, mapelId,
     nilaiHarian, nilaiUts, nilaiUas, nilaiAkhir}], rataRata }`
