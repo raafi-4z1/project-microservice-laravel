@@ -31,7 +31,7 @@ Base URL: `https://gateway.test/api`
 
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
-| GET | `/class/all` | Semua | List seluruh kelas. Query: `page`, `per_page`, `search` (cari di nama kelas/jurusan) |
+| GET | `/class/all` | Semua | List kelas **aktif** (yang sudah dihapus tidak muncul). Query: `page`, `per_page`, `search` (cari di nama kelas/jurusan), `tingkat` (1/2/3), `jurusan` (MIPA/IPS) — dua filter terakhir dipakai laporan se-angkatan |
 | GET | `/class` | Semua | Detail kelas by `idKelas` (query param) |
 | POST | `/class` | SuperAdmin, Admin | Tambah kelas baru |
 | POST | `/class/update` | SuperAdmin, Admin | Update data kelas |

@@ -3703,7 +3703,7 @@
                     }
                   ]
                 },
-                "description": "Ambil semua nilai untuk seluruh mapel dalam satu kelas.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Akses:** SuperAdmin, Admin, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
+                "description": "Ambil semua nilai untuk seluruh mapel dalam satu kelas.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Akses:** SuperAdmin, Admin, Karyawan, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
               },
               "response": []
             },
@@ -3863,7 +3863,7 @@
                     }
                   ]
                 },
-                "description": "Ambil raport seluruh siswa dalam satu kelas — semua mapel dengan nilai dan rata-rata.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Akses:** SuperAdmin, Admin, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
+                "description": "Ambil raport seluruh siswa dalam satu kelas — semua mapel dengan nilai dan rata-rata.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Akses:** SuperAdmin, Admin, Karyawan, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
               },
               "response": []
             },
@@ -3941,7 +3941,7 @@
                     }
                   ]
                 },
-                "description": "Ambil ranking siswa dalam satu kelas berdasarkan rata-rata nilai_akhir.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Response:** array siswa urut dari tertinggi, dengan field rankingSiswa dan totalSiswa.\n\n**Akses:** SuperAdmin, Admin, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
+                "description": "Ambil ranking siswa dalam satu kelas berdasarkan rata-rata nilai_akhir.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Response:** array siswa urut dari tertinggi, dengan field rankingSiswa dan totalSiswa.\n\n**Akses:** SuperAdmin, Admin, Karyawan, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
               },
               "response": []
             },
@@ -5358,7 +5358,7 @@
                     }
                   ]
                 },
-                "description": "Rekap per siswa dalam 1 kelas (hadir/terlambat/izin/sakit/alpa + total), namaLengkap disertakan.\n\n**Akses:** SuperAdmin, Admin, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
+                "description": "Rekap per siswa dalam 1 kelas (hadir/terlambat/izin/sakit/alpa + total), namaLengkap disertakan.\n\n**Akses:** SuperAdmin, Admin, Karyawan, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
               },
               "response": []
             },

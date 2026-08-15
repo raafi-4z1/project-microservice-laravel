@@ -65,7 +65,18 @@ Base URL: `https://gateway.test/api`
 
 ### Wali Kelas
 
-Satu kelas punya satu wali per semester. Dipakai untuk enforcement persetujuan izin keluar (pulang awal).
+Satu kelas punya satu wali per semester.
+
+> **Wajib diisi tiap semester.** Wali kelas bukan sekadar data administratif — ia
+> menentukan hak akses guru:
+> - persetujuan **izin keluar** (pulang awal) hanya oleh wali;
+> - data **se-kelas** (raport, ranking, seluruh nilai, rekap absensi harian) hanya
+>   dapat dibuka wali kelas tersebut;
+> - daftar izin keluar untuk guru difilter ke kelas yang ia wali-i.
+>
+> Selama wali belum ditetapkan untuk semester aktif, **guru akan menerima 403** di
+> semua endpoint di atas (admin tetap bisa). Jadi setelah pergantian semester,
+> tetapkan wali kelas sebelum guru mulai memakai aplikasi.
 
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
@@ -168,8 +179,8 @@ Pemetaan slot (`ke`) → jam dinding. Bisa berbeda **per periode** (Ramadan) dan
 | POST | `/akademik/nilai` | SuperAdmin, Admin, Guru | Tambah nilai siswa |
 | PATCH | `/akademik/nilai/{id}` | SuperAdmin, Admin, Guru | Update nilai siswa |
 | DELETE | `/akademik/nilai/{id}` | SuperAdmin, Admin, Guru | Hapus record nilai |
-| GET | `/akademik/nilai/pengampu/{id}` | SuperAdmin, Admin, Guru, Karyawan | Nilai seluruh siswa untuk satu pengampu mapel |
-| GET | `/akademik/nilai/kelas/{id}` | SuperAdmin, Admin, Guru, Karyawan | Semua nilai dalam satu kelas |
+| GET | `/akademik/nilai/pengampu/{id}` | SuperAdmin, Admin, Karyawan, Guru **pengampunya** | Nilai seluruh siswa untuk satu pengampu mapel (guru lain → 403) |
+| GET | `/akademik/nilai/kelas/{id}` | SuperAdmin, Admin, Karyawan, Guru **wali** | Semua nilai dalam satu kelas (guru non-wali → 403) |
 | GET | `/akademik/nilai/siswa/{id}` | SuperAdmin, Admin, Guru, Karyawan | Semua nilai satu siswa |
 | GET | `/akademik/nilai/saya` | Siswa | Nilai diri sendiri (khusus role Siswa) |
 
@@ -178,10 +189,41 @@ Pemetaan slot (`ke`) → jam dinding. Bisa berbeda **per periode** (Ramadan) dan
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
 | GET | `/akademik/raport/siswa/{id}` | SuperAdmin, Admin, Guru, Karyawan | Raport satu siswa (semua mapel) |
-| GET | `/akademik/raport/kelas/{id}` | SuperAdmin, Admin, Guru, Karyawan | Raport seluruh siswa dalam kelas |
+| GET | `/akademik/raport/kelas/{id}` | SuperAdmin, Admin, Karyawan, Guru **wali** | Raport seluruh siswa dalam kelas (guru non-wali → 403) |
 | GET | `/akademik/raport/saya` | Siswa | Raport diri sendiri (khusus role Siswa) |
-| GET | `/akademik/nilai/ranking/kelas/{id}` | SuperAdmin, Admin, Guru, Karyawan | Ranking siswa dalam kelas |
+| GET | `/akademik/nilai/ranking/kelas/{id}` | SuperAdmin, Admin, Karyawan, Guru **wali** | Ranking siswa dalam kelas (guru non-wali → 403) |
 | GET | `/akademik/nilai/ranking/saya` | Siswa | Posisi ranking diri sendiri (khusus role Siswa) |
+| GET | `/akademik/nilai/ranking/angkatan` | SuperAdmin, Admin | Peringkat **se-angkatan** — lihat di bawah |
+
+> **Aturan akses data se-kelas.** Raport, ranking, seluruh nilai kelas, dan rekap
+> absensi harian kelas hanya boleh dibuka **wali kelas** yang bersangkutan —
+> mengampu satu mapel di kelas itu **tidak cukup** (403). Guru pengampu memakai
+> `/akademik/nilai/pengampu/{id}` untuk mapelnya sendiri. Alur `absensi/pelajaran/*`
+> tidak terpengaruh: di sana pengampu memang berhak mengabsen di jam pelajarannya.
+
+#### `GET /akademik/nilai/ranking/angkatan` — laporan akhir semester
+
+Query: `tingkat` (**wajib**, 1=X 2=XI 3=XII), `jurusan` (opsional; kosong = gabungan
+se-tingkat), `tahun_ajaran` & `semester` (opsional, default semester aktif),
+`detail` (`1` = sertakan nilai per mapel tiap siswa).
+
+Aturan perhitungan (dikonfirmasi sekolah):
+
+1. **Mapel yang belum dinilai dihitung 0**, bukan diabaikan → penyebut rata-rata
+   adalah jumlah pengampu di kelas, bukan jumlah baris nilai. Dilaporkan lewat
+   `jumlahMapel` & `belumDinilai`.
+2. **Siswa non-aktif** (`Lulus`/`Berhenti`/`Pindah`) dibuang **sebelum** peringkat dihitung.
+3. **Peringkat kompetisi standar**: rata-rata sama → peringkat sama (ditampilkan
+   urut alfabet nama), peringkat berikutnya **melompat** → peringkat maksimum =
+   jumlah siswa. Contoh `90, 85, 85, 80, 75` → `1, 2, 2, 4, 5`.
+4. `rataRataAngkatan` = rata-rata dari rata-rata seluruh siswa aktif.
+
+Predikat: **A** ≥90, **B** ≥80, **C** ≥70, **D** ≥60, **E** <60.
+
+Peringkat dihitung di **Gateway**, bukan service ini: aturan seri memakai urutan
+alfabet nama, sedangkan nama ada di SiswaService. Service ini hanya menyediakan
+data mentah lewat `GET nilai/angkatan/rekap?kelas_ids=1,2,3&...` (dipanggil internal
+oleh Gateway, tidak diekspos ke klien).
 
 ### Absensi — Per Pelajaran (Guru)
 
@@ -198,7 +240,7 @@ Guru menandai kehadiran siswa saat jam pelajarannya. Gateway meng-inject `X-Guru
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
 | POST | `/akademik/absensi/keluar` | SuperAdmin, Admin, Guru | Catat izin keluar; disetujui wali kelas/admin (`disetujui_oleh` = id user penyetuju) |
-| GET | `/akademik/absensi/keluar` | SuperAdmin, Admin, Guru | Daftar izin keluar (filter `tanggal`, `siswa_id`) |
+| GET | `/akademik/absensi/keluar` | SuperAdmin, Admin, Guru | Daftar izin keluar (filter `tanggal`, `siswa_id`). Untuk **Guru** hasilnya difilter server-side ke siswa di **kelas yang ia wali-i** — bukan 403, melainkan daftar yang menyempit; Admin melihat seluruh sekolah |
 
 **Enforcement wali kelas:** jika penyetuju seorang **Guru**, ia hanya boleh menyetujui siswa di **kelas asuhannya** (Gateway meng-inject `X-Guru-Id`; service mencocokkan ke [Wali Kelas](#wali-kelas) kelas aktif siswa). Bukan wali → `403`. **Admin/SuperAdmin** melewati pengecekan ini (override). Kelas siswa belum punya wali → guru diblokir `403`, admin tetap bisa.
 
@@ -208,12 +250,13 @@ Rentang default = awal bulan berjalan s/d hari ini (WIB); override via `tanggal_
 
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
-| GET | `/akademik/absensi/rekap/harian/kelas/{id}` | SuperAdmin, Admin, Guru, Karyawan | Rekap per siswa dalam kelas (hadir/terlambat/izin/sakit/alpa) |
+| GET | `/akademik/absensi/rekap/harian/kelas/{id}` | SuperAdmin, Admin, Karyawan, Guru **wali** | Rekap per siswa dalam kelas (guru non-wali → 403) |
 | GET | `/akademik/absensi/rekap/harian/siswa/{id}` | SuperAdmin, Admin, Guru, Karyawan | Ringkasan + detail harian 1 siswa |
 | GET | `/akademik/absensi/rekap/harian/saya` | Siswa | Rekap harian diri sendiri |
 | GET | `/akademik/absensi/rekap/pelajaran/siswa/{id}` | SuperAdmin, Admin, Guru, Karyawan | Ringkasan absensi per pelajaran 1 siswa |
 | GET | `/akademik/absensi/rekap/pelajaran/saya` | Siswa | Rekap pelajaran diri sendiri |
-| GET | `/akademik/absensi/rekap/pegawai/{tipe}/{id}` | SuperAdmin, Admin | Rekap pegawai (`tipe` = `guru`\|`karyawan`) |
+| GET | `/akademik/absensi/rekap/pegawai/{tipe}/{id}` | SuperAdmin, Admin | Rekap pegawai lain (`tipe` = `guru`\|`karyawan`) |
+| GET | `/akademik/absensi/rekap/pegawai/saya` | Guru, Karyawan, SuperAdmin, Admin | Rekap absensi **diri sendiri**; subjek diresolve dari email token (guru dulu, lalu karyawan). Bentuk respons identik dengan baris di atas. 404 bila akun bukan pegawai |
 
 > **Scan kartu & absen PIN** dilayani di prefix Gateway `/absensi/*` (autentikasi **terminal**, bukan Bearer) — lihat [Gateway/README.md](../Gateway/README.md). Secara internal, endpoint scan memanggil `POST absensi/scan-siswa` & `absensi/scan-pegawai` di service ini.
 

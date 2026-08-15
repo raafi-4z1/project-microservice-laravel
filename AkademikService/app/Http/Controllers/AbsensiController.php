@@ -394,7 +394,7 @@ class AbsensiController extends Controller
                 $query->where('siswa_id', $request->siswa_id);
             }
 
-            // Guru: batasi ke siswa di kelas yang ia ampu/wali-i (server-side).
+            // Guru: batasi ke siswa di kelas yang ia WALI-i (server-side).
             // Admin/karyawan (tanpa X-Guru-Id) tetap melihat seluruh sekolah.
             $guruId = $this->guruIdDariHeader($request);
             if ($guruId !== null) {

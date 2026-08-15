@@ -1141,7 +1141,8 @@ class AkademikController extends Controller
     // GET /akademik/absensi/keluar — daftar izin keluar (Guru/Admin)
     public function daftarKeluar(Request $request)
     {
-        // X-Guru-Id membuat AkademikService memfilter ke siswa kelas ampu/wali guru.
+        // X-Guru-Id membuat AkademikService memfilter ke siswa di kelas yang guru
+        // ini WALI-i (hanya wali yang boleh menyetujui izin keluar).
         $header = $this->resolveGuruHeader($request);
         if (!is_array($header)) return $header;
         return $this->performRequest('GET', "{$this->reqUrl}/absensi/keluar", $request->only(['tanggal', 'siswa_id']), $header);

@@ -35,6 +35,7 @@ Base URL: `https://gateway.test/api`
 |--------|----------|------|------------|
 | GET | `/siswa/all` | Semua | List seluruh siswa (tanpa foto). Query: `page`, `per_page`, `search` (cari di nama/NISN) |
 | GET | `/siswa` | SuperAdmin, Admin, Guru, Karyawan | Detail siswa by `idSiswa` (query param, termasuk foto). Role Siswa diblokir — berisi data pribadi (alamat, kontak orang tua) |
+| GET | `/siswa/saya` | Siswa | Profil **diri sendiri** (bentuk sama dengan `/siswa`, termasuk `foto`). `idSiswa` diresolve dari email token, bukan input klien — satu-satunya jalur siswa ke datanya sendiri karena `/siswa?idSiswa=` diblokir untuk role Siswa |
 | POST | `/siswa` | SuperAdmin, Admin | Tambah siswa baru + foto (multipart/form-data) |
 | POST | `/siswa/update` | SuperAdmin, Admin | Update data siswa + foto opsional |
 | DELETE | `/siswa/{id}` | SuperAdmin, Admin | Hapus siswa (soft delete) |
@@ -46,7 +47,7 @@ Base URL: `https://gateway.test/api`
 | Method | Endpoint | Keterangan |
 |--------|----------|------------|
 | GET | `/siswa/lookup-kartu?uid=` | Resolve UID kartu → siswa saat scan di terminal |
-| POST | `/siswa/by-ids` | Lookup **batch** nama siswa (`{ids:[...]}`, maks 1000) → `[{idSiswa, namaLengkap, nisn}]` |
+| POST | `/siswa/by-ids` | Lookup **batch** siswa (`{ids:[...]}`, maks 1000) → `[{idSiswa, namaLengkap, nisn, status}]` |
 
 > `by-ids` dipakai Gateway untuk melengkapi `namaLengkap` pada respons akademik/absensi yang hanya berisi id (mis. daftar siswa saat absensi pelajaran, rekap kelas). Menggantikan pola lama "ambil SEMUA siswa lalu petakan" yang mentransfer seluruh tabel hanya untuk mencari puluhan nama — beban turun sebanding jumlah siswa sekolah.
 
