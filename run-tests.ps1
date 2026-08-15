@@ -1564,6 +1564,87 @@ if ($testUserEmail -and $newSelfPw) {
 }
 
 # ──────────────────────────────────────────────
+#  PHASE 14.6 — RBAC per-role: guru dibatasi kelas ajar/wali, /saya pegawai & siswa
+# ──────────────────────────────────────────────
+Section "Phase 14.6: RBAC Guru per Kelas + Endpoint /saya"
+
+# Butuh akun GURU & SISWA yang benar-benar terhubung ke record domain
+# (dibuat oleh seed-test-accounts.ps1). Tanpa itu, resolusi email->id gagal
+# dan tes ini tidak bermakna, jadi di-SKIP.
+$guruEmail  = if ($env:TEST_GURU_EMAIL)     { $env:TEST_GURU_EMAIL }     else { "andi.susanto2@sekolah.com" }
+$guruPass   = if ($env:TEST_GURU_PASSWORD)  { $env:TEST_GURU_PASSWORD }  else { "GuruTest123" }
+$siswaEmail = if ($env:TEST_SISWA_EMAIL)    { $env:TEST_SISWA_EMAIL }    else { "andi.siswa1@sekolah.com" }
+$siswaPass  = if ($env:TEST_SISWA_PASSWORD) { $env:TEST_SISWA_PASSWORD } else { "SiswaTest123" }
+
+$rGuru  = Api POST "login" @{ email = $guruEmail;  password = $guruPass;  device_name = "rbac-test" }
+$guruTok = if ($rGuru.resCode -eq 200) { $rGuru.data.token } else { $null }
+
+if ($guruTok) {
+    Info "Login guru nyata OK ($guruEmail)"
+
+    # Cari kelas yang PASTI bukan milik guru ini: kelas tanpa pengampu sama sekali
+    # pada semester berjalan (kalau tak ada pengampu, guru manapun bukan pengajarnya).
+    $kelasBukan = $null
+    $rAll = Api GET "class/all`?per_page=100"
+    foreach ($k in @($rAll.data.data)) {
+        $rp = Api GET "akademik/kelas/$($k.idKelas)/pengampu`?tahun_ajaran=$([uri]::EscapeDataString($tahun))&semester=$semester"
+        if (@($rp.data).Count -eq 0) { $kelasBukan = $k.idKelas; break }
+    }
+
+    if ($kelasBukan) {
+        # Guru TIDAK mengampu/mewali kelas ini -> semua endpoint akademik harus 403
+        foreach ($ep in @(
+            "akademik/raport/kelas/$kelasBukan",
+            "akademik/nilai/kelas/$kelasBukan",
+            "akademik/nilai/ranking/kelas/$kelasBukan",
+            "akademik/absensi/rekap/harian/kelas/$kelasBukan"
+        )) {
+            $r = Api GET "$ep`?tahun_ajaran=$([uri]::EscapeDataString($tahun))&semester=$semester" -Token $guruTok
+            Chk "Guru -> $ep (bukan kelasnya, harus 403)" $r 403
+        }
+
+        # Admin tetap bebas ke kelas yang sama
+        $r = Api GET "akademik/raport/kelas/$kelasBukan`?tahun_ajaran=$([uri]::EscapeDataString($tahun))&semester=$semester"
+        Chk "Admin -> raport kelas yang sama (harus tetap 200)" $r 200
+    } else {
+        Skip "Guru 403 pada kelas non-ajar" "tidak ada kelas tanpa pengampu untuk dijadikan pembanding"
+    }
+
+    # Rekap absensi diri sendiri untuk pegawai
+    $r = Api GET "akademik/absensi/rekap/pegawai/saya" -Token $guruTok
+    Chk "GET /akademik/absensi/rekap/pegawai/saya (guru)" $r 200; if ($script:LAST_CHK) {
+        if ($r.data.subjekTipe -eq "guru" -and $r.data.subjekId) {
+            $script:PASS++; Write-Host "  [PASS] /saya resolve ke guru id=$($r.data.subjekId)" -ForegroundColor Green
+        } else {
+            $script:FAIL++; Write-Host "  [FAIL] /saya subjekTipe='$($r.data.subjekTipe)' subjekId='$($r.data.subjekId)'" -ForegroundColor Red
+        }
+    }
+
+    # Pegawai TIDAK boleh melihat rekap pegawai lain
+    $r = Api GET "akademik/absensi/rekap/pegawai/guru/99999" -Token $guruTok
+    Chk "Guru -> rekap/pegawai/{tipe}/{id} pegawai lain (harus 403)" $r 403
+} else {
+    Skip "RBAC guru per kelas + rekap/pegawai/saya" "akun guru test tidak tersedia — jalankan seed-test-accounts.ps1 atau set TEST_GURU_EMAIL/PASSWORD"
+}
+
+# Siswa: profil diri sendiri (foto) — /siswa/saya
+$rSiswa = Api POST "login" @{ email = $siswaEmail; password = $siswaPass; device_name = "rbac-test" }
+if ($rSiswa.resCode -eq 200) {
+    $siswaTok = $rSiswa.data.token
+    $r = Api GET "siswa/saya" -Token $siswaTok
+    Chk "GET /siswa/saya (siswa lihat profil sendiri)" $r 200; if ($script:LAST_CHK) {
+        $punyaFoto = $r.data.PSObject.Properties.Name -contains 'foto'
+        if ($punyaFoto) { $script:PASS++; Write-Host "  [PASS] /siswa/saya memuat field foto" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] /siswa/saya tidak memuat field foto" -ForegroundColor Red }
+    }
+    # Privasi antar-siswa tetap terjaga
+    $r = Api GET "siswa`?idSiswa=1" -Token $siswaTok
+    Chk "Siswa -> /siswa?idSiswa= (privasi, harus 403)" $r 403
+} else {
+    Skip "GET /siswa/saya" "akun siswa test tidak tersedia — jalankan seed-test-accounts.ps1"
+}
+
+# ──────────────────────────────────────────────
 #  PHASE 15 — CROSS-SERVICE VALIDATION
 # ──────────────────────────────────────────────
 Section "Phase 15: Cross-Service Validation"

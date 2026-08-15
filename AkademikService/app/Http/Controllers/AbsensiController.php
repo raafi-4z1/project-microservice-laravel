@@ -19,6 +19,7 @@ use App\Models\SemesterAktif;
 use App\Models\SiswaKelas;
 use App\Models\WaliKelas;
 use App\Traits\ApiResponser;
+use App\Traits\OtorisasiGuru;
 
 /**
  * Pencatatan absensi (dipanggil oleh Gateway).
@@ -27,7 +28,7 @@ use App\Traits\ApiResponser;
  */
 class AbsensiController extends Controller
 {
-    use ApiResponser;
+    use ApiResponser, OtorisasiGuru;
 
     // Zona waktu sekolah. AkademikService berjalan di UTC, sedangkan ambang
     // terlambat & batas hari absensi adalah jam dinding WIB — hitung eksplisit
@@ -393,6 +394,26 @@ class AbsensiController extends Controller
                 $query->where('siswa_id', $request->siswa_id);
             }
 
+            // Guru: batasi ke siswa di kelas yang ia ampu/wali-i (server-side).
+            // Admin/karyawan (tanpa X-Guru-Id) tetap melihat seluruh sekolah.
+            $guruId = $this->guruIdDariHeader($request);
+            if ($guruId !== null) {
+                $kelasBoleh = $this->kelasIdBolehAkses($request, $guruId);
+                if (empty($kelasBoleh)) {
+                    return $this->response("Daftar izin keluar tanggal {$tanggal}.", Response::HTTP_OK, []);
+                }
+
+                $semester = $this->semesterRekap($request);
+                $siswaBoleh = SiswaKelas::whereIn('kelas_id', $kelasBoleh)
+                    ->when($semester, function ($q) use ($semester) {
+                        $q->where('tahun_ajaran', $semester['tahun_ajaran'])
+                          ->where('semester', $semester['semester']);
+                    })
+                    ->pluck('siswa_id');
+
+                $query->whereIn('siswa_id', $siswaBoleh);
+            }
+
             $records = $query->orderBy('jam_keluar')->get()
                 ->map(fn($r) => $this->toApiArrayKeluar($r))->all();
 
@@ -412,6 +433,10 @@ class AbsensiController extends Controller
     public function rekapHarianKelas(Request $request, $kelasId)
     {
         try {
+            if ($tolak = $this->pastikanGuruBolehAksesKelas($request, (int) $kelasId)) {
+                return $tolak;
+            }
+
             $semester = $this->semesterRekap($request);
             if (!$semester) {
                 return $this->response('Belum ada semester aktif yang ditetapkan.', Response::HTTP_UNPROCESSABLE_ENTITY);

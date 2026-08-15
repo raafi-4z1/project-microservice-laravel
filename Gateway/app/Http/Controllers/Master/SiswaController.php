@@ -35,6 +35,27 @@ class SiswaController extends Controller
         return $this->performRequest($request->method(), "{$this->reqUrl}", $request->only(['idSiswa']));
     }
 
+    // GET /siswa/saya — role Siswa: profil DIRI SENDIRI (termasuk foto).
+    // Siswa diblokir dari /siswa?idSiswa= (privasi antar-siswa), sehingga tanpa
+    // endpoint ini ia tidak punya cara mengambil fotonya sendiri.
+    // idSiswa diresolve dari email token, bukan dari input klien.
+    public function saya(Request $request)
+    {
+        try {
+            $lookup = $this->decode(
+                $this->performRequest('GET', "{$this->reqUrl}/lookup", ['email' => $request->user()->email])
+            );
+
+            if (($lookup['resCode'] ?? null) !== Response::HTTP_OK) {
+                return $this->response('Profil siswa tidak ditemukan untuk akun ini.', Response::HTTP_NOT_FOUND);
+            }
+
+            return $this->performRequest('GET', "{$this->reqUrl}", ['idSiswa' => $lookup['data']['idSiswa']]);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     public function store(Request $request)
     {
         try {

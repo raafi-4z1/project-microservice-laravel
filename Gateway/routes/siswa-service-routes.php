@@ -5,6 +5,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.siswa_prefix'))->group(function(){
     Route::get('all', [SiswaController::class, 'index']);
+    // Profil diri sendiri (termasuk foto) — satu-satunya jalur Siswa ke datanya
+    // sendiri; idSiswa diresolve dari email token, bukan dari input klien.
+    Route::get('saya', [SiswaController::class, 'saya'])->middleware('check.role:Siswa');
     // Detail berisi data pribadi (alamat, kontak orang tua, foto) —
     // sesama Siswa tidak boleh mengakses profil lengkap siswa lain
     Route::get('/', [SiswaController::class, 'show'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');

@@ -1700,6 +1700,31 @@
             "description": "Hapus (soft delete) data siswa berdasarkan ID. Akun login siswa juga dihapus (soft delete).\n\nGanti `1` di URL dengan ID siswa yang ingin dihapus."
           },
           "response": []
+        },
+        {
+          "name": "Profil Saya (Siswa)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/siswa/saya",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "siswa",
+                "saya"
+              ]
+            },
+            "description": "Role **Siswa**: profil diri sendiri termasuk `foto` (base64).\n\nSiswa diblokir dari `GET /siswa?idSiswa=` demi privasi antar-siswa, jadi ini satu-satunya jalur siswa ke datanya sendiri. `idSiswa` diresolve dari email token, bukan dari input klien."
+          },
+          "response": []
         }
       ]
     },
@@ -5447,6 +5472,44 @@
                   ]
                 },
                 "description": "Ringkasan + detail absensi pegawai. **SuperAdmin/Admin.** Path: /rekap/pegawai/{guru|karyawan}/{id}."
+              },
+              "response": []
+            },
+            {
+              "name": "Rekap Pegawai (Saya)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/absensi/rekap/pegawai/saya?tanggal_dari={{tanggalDari}}&tanggal_sampai={{tanggalSampai}}",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "absensi",
+                    "rekap",
+                    "pegawai",
+                    "saya"
+                  ],
+                  "query": [
+                    {
+                      "key": "tanggal_dari",
+                      "value": "{{tanggalDari}}"
+                    },
+                    {
+                      "key": "tanggal_sampai",
+                      "value": "{{tanggalSampai}}"
+                    }
+                  ]
+                },
+                "description": "Role **Guru/Karyawan**: rekap absensi DIRI SENDIRI.\n\nSubjek diresolve dari email token (guru dulu, lalu karyawan), sehingga tidak bisa dipakai melihat pegawai lain. Bentuk respons identik dengan `rekap/pegawai/{tipe}/{id}` (`subjekTipe`, `subjekId`, `dari`, `sampai`, `ringkasan`, `detail`).\n\n404 jika akun tidak terhubung ke record guru maupun karyawan."
               },
               "response": []
             }

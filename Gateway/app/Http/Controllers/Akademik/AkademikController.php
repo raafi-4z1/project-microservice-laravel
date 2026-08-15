@@ -21,6 +21,7 @@ class AkademikController extends Controller
     private $guruBaseUri,  $guruSecret,  $guruReqUrl;
     private $siswaBaseUri, $siswaSecret, $siswaReqUrl;
     private $mapelBaseUri, $mapelSecret, $mapelReqUrl;
+    private $karyawanBaseUri, $karyawanSecret, $karyawanReqUrl;
 
     public function __construct()
     {
@@ -43,6 +44,10 @@ class AkademikController extends Controller
         $this->mapelBaseUri = config('services.mapel.base_uri');
         $this->mapelSecret  = config('services.mapel.secret');
         $this->mapelReqUrl  = config('gateway.mapel_prefix');
+
+        $this->karyawanBaseUri = config('services.karyawan.base_uri');
+        $this->karyawanSecret  = config('services.karyawan.secret');
+        $this->karyawanReqUrl  = config('gateway.karyawan_prefix');
     }
 
     // POST /akademik/kelas/assign — SuperAdmin, Admin
@@ -587,13 +592,17 @@ class AkademikController extends Controller
     // GET /akademik/nilai/pengampu/{id} — Admin, SuperAdmin, Guru (mapel sendiri), Karyawan
     public function getNilaiByPengampu(Request $request, $pengampuId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/nilai/pengampu/{$pengampuId}");
+        $header = $this->resolveGuruHeader($request);
+        if (!is_array($header)) return $header;
+        return $this->performRequest('GET', "{$this->reqUrl}/nilai/pengampu/{$pengampuId}", [], $header);
     }
 
     // GET /akademik/nilai/kelas/{id} — Admin, SuperAdmin, Guru (kelas sendiri), Karyawan
     public function getNilaiByKelas(Request $request, $kelasId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/nilai/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']));
+        $header = $this->resolveGuruHeader($request);
+        if (!is_array($header)) return $header;
+        return $this->performRequest('GET', "{$this->reqUrl}/nilai/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']), $header);
     }
 
     // GET /akademik/nilai/siswa/{id} — Admin, SuperAdmin, Guru, Karyawan
@@ -637,7 +646,9 @@ class AkademikController extends Controller
     // GET /akademik/raport/kelas/{id} — Admin, SuperAdmin, Guru, Karyawan
     public function getRaportKelas(Request $request, $kelasId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/nilai/raport/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']));
+        $header = $this->resolveGuruHeader($request);
+        if (!is_array($header)) return $header;
+        return $this->performRequest('GET', "{$this->reqUrl}/nilai/raport/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']), $header);
     }
 
     // GET /akademik/nilai/ranking/saya — Siswa (self-only): posisi di kelas saja
@@ -672,7 +683,9 @@ class AkademikController extends Controller
     // GET /akademik/nilai/ranking/kelas/{id} — Admin, SuperAdmin, Guru, Karyawan
     public function getRankingKelas(Request $request, $kelasId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/nilai/ranking/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']));
+        $header = $this->resolveGuruHeader($request);
+        if (!is_array($header)) return $header;
+        return $this->performRequest('GET', "{$this->reqUrl}/nilai/ranking/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']), $header);
     }
 
     // ─── Absensi per pelajaran ──────────────────────────────────────────────────
@@ -962,7 +975,10 @@ class AkademikController extends Controller
     // GET /akademik/absensi/keluar — daftar izin keluar (Guru/Admin)
     public function daftarKeluar(Request $request)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/absensi/keluar", $request->only(['tanggal', 'siswa_id']));
+        // X-Guru-Id membuat AkademikService memfilter ke siswa kelas ampu/wali guru.
+        $header = $this->resolveGuruHeader($request);
+        if (!is_array($header)) return $header;
+        return $this->performRequest('GET', "{$this->reqUrl}/absensi/keluar", $request->only(['tanggal', 'siswa_id']), $header);
     }
 
     // ─── Rekap absensi ───────────────────────────────────────────────────────────
@@ -972,7 +988,9 @@ class AkademikController extends Controller
     // GET /akademik/absensi/rekap/harian/kelas/{kelas_id}
     public function rekapHarianKelas(Request $request, $kelasId)
     {
-        $response = $this->performRequest('GET', "{$this->reqUrl}/absensi/rekap/harian/kelas/{$kelasId}", $request->only(self::REKAP_PARAMS));
+        $header = $this->resolveGuruHeader($request);
+        if (!is_array($header)) return $header;
+        $response = $this->performRequest('GET', "{$this->reqUrl}/absensi/rekap/harian/kelas/{$kelasId}", $request->only(self::REKAP_PARAMS), $header);
         return $this->enrichSiswaResponse($response);
     }
 
@@ -1016,6 +1034,55 @@ class AkademikController extends Controller
     public function rekapPegawai(Request $request, $subjekTipe, $subjekId)
     {
         return $this->performRequest('GET', "{$this->reqUrl}/absensi/rekap/pegawai/{$subjekTipe}/{$subjekId}", $request->only(self::REKAP_PARAMS));
+    }
+
+    // GET /akademik/absensi/rekap/pegawai/saya — Guru, Karyawan (dan Admin yang
+    // juga terdaftar sebagai pegawai). Subjek diresolve dari email token, jadi
+    // pemanggil hanya bisa melihat rekap DIRINYA sendiri; id domain tidak perlu
+    // diketahui klien. Bentuk respons identik dengan rekap/pegawai/{tipe}/{id}.
+    public function rekapPegawaiSaya(Request $request)
+    {
+        try {
+            $subjek = $this->resolvePegawaiSaya($request);
+            if (!is_array($subjek)) return $subjek;
+
+            return $this->performRequest(
+                'GET',
+                "{$this->reqUrl}/absensi/rekap/pegawai/{$subjek['tipe']}/{$subjek['id']}",
+                $request->only(self::REKAP_PARAMS)
+            );
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Resolve pemilik token menjadi pegawai: coba GuruService dulu, lalu
+     * KaryawanService. Kembalikan ['tipe' => 'guru'|'karyawan', 'id' => int]
+     * atau JsonResponse 404 kalau akun ini bukan pegawai.
+     */
+    private function resolvePegawaiSaya(Request $request): array|\Illuminate\Http\JsonResponse
+    {
+        $email = $request->user()->email;
+
+        $guru = $this->decode(
+            $this->callService($this->guruBaseUri, $this->guruSecret, 'GET', "{$this->guruReqUrl}/lookup", ['email' => $email])
+        );
+        if (($guru['resCode'] ?? null) === Response::HTTP_OK) {
+            return ['tipe' => 'guru', 'id' => (int) $guru['data']['idGuru']];
+        }
+
+        $karyawan = $this->decode(
+            $this->callService($this->karyawanBaseUri, $this->karyawanSecret, 'GET', "{$this->karyawanReqUrl}/lookup", ['email' => $email])
+        );
+        if (($karyawan['resCode'] ?? null) === Response::HTTP_OK) {
+            return ['tipe' => 'karyawan', 'id' => (int) $karyawan['data']['idKaryawan']];
+        }
+
+        return $this->response(
+            'Akun ini tidak terhubung ke data guru maupun karyawan.',
+            Response::HTTP_NOT_FOUND
+        );
     }
 
     // Tambahkan namaLengkap ke tiap entri data.siswa (AkademikService hanya simpan id).

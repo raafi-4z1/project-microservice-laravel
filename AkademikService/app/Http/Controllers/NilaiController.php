@@ -12,10 +12,11 @@ use App\Models\SiswaKelas;
 use App\Models\PengampuMapel;
 use App\Models\PengaturanNilai;
 use App\Traits\ApiResponser;
+use App\Traits\OtorisasiGuru;
 
 class NilaiController extends Controller
 {
-    use ApiResponser;
+    use ApiResponser, OtorisasiGuru;
 
     // POST /nilai — Admin, SuperAdmin, Guru (X-Guru-Id header required for Guru)
     public function store(Request $request)
@@ -191,6 +192,11 @@ class NilaiController extends Controller
     public function getByPengampu(Request $request, $pengampuId)
     {
         try {
+            // Guru hanya boleh membaca nilai pengampu MILIKNYA sendiri.
+            if ($tolak = $this->pastikanGuruBolehAksesPengampu($request, (int) $pengampuId)) {
+                return $tolak;
+            }
+
             $records = Nilai::with(['siswaKelas', 'pengampuMapel'])
                 ->where('pengampu_mapel_id', $pengampuId)
                 ->orderBy('siswa_kelas_id')
@@ -213,6 +219,10 @@ class NilaiController extends Controller
             ]);
             if ($validate->fails()) {
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            if ($tolak = $this->pastikanGuruBolehAksesKelas($request, (int) $kelasId)) {
+                return $tolak;
             }
 
             $records = Nilai::with(['siswaKelas', 'pengampuMapel'])
@@ -327,6 +337,10 @@ class NilaiController extends Controller
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
             }
 
+            if ($tolak = $this->pastikanGuruBolehAksesKelas($request, (int) $kelasId)) {
+                return $tolak;
+            }
+
             // Ambil semua siswa yang aktif di kelas ini pada semester yang diminta
             $siswaKelasRows = SiswaKelas::where('kelas_id', $kelasId)
                 ->where('tahun_ajaran', $request->tahun_ajaran)
@@ -386,6 +400,10 @@ class NilaiController extends Controller
             ]);
             if ($validate->fails()) {
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            if ($tolak = $this->pastikanGuruBolehAksesKelas($request, (int) $kelasId)) {
+                return $tolak;
             }
 
             // Hitung rata-rata nilai_akhir per siswa

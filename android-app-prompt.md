@@ -169,10 +169,20 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
 - **Guru**: read-only data master; boleh input/update/hapus nilai — HANYA untuk
   mapel yang diampunya sendiri (server memvalidasi via lookup email, 403 jika
   bukan pengampunya); lihat jadwal mengajar.
+  **Baca akademik dibatasi per kelas**: server menolak (403) kelas yang guru itu
+  tidak ampu maupun tidak wali-i, pada `raport/kelas/{id}`, `nilai/kelas/{id}`,
+  `nilai/ranking/kelas/{id}`, `absensi/rekap/harian/kelas/{id}`, dan
+  `nilai/pengampu/{id}`. Konsekuensi UI: **batasi dropdown "pilih kelas" ke kelas
+  ajar/wali guru** (ambil dari jadwal/pengampu miliknya), jangan tawarkan semua
+  kelas lalu menabrak 403. Tetap tangani 403 dengan anggun sebagai jaring pengaman.
+  `GET /akademik/absensi/keluar` untuk guru **difilter server-side** ke siswa di
+  kelas ampu/wali-nya — klien tidak perlu memfilter lagi.
 - **Siswa**: read-only terbatas; punya endpoint khusus `nilai/saya`, `raport/saya`,
-  `ranking/saya`, dan jadwal kelasnya. **Privasi**: Siswa TIDAK bisa membuka detail
-  siswa lain (`GET /siswa` → 403) dan menerima detail guru yang sudah disaring
-  (lihat modul Guru) — jangan tampilkan navigasi ke detail siswa untuk role ini.
+  `ranking/saya`, `GET /siswa/saya` (profil diri + `foto`), dan jadwal kelasnya.
+  **Privasi**: Siswa TIDAK bisa membuka detail siswa lain (`GET /siswa` → 403) dan
+  menerima detail guru yang sudah disaring (lihat modul Guru) — jangan tampilkan
+  navigasi ke detail siswa untuk role ini. Untuk foto/avatar siswa sendiri
+  (header beranda, layar Profil) pakai `GET /siswa/saya`, BUKAN `GET /siswa?idSiswa=`.
 - **Karyawan** (staf TU): read-only data master (termasuk detail siswa/guru
   lengkap) + akademik/nilai/raport. Ikut **absen sebagai pegawai** (kartu/PIN)
   dan bisa mengatur PIN sendiri + melihat rekap absensinya.
@@ -226,6 +236,11 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
 - `GET /siswa/all` (list, semua role), `GET /siswa?idSiswa={id}` (detail —
   **hanya SuperAdmin/Admin/Guru/Karyawan; role Siswa mendapat 403** karena berisi
   data pribadi), `POST /siswa`, `POST /siswa/update`, `DELETE /siswa/{id}`
+- `GET /siswa/saya` (**role Siswa saja**) — profil diri sendiri, bentuk sama
+  dengan detail `GET /siswa?idSiswa=` (termasuk `foto` base64). `idSiswa`
+  diresolve dari email token. Inilah satu-satunya cara siswa mengambil fotonya
+  sendiri; `GET /siswa/all` tidak memuat foto dan `GET /user` tidak memuat data
+  domain siswa.
 - Field tambah siswa (multipart): email, nisn, namaLengkap, telephone,
   jenisKelamin (Laki-Laki|Perempuan), tempatLahir, tanggalLahir (YYYY-MM-DD),
   tanggalMasuk, alamat, namaIbu, foto (wajib); opsional: agama, namaAyah,
@@ -423,6 +438,13 @@ perangkat terminal, di-set sekali saat setup kiosk). Body pakai snake_case.
 - `GET /akademik/absensi/rekap/harian/saya` (Siswa) — rekap harian sendiri.
 - `GET /akademik/absensi/rekap/pelajaran/siswa/{id}`, `/pelajaran/saya` (Siswa).
 - `GET /akademik/absensi/rekap/pegawai/{tipe}/{id}` (Admin; `tipe`=guru|karyawan).
+- `GET /akademik/absensi/rekap/pegawai/saya` (**Guru/Karyawan**) — rekap absensi
+  DIRI SENDIRI. Subjek diresolve dari email token (guru dulu, lalu karyawan), jadi
+  klien **tidak perlu** tahu id domain-nya. Bentuk respons identik dengan
+  `rekap/pegawai/{tipe}/{id}`: `{subjekTipe, subjekId, dari, sampai, ringkasan:
+  {hadir,terlambat,izin,sakit,dinas_luar,alpa,total}, detail:[...]}` — pakai DTO
+  yang sama. **404** kalau akun tidak terhubung ke record guru/karyawan.
+  Pegawai tetap **403** untuk `rekap/pegawai/{tipe}/{id}` milik orang lain.
 
 **6g. Enum & catatan DTO absensi (untuk menampilkan record):**
 - `status` harian/pegawai: `hadir` | `terlambat` | `izin` | `sakit` | `alpa`

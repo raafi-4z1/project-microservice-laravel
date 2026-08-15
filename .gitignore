@@ -16,3 +16,5 @@ test_*.jpg
 
 # Config Claude Code lokal (berisi path absolut khas mesin) - jangan commit
 .claude/
+
+backend-rbac-todo.md

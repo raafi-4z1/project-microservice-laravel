@@ -111,5 +111,8 @@ Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.akademik_pr
     Route::get('absensi/rekap/harian/kelas/{kelas_id}', [AkademikController::class, 'rekapHarianKelas'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
     Route::get('absensi/rekap/harian/siswa/{siswa_id}', [AkademikController::class, 'rekapHarianSiswa'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
     Route::get('absensi/rekap/pelajaran/siswa/{siswa_id}', [AkademikController::class, 'rekapPelajaranSiswa'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
+    // Pegawai (guru/karyawan) melihat rekap absensi DIRINYA sendiri.
+    // Subjek diresolve dari email token, jadi tidak bisa dipakai melihat pegawai lain.
+    Route::get('absensi/rekap/pegawai/saya', [AkademikController::class, 'rekapPegawaiSaya'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
     Route::get('absensi/rekap/pegawai/{subjek_tipe}/{subjek_id}', [AkademikController::class, 'rekapPegawai'])->middleware('check.role:SuperAdmin,Admin');
 });
