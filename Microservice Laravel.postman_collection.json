@@ -5476,6 +5476,45 @@
               "response": []
             },
             {
+              "name": "Rekap Pegawai (Karyawan)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/absensi/rekap/pegawai/karyawan/1?tanggal_dari={{tanggalDari}}&tanggal_sampai={{tanggalSampai}}",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "absensi",
+                    "rekap",
+                    "pegawai",
+                    "karyawan",
+                    "1"
+                  ],
+                  "query": [
+                    {
+                      "key": "tanggal_dari",
+                      "value": "{{tanggalDari}}"
+                    },
+                    {
+                      "key": "tanggal_sampai",
+                      "value": "{{tanggalSampai}}"
+                    }
+                  ]
+                },
+                "description": "Varian `tipe=karyawan` dari rekap pegawai (Admin/SuperAdmin saja).\n\nUntuk pegawai melihat rekap DIRINYA sendiri, pakai `rekap/pegawai/saya` — endpoint ini menolak (403) pemanggil non-admin."
+              },
+              "response": []
+            },
+            {
               "name": "Rekap Pegawai (Saya)",
               "request": {
                 "method": "GET",
