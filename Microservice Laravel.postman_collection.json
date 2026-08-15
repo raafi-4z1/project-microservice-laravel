@@ -3470,7 +3470,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\\n  \"tahun_ajaran\": \"2024/2025\",\\n  \"semester\": 2,\\n  \"bobot_harian\": 40,\\n  \"bobot_uts\": 30,\\n  \"bobot_uas\": 30\\n}",
+                  "raw": "{\n  \"tahun_ajaran\": \"2024/2025\",\n  \"semester\": 2,\n  \"bobot_harian\": 40,\n  \"bobot_uts\": 30,\n  \"bobot_uas\": 30\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -3509,7 +3509,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\\n  \"bobot_harian\": 40,\\n  \"bobot_uts\": 30,\\n  \"bobot_uas\": 30\\n}",
+                  "raw": "{\n  \"bobot_harian\": 40,\n  \"bobot_uts\": 30,\n  \"bobot_uas\": 30\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -3554,7 +3554,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\\n  \"siswa_kelas_id\": 1,\\n  \"pengampu_mapel_id\": 1,\\n  \"nilai_harian\": 80\\n}",
+                  "raw": "{\n  \"siswa_kelas_id\": 1,\n  \"pengampu_mapel_id\": 1,\n  \"nilai_harian_1\": 90,\n  \"nilai_harian_2\": 80,\n  \"nilai_harian_3\": 70,\n  \"nilai_harian_4\": null,\n  \"nilai_harian_5\": null,\n  \"nilai_uts\": 75,\n  \"nilai_uas\": 90\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -3571,7 +3571,7 @@
                     "nilai"
                   ]
                 },
-                "description": "Tambah atau buat record nilai siswa untuk satu pengampu mapel.\n\n**Akses:** SuperAdmin, Admin, Guru (pengampu mapel tersebut).\n\n**Field:**\n- siswa_kelas_id (wajib): ID dari GET /akademik/kelas/{id}/siswa\n- pengampu_mapel_id (wajib): ID dari POST /akademik/pengampu\n- nilai_harian (opsional): 0-100\n- nilai_uts (opsional): 0-100\n- nilai_uas (opsional): 0-100\n\n**nilai_akhir** dihitung otomatis jika ketiga komponen terisi (menggunakan bobot dari pengaturan nilai)."
+                "description": "Tambah atau buat record nilai siswa untuk satu pengampu mapel.\n\n**Akses:** SuperAdmin, Admin, Guru (pengampu mapel tersebut).\n\n**Field:**\n- siswa_kelas_id (wajib): ID dari GET /akademik/kelas/{id}/siswa\n- pengampu_mapel_id (wajib): ID dari POST /akademik/pengampu\n- nilai_harian (opsional): 0-100\n- nilai_uts (opsional): 0-100\n- nilai_uas (opsional): 0-100\n\n**nilai_akhir** dihitung otomatis jika ketiga komponen terisi (menggunakan bobot dari pengaturan nilai).\n\n**Ulangan harian: maksimal 5 per semester.** Kirim `nilai_harian_1` … `nilai_harian_5`. Slot yang tidak diisi bernilai `null` dan **tidak ikut dihitung** — kalau hanya 3 ulangan terisi, rata-ratanya dibagi 3, bukan 5.\n\n`nilai_harian` (tunggal) masih diterima sebagai **alias slot 1** demi klien lama; jangan dipakai di klien baru.\n\nRespons memuat `nilaiHarian` (rata-rata slot terisi), `ulanganHarian` (array 5 slot, `null` = belum ada ulangan itu), dan `jumlahUlangan`.\n\nPATCH bersifat parsial: hanya slot yang dikirim yang berubah. Kirim `\"nilai_harian_2\": null` untuk MENGOSONGKAN ulangan ke-2.\n\n`nilaiAkhir` tetap `null` selama rata-rata harian / UTS / UAS masih ada yang kosong."
               },
               "response": []
             },
@@ -3593,7 +3593,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\\n  \"nilai_uts\": 75,\\n  \"nilai_uas\": 90\\n}",
+                  "raw": "{\n  \"nilai_harian_4\": 100,\n  \"nilai_uts\": 75,\n  \"nilai_uas\": 90\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -3611,7 +3611,7 @@
                     "1"
                   ]
                 },
-                "description": "Update komponen nilai siswa. Kirim hanya field yang berubah.\n\n**Akses:** SuperAdmin, Admin, Guru (pengampu mapel tersebut).\n\nGanti 1 di URL dengan idNilai.\n\n**nilai_akhir** dihitung ulang otomatis jika semua tiga komponen sudah terisi."
+                "description": "Update komponen nilai siswa. Kirim hanya field yang berubah.\n\n**Akses:** SuperAdmin, Admin, Guru (pengampu mapel tersebut).\n\nGanti 1 di URL dengan idNilai.\n\n**nilai_akhir** dihitung ulang otomatis jika semua tiga komponen sudah terisi.\n\n**Ulangan harian: maksimal 5 per semester.** Kirim `nilai_harian_1` … `nilai_harian_5`. Slot yang tidak diisi bernilai `null` dan **tidak ikut dihitung** — kalau hanya 3 ulangan terisi, rata-ratanya dibagi 3, bukan 5.\n\n`nilai_harian` (tunggal) masih diterima sebagai **alias slot 1** demi klien lama; jangan dipakai di klien baru.\n\nRespons memuat `nilaiHarian` (rata-rata slot terisi), `ulanganHarian` (array 5 slot, `null` = belum ada ulangan itu), dan `jumlahUlangan`.\n\nPATCH bersifat parsial: hanya slot yang dikirim yang berubah. Kirim `\"nilai_harian_2\": null` untuk MENGOSONGKAN ulangan ke-2.\n\n`nilaiAkhir` tetap `null` selama rata-rata harian / UTS / UAS masih ada yang kosong."
               },
               "response": []
             },

@@ -564,7 +564,11 @@ class AkademikController extends Controller
             $response = $this->performRequest('PATCH', "{$this->reqUrl}/nilai/{$id}", $request->all(), $extraHeaders);
             $decode   = $this->decode($response);
             if (($decode['resCode'] ?? null) === Response::HTTP_OK) {
-                $this->auditLog('updated', 'nilai', $id, $request->only(['nilai_harian', 'nilai_uts', 'nilai_uas']));
+                $this->auditLog('updated', 'nilai', $id, $request->only([
+                    'nilai_harian_1', 'nilai_harian_2', 'nilai_harian_3',
+                    'nilai_harian_4', 'nilai_harian_5',
+                    'nilai_harian', 'nilai_uts', 'nilai_uas',
+                ]));
             }
             return $response;
         } catch (Exception $e) {

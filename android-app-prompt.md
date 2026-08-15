@@ -346,13 +346,29 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
   `GET|POST /akademik/pengaturan-nilai`, `PATCH /akademik/pengaturan-nilai/{id}`
   (bobot_harian + bobot_uts + bobot_uas = 100).
   Respons: `idPengaturan`, `tahunAjaran`, `semester`, `bobotHarian`, `bobotUts`, `bobotUas`.
-- **Nilai**: `POST /akademik/nilai` (siswa_kelas_id, pengampu_mapel_id, nilai_harian?,
-  nilai_uts?, nilai_uas? — masing-masing 0–100; nilai_akhir dihitung otomatis server),
-  `PATCH|DELETE /akademik/nilai/{id}`, `GET /akademik/nilai/pengampu/{id}`,
-  `/nilai/kelas/{id}`, `/nilai/siswa/{id}`, `/nilai/saya` (khusus Siswa).
+- **Nilai**: `POST /akademik/nilai` (siswa_kelas_id, pengampu_mapel_id,
+  **nilai_harian_1..nilai_harian_5**?, nilai_uts?, nilai_uas? — masing-masing 0–100;
+  nilai_akhir dihitung otomatis server), `PATCH|DELETE /akademik/nilai/{id}`,
+  `GET /akademik/nilai/pengampu/{id}`, `/nilai/kelas/{id}`, `/nilai/siswa/{id}`,
+  `/nilai/saya` (khusus Siswa).
   Query `tahun_ajaran`/`semester` di GET nilai bersifat OPSIONAL (filter).
-  Respons: `idNilai`, `siswaKelasId`, `pengampuMapelId`, `nilaiHarian`, `nilaiUts`,
-  `nilaiUas`, `nilaiAkhir` (null sampai ketiga komponen terisi).
+  Respons: `idNilai`, `siswaKelasId`, `pengampuMapelId`, `nilaiHarian`,
+  `ulanganHarian`, `jumlahUlangan`, `nilaiUts`, `nilaiUas`, `nilaiAkhir`
+  (null sampai ketiga komponen terisi).
+  - **Ulangan harian maksimal 5 per semester.** Layar input nilai menyediakan
+    **5 kotak** ulangan harian; yang belum berlangsung dibiarkan **kosong (null)**.
+  - Slot kosong **TIDAK ikut dihitung**: 3 ulangan terisi → rata-rata dibagi 3.
+    Jangan mengirim `0` untuk ulangan yang belum ada — itu akan menurunkan
+    rata-rata siswa secara keliru.
+  - `nilaiHarian` pada respons adalah **rata-rata slot terisi** (dihitung server,
+    read-only); `ulanganHarian` array 5 nilai (`null` = belum ada);
+    `jumlahUlangan` = banyaknya slot terisi. Tampilkan mis. "Rata-rata harian 80
+    (3 ulangan)".
+  - **PATCH parsial**: hanya slot yang dikirim yang berubah. Untuk MENGHAPUS satu
+    ulangan, kirim `"nilai_harian_2": null` secara eksplisit — jangan hanya
+    menghilangkan field-nya.
+  - `nilai_harian` tunggal masih diterima server sebagai alias slot 1 (kompatibilitas
+    klien lama) — **jangan dipakai** di kode baru.
 - **Raport & ranking**: `GET /akademik/raport/siswa/{id}`, `/raport/kelas/{id}`,
   `/raport/saya`, `GET /akademik/nilai/ranking/kelas/{id}`, `/nilai/ranking/saya`.
   Query `tahun_ajaran` dan `semester` **WAJIB** di semua endpoint raport/ranking
@@ -375,7 +391,7 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
   - Daftar kelas satu angkatan untuk dropdown: `GET /class/all?tingkat=3&jurusan=MIPA`.
   - Respons raport siswa: `{ siswaId, tahunAjaran, semester, bobot: {bobotHarian,
     bobotUts, bobotUas}, nilai: [{idNilai, pengampuMapelId, guruId, mapelId,
-    nilaiHarian, nilaiUts, nilaiUas, nilaiAkhir}], rataRata }`
+    nilaiHarian, ulanganHarian, nilaiUts, nilaiUas, nilaiAkhir}], rataRata }`
   - Respons raport kelas: `{ kelasId, tahunAjaran, semester, bobot,
     siswa: [{siswaId, siswaKelasId, nilai: [...], rataRata}] }`
   - Respons ranking kelas: `{ kelasId, tahunAjaran, semester, totalSiswa,

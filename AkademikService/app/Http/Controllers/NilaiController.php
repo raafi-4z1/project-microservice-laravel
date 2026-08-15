@@ -22,13 +22,10 @@ class NilaiController extends Controller
     public function store(Request $request)
     {
         try {
-            $validate = Validator::make($request->all(), [
+            $validate = Validator::make($request->all(), $this->aturanNilai([
                 'siswa_kelas_id'    => 'required|integer|min:1',
                 'pengampu_mapel_id' => 'required|integer|min:1',
-                'nilai_harian'      => 'nullable|numeric|min:0|max:100',
-                'nilai_uts'         => 'nullable|numeric|min:0|max:100',
-                'nilai_uas'         => 'nullable|numeric|min:0|max:100',
-            ]);
+            ]));
             if ($validate->fails()) {
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
             }
@@ -69,20 +66,21 @@ class NilaiController extends Controller
                 ->where('pengampu_mapel_id', $request->pengampu_mapel_id)
                 ->first();
 
-            $nilaiAkhir = $this->hitungNilaiAkhir(
-                $request->nilai_harian,
-                $request->nilai_uts,
-                $request->nilai_uas,
-                $pengampu->tahun_ajaran,
-                $pengampu->semester
-            );
+            $slot       = $this->slotUlanganDariRequest($request);
+            $rataHarian = $this->rataDariSlot($slot);
 
-            $data = [
-                'nilai_harian' => $request->nilai_harian,
+            $data = array_merge($slot, [
+                'nilai_harian' => $rataHarian,
                 'nilai_uts'    => $request->nilai_uts,
                 'nilai_uas'    => $request->nilai_uas,
-                'nilai_akhir'  => $nilaiAkhir,
-            ];
+                'nilai_akhir'  => $this->hitungNilaiAkhir(
+                    $rataHarian,
+                    $request->nilai_uts,
+                    $request->nilai_uas,
+                    $pengampu->tahun_ajaran,
+                    $pengampu->semester
+                ),
+            ]);
 
             if ($existing) {
                 $existing->restore();
@@ -123,19 +121,25 @@ class NilaiController extends Controller
                 }
             }
 
-            $validate = Validator::make($request->all(), [
-                'nilai_harian' => 'nullable|numeric|min:0|max:100',
-                'nilai_uts'    => 'nullable|numeric|min:0|max:100',
-                'nilai_uas'    => 'nullable|numeric|min:0|max:100',
-            ]);
+            $validate = Validator::make($request->all(), $this->aturanNilai());
             if ($validate->fails()) {
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
             }
 
             $updateData = [];
-            if ($request->has('nilai_harian')) $updateData['nilai_harian'] = $request->nilai_harian;
-            if ($request->has('nilai_uts'))    $updateData['nilai_uts']    = $request->nilai_uts;
-            if ($request->has('nilai_uas'))    $updateData['nilai_uas']    = $request->nilai_uas;
+            // PATCH bersifat parsial: hanya slot yang DIKIRIM yang berubah.
+            // Kirim null secara eksplisit untuk mengosongkan satu ulangan.
+            foreach (range(1, Nilai::MAX_ULANGAN) as $i) {
+                if ($request->has("nilai_harian_{$i}")) {
+                    $updateData["nilai_harian_{$i}"] = $request->input("nilai_harian_{$i}");
+                }
+            }
+            // Alias lama: nilai_harian tunggal -> slot 1 (lihat aturanNilai()).
+            if ($request->has('nilai_harian') && !$request->has('nilai_harian_1')) {
+                $updateData['nilai_harian_1'] = $request->input('nilai_harian');
+            }
+            if ($request->has('nilai_uts')) $updateData['nilai_uts'] = $request->nilai_uts;
+            if ($request->has('nilai_uas')) $updateData['nilai_uas'] = $request->nilai_uas;
 
             if (empty($updateData)) {
                 return $this->response('Tidak ada field yang diubah.', Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -143,16 +147,20 @@ class NilaiController extends Controller
 
             $record->update($updateData);
 
-            // Recalculate nilai_akhir setiap kali ada komponen yang berubah
+            // Hitung ulang turunan: rata-rata harian dulu, baru nilai_akhir
+            $segar      = $record->fresh();
+            $rataHarian = $segar->rataUlanganHarian();
             $pengampu   = $pengampu ?? PengampuMapel::find($record->pengampu_mapel_id);
-            $nilaiAkhir = $this->hitungNilaiAkhir(
-                $record->fresh()->nilai_harian,
-                $record->fresh()->nilai_uts,
-                $record->fresh()->nilai_uas,
-                $pengampu->tahun_ajaran,
-                $pengampu->semester
-            );
-            $record->update(['nilai_akhir' => $nilaiAkhir]);
+            $record->update([
+                'nilai_harian' => $rataHarian,
+                'nilai_akhir'  => $this->hitungNilaiAkhir(
+                    $rataHarian,
+                    $segar->nilai_uts,
+                    $segar->nilai_uas,
+                    $pengampu->tahun_ajaran,
+                    $pengampu->semester
+                ),
+            ]);
 
             $record->load(['siswaKelas', 'pengampuMapel']);
             return $this->response("Nilai berhasil diperbarui.", Response::HTTP_OK, $this->toApiArray($record->fresh(['siswaKelas', 'pengampuMapel'])));
@@ -302,6 +310,7 @@ class NilaiController extends Controller
                 'guruId'         => $n->pengampuMapel?->guru_id,
                 'mapelId'        => $n->pengampuMapel?->mapel_id,
                 'nilaiHarian'    => $n->nilai_harian,
+                'ulanganHarian'  => $n->ulanganHarian(),
                 'nilaiUts'       => $n->nilai_uts,
                 'nilaiUas'       => $n->nilai_uas,
                 'nilaiAkhir'     => $n->nilai_akhir,
@@ -359,6 +368,7 @@ class NilaiController extends Controller
                     'pengampuMapelId' => $n->pengampu_mapel_id,
                     'mapelId'         => $n->pengampuMapel?->mapel_id,
                     'nilaiHarian'     => $n->nilai_harian,
+                    'ulanganHarian'   => $n->ulanganHarian(),
                     'nilaiUts'        => $n->nilai_uts,
                     'nilaiUas'        => $n->nilai_uas,
                     'nilaiAkhir'      => $n->nilai_akhir,
@@ -555,6 +565,45 @@ class NilaiController extends Controller
         }
     }
 
+    /**
+     * Aturan validasi komponen nilai (dipakai store & update).
+     *
+     * `nilai_harian` (tunggal) DIPERTAHANKAN sebagai alias slot 1 demi klien lama
+     * — kalau dihapus, request lama akan diterima tapi nilainya hilang diam-diam.
+     * Klien baru memakai nilai_harian_1..5.
+     */
+    private function aturanNilai(array $tambahan = []): array
+    {
+        $aturan = $tambahan;
+        foreach (range(1, Nilai::MAX_ULANGAN) as $i) {
+            $aturan["nilai_harian_{$i}"] = 'nullable|numeric|min:0|max:100';
+        }
+        $aturan['nilai_harian'] = 'nullable|numeric|min:0|max:100'; // alias slot 1 (lama)
+        $aturan['nilai_uts']    = 'nullable|numeric|min:0|max:100';
+        $aturan['nilai_uas']    = 'nullable|numeric|min:0|max:100';
+        return $aturan;
+    }
+
+    /** Ambil kelima slot ulangan dari request; alias `nilai_harian` -> slot 1. */
+    private function slotUlanganDariRequest(Request $request): array
+    {
+        $slot = [];
+        foreach (range(1, Nilai::MAX_ULANGAN) as $i) {
+            $slot["nilai_harian_{$i}"] = $request->input("nilai_harian_{$i}");
+        }
+        if ($slot['nilai_harian_1'] === null && $request->filled('nilai_harian')) {
+            $slot['nilai_harian_1'] = $request->input('nilai_harian');
+        }
+        return $slot;
+    }
+
+    /** Rata-rata slot terisi; slot kosong diabaikan (3 terisi -> dibagi 3). */
+    private function rataDariSlot(array $slot): ?float
+    {
+        $terisi = array_values(array_filter($slot, fn($v) => $v !== null));
+        return empty($terisi) ? null : round(array_sum($terisi) / count($terisi), 2);
+    }
+
     // Hitung nilai_akhir berdasarkan bobot yang dikonfigurasi; kembalikan null jika ada komponen kosong
     private function hitungNilaiAkhir(?float $harian, ?float $uts, ?float $uas, string $tahunAjaran, $semester): ?float
     {
@@ -599,7 +648,11 @@ class NilaiController extends Controller
             'kelasId'         => $pm?->kelas_id,
             'tahunAjaran'     => $pm?->tahun_ajaran,
             'semester'        => $pm ? (int) $pm->semester : null,
+            // nilaiHarian = RATA-RATA ulangan yang terisi (kolom turunan).
+            // ulanganHarian = nilai tiap slot 1..5; null = belum ada ulangan itu.
             'nilaiHarian'     => $record->nilai_harian,
+            'ulanganHarian'   => $record->ulanganHarian(),
+            'jumlahUlangan'   => count(array_filter($record->ulanganHarian(), fn($v) => $v !== null)),
             'nilaiUts'        => $record->nilai_uts,
             'nilaiUas'        => $record->nilai_uas,
             'nilaiAkhir'      => $record->nilai_akhir,

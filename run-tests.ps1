@@ -1290,6 +1290,47 @@ if ($testSiswaKelasId -and $testPengampuId) {
         }
     }
 
+    # 12-D2. Ulangan harian: maksimal 5 slot, slot kosong TIDAK ikut dihitung
+    if ($testNilaiId) {
+        # 3 ulangan terisi -> rata dibagi 3 (bukan 5)
+        $r = Api PATCH "akademik/nilai/$testNilaiId" @{ nilai_harian_1 = 90; nilai_harian_2 = 80; nilai_harian_3 = 70 }
+        Chk "PATCH nilai: isi 3 ulangan harian (90/80/70)" $r 200; if ($script:LAST_CHK) {
+            $rata = [math]::Round([double]$r.data.nilaiHarian, 2)
+            if ($rata -eq 80) { $script:PASS++; Write-Host "  [PASS] rata harian = 80 (dibagi 3, slot kosong diabaikan)" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL] rata harian = $rata (harap 80)" -ForegroundColor Red }
+            if ($r.data.jumlahUlangan -eq 3) { $script:PASS++; Write-Host "  [PASS] jumlahUlangan = 3" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL] jumlahUlangan = $($r.data.jumlahUlangan) (harap 3)" -ForegroundColor Red }
+            if (@($r.data.ulanganHarian).Count -eq 5) { $script:PASS++; Write-Host "  [PASS] ulanganHarian berisi 5 slot" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL] ulanganHarian bukan 5 slot" -ForegroundColor Red }
+        }
+
+        # Tambah ulangan ke-4 -> penyebut ikut bertambah
+        $r = Api PATCH "akademik/nilai/$testNilaiId" @{ nilai_harian_4 = 100 }
+        Chk "PATCH nilai: tambah ulangan ke-4 (100)" $r 200; if ($script:LAST_CHK) {
+            $rata = [math]::Round([double]$r.data.nilaiHarian, 2)
+            if ($rata -eq 85) { $script:PASS++; Write-Host "  [PASS] rata harian = 85 (dibagi 4)" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL] rata harian = $rata (harap 85)" -ForegroundColor Red }
+        }
+
+        # Kosongkan satu slot -> penyebut berkurang lagi
+        $r = Api PATCH "akademik/nilai/$testNilaiId" @{ nilai_harian_2 = $null }
+        Chk "PATCH nilai: kosongkan ulangan ke-2" $r 200; if ($script:LAST_CHK) {
+            if ($r.data.jumlahUlangan -eq 3) { $script:PASS++; Write-Host "  [PASS] jumlahUlangan kembali 3 setelah dikosongkan" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL] jumlahUlangan = $($r.data.jumlahUlangan) (harap 3)" -ForegroundColor Red }
+        }
+
+        # Validasi rentang tetap berlaku per slot
+        $r = Api PATCH "akademik/nilai/$testNilaiId" @{ nilai_harian_1 = 150 }
+        Chk "PATCH nilai: ulangan_1=150 (harus 422)" $r 422
+
+        # Kompatibilitas klien lama: nilai_harian tunggal -> slot 1
+        $r = Api PATCH "akademik/nilai/$testNilaiId" @{ nilai_harian = 60 }
+        Chk "PATCH nilai: alias lama nilai_harian=60" $r 200; if ($script:LAST_CHK) {
+            if (@($r.data.ulanganHarian)[0] -eq 60) { $script:PASS++; Write-Host "  [PASS] alias lama masuk ke slot 1" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL] slot 1 = $(@($r.data.ulanganHarian)[0]) (harap 60)" -ForegroundColor Red }
+        }
+    }
+
     # 12-E. GET nilai by pengampu
     $r = Api GET "akademik/nilai/pengampu/$testPengampuId"
     Chk "GET /akademik/nilai/pengampu/{id}" $r 200

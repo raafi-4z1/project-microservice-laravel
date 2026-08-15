@@ -374,17 +374,43 @@ Total `bobot_harian + bobot_uts + bobot_uas` harus = 100. Unik per `tahun_ajaran
 
 | Field | Wajib | Keterangan |
 |-------|-------|------------|
+| Field | Wajib | Keterangan |
+|-------|-------|------------|
 | `siswa_kelas_id` | ✅ | ID dari GET /akademik/kelas/{id}/siswa |
 | `pengampu_mapel_id` | ✅ | ID dari POST /akademik/pengampu |
-| `nilai_harian` | ❌ | Nilai harian (0–100) |
+| `nilai_harian_1` … `nilai_harian_5` | ❌ | **Ulangan harian, maksimal 5 per semester** (0–100 masing-masing) |
 | `nilai_uts` | ❌ | Nilai UTS (0–100) |
 | `nilai_uas` | ❌ | Nilai UAS (0–100) |
 
-`nilai_akhir` dihitung otomatis jika ketiga komponen (nilai_harian, nilai_uts, nilai_uas) sudah terisi, menggunakan bobot dari pengaturan nilai semester yang bersangkutan.
+#### Ulangan harian (maks. 5)
 
-**PATCH /akademik/nilai/{id}:** kirim hanya field yang berubah (`nilai_harian`, `nilai_uts`, dan/atau `nilai_uas`).
+Komponen "harian" bukan lagi satu angka, melainkan sampai **lima kali ulangan**
+dalam satu semester.
 
-**Response:** `idNilai`, `siswaKelasId`, `pengampuMapelId`, `nilaiHarian`, `nilaiUts`, `nilaiUas`, `nilaiAkhir` (null jika belum semua komponen terisi)
+- Slot yang **tidak diisi bernilai `null` dan TIDAK ikut dihitung**. Kalau hanya
+  3 ulangan yang terisi, rata-ratanya dibagi **3**, bukan 5. (Beda dengan aturan
+  laporan se-angkatan, di mana **mapel** yang belum dinilai dihitung 0 — di sini
+  yang diabaikan adalah **slot ulangan** yang memang belum berlangsung.)
+- Kolom `nilai_harian` **tetap ada** dan kini berisi **rata-rata slot yang terisi**
+  (dihitung server, bukan input). Semua pembaca lama tetap berfungsi.
+- `nilai_akhir` = (`nilai_harian` × bobotHarian + `nilai_uts` × bobotUts +
+  `nilai_uas` × bobotUas) ÷ 100, dan tetap `null` selama salah satu dari ketiga
+  komponen itu masih kosong.
+
+> **Alias lama (deprecated):** `nilai_harian` masih diterima sebagai input dan
+> dipetakan ke **slot 1**, supaya klien yang belum diperbarui tidak kehilangan
+> data diam-diam. Klien baru memakai `nilai_harian_1..5`.
+
+**PATCH /akademik/nilai/{id}:** bersifat parsial — hanya slot yang **dikirim** yang
+berubah. Kirim `"nilai_harian_2": null` secara eksplisit untuk **mengosongkan**
+ulangan ke-2 (penyebut rata-rata otomatis menyesuaikan).
+
+**Response:** `idNilai`, `siswaKelasId`, `pengampuMapelId`, `nilaiHarian`
+(rata-rata), `ulanganHarian` (array 5 slot, `null` = belum ada ulangan),
+`jumlahUlangan` (banyaknya slot terisi), `nilaiUts`, `nilaiUas`, `nilaiAkhir`.
+
+Contoh: `ulanganHarian: [90, null, 70, 100, null]` → `jumlahUlangan: 3`,
+`nilaiHarian: 86.67`.
 
 ### GET Raport
 
