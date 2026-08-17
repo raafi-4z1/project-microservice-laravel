@@ -71,9 +71,11 @@ Laravel "SIM Sekolah". Semua request lewat Gateway.
   icon, screenshot referensi) - PAKAI yang ada, jangan bikin sendiri
 
 ## Jaringan (backend)
-- Base URL dari emulator Android : https://10.0.2.2/api
-- Base URL dari device fisik (LAN): https://IP-SERVER/api   <-- ganti IP-nya
-- SSL: sertifikat mkcert lokal -> trust-all HANYA di build debug.
+- Base URL utama (HP fisik & emulator) : https://IP-SERVER/api  <-- ganti IP-nya
+  Kalau backend ada di SERVER (bukan PC dev), IP itu dipakai untuk keduanya.
+- (https://10.0.2.2/api HANYA relevan bila backend jalan di PC dev.)
+- SSL: sertifikat mkcert -> trust-all HANYA di build debug. Cert untuk nama
+  gateway.test diakses lewat IP: matikan JUGA hostname verification di debug.
 - Auth user: Bearer (OAuth2 Passport), header "Authorization: Bearer <token>".
 - Mode Terminal (absensi kiosk): client TERPISAH dengan header
   X-Terminal-Id + X-Terminal-Token (bukan Bearer).
@@ -92,17 +94,25 @@ Laravel "SIM Sekolah". Semua request lewat Gateway.
   memakai dependensi lama sampai di-sync.
 
 ## Urutan fase (satu fase = satu sesi = satu commit)
-0.  Persiapan (manual)                    6A.  Karyawan (master data)
+0.  Persiapan (manual)                    6A.  Karyawan (+ penanda Adm. Sekolah)
 1.  Scaffold project                      6B.  Absensi: kartu, wali, rekap
 2.  Core network + Auth                   6C.  Absensi: pelajaran, keluar, PIN
 3.  Master data (Mapel/Kelas/Guru/Siswa)  6C-2. Periode khusus, jam per periode/
 4.  Akademik dasar (+ cache ID->nama)           hari, pengaturan absensi
-5.  Nilai + bobot                         6D.  Absensi: Mode Terminal (kiosk)
-6.  Raport & ranking (+ mode /saya)       7.   User mgmt + profil + tema
+5.  Nilai (5 ulangan harian) + bobot      6D.  Absensi: Mode Terminal (kiosk)
+6.  Raport & ranking (+ mode /saya)       6E.  Laporan se-angkatan + ekspor
+                                          7.   User mgmt + profil + tema
                                           8.   QA per role + responsif
                                           9.   Build rilis (opsional)
 
 Salin prompt tiap fase dari docs/android-build-phases.md, mulai dengan Plan Mode.
+
+## RBAC - jangan gating dengan `role` saja
+Karyawan bertanda **Administrator Sekolah** (staf TU) berrole `Karyawan` tetapi
+berhak menulis data akademik + master data. Pakai satu helper di seluruh app:
+    val bolehKelola = role == "SuperAdmin" || role == "Admin" || isAdminSekolah
+`isAdminSekolah` (boolean) ada di respons login dan GET /user - simpan di
+SessionManager bersama role.
 
 ## Aturan kerja
 - Verifikasi SELALU ke backend sungguhan dengan akun test (bukan mock).
