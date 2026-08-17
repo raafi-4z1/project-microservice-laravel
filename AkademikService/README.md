@@ -29,6 +29,16 @@ ACCEPTED_SECRETS=base64:...
 
 Base URL: `https://gateway.test/api`
 
+> **Baca kolom Role begini:** di seluruh tabel dokumen ini, **"SuperAdmin, Admin"
+> juga mencakup karyawan bertanda "Administrator Sekolah"** (staf Tata Usaha).
+> Mereka berrole `Karyawan` tetapi punya flag `isAdminSekolah` yang membuka hak
+> tulis operasional — lihat
+> [Gateway/README.md](../Gateway/README.md#administrator-sekolah-staf-tata-usaha).
+> Karyawan biasa (satpam, kebersihan) tetap **403**.
+>
+> Pengecualian yang TIDAK ikut terbuka: input/ubah/hapus **nilai** (tetap
+> SuperAdmin/Admin/Guru pengampu) dan endpoint khusus role Siswa/Guru.
+
 ### Semester Aktif
 
 | Method | Endpoint | Role | Keterangan |
@@ -274,7 +284,7 @@ Rentang default = awal bulan berjalan s/d hari ini (WIB); override via `tanggal_
 | GET | `/akademik/absensi/rekap/harian/saya` | Siswa | Rekap harian diri sendiri |
 | GET | `/akademik/absensi/rekap/pelajaran/siswa/{id}` | SuperAdmin, Admin, Guru, Karyawan | Ringkasan absensi per pelajaran 1 siswa |
 | GET | `/akademik/absensi/rekap/pelajaran/saya` | Siswa | Rekap pelajaran diri sendiri |
-| GET | `/akademik/absensi/rekap/pegawai/{tipe}/{id}` | SuperAdmin, Admin | Rekap pegawai lain (`tipe` = `guru`\|`karyawan`) |
+| GET | `/akademik/absensi/rekap/pegawai/{tipe}/{id}` | SuperAdmin, Admin, Administrator Sekolah | Rekap pegawai lain (`tipe` = `guru`\|`karyawan`) |
 | GET | `/akademik/absensi/rekap/pegawai/saya` | Guru, Karyawan, SuperAdmin, Admin | Rekap absensi **diri sendiri**; subjek diresolve dari email token (guru dulu, lalu karyawan). Bentuk respons identik dengan baris di atas. 404 bila akun bukan pegawai |
 
 > **Scan kartu & absen PIN** dilayani di prefix Gateway `/absensi/*` (autentikasi **terminal**, bukan Bearer) — lihat [Gateway/README.md](../Gateway/README.md). Secara internal, endpoint scan memanggil `POST absensi/scan-siswa` & `absensi/scan-pegawai` di service ini.

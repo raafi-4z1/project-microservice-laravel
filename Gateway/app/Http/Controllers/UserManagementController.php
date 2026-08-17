@@ -54,7 +54,11 @@ class UserManagementController extends Controller
 
     public function index(Request $request)
     {
-        $query = User::select('id', 'name', 'email', 'role', 'must_change_password', 'created_at');
+        $query = // 'is_admin_sekolah' WAJIB ikut di-select: accessor isAdminSekolah membacanya
+        // dari atribut model, jadi kalau kolomnya tidak dimuat hasilnya bukan "hilang"
+        // melainkan selalu false — daftar user akan menyatakan tidak ada Administrator
+        // Sekolah padahal ada.
+        User::select('id', 'name', 'email', 'role', 'is_admin_sekolah', 'must_change_password', 'created_at');
 
         if ($request->filled('role')) {
             $query->where('role', $request->role);
@@ -76,7 +80,11 @@ class UserManagementController extends Controller
 
     public function show($id)
     {
-        $user = User::select('id', 'name', 'email', 'role', 'must_change_password', 'created_at')->find($id);
+        $user = // 'is_admin_sekolah' WAJIB ikut di-select: accessor isAdminSekolah membacanya
+        // dari atribut model, jadi kalau kolomnya tidak dimuat hasilnya bukan "hilang"
+        // melainkan selalu false — daftar user akan menyatakan tidak ada Administrator
+        // Sekolah padahal ada.
+        User::select('id', 'name', 'email', 'role', 'is_admin_sekolah', 'must_change_password', 'created_at')->find($id);
 
         if (!$user) {
             return $this->response('User tidak ditemukan.', Response::HTTP_NOT_FOUND);

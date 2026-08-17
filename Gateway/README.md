@@ -174,9 +174,13 @@ respons **login** dan **`GET /user`** sebagai `isAdminSekolah` (boolean), supaya
 klien dapat menampilkan menu manajemen tanpa panggilan tambahan.
 
 **Yang BOLEH:** manajemen akademik (pembagian kelas, pengampu, jadwal, jam,
-periode, pengaturan absensi, wali kelas), CRUD data induk (siswa, guru, karyawan,
-kelas, mapel, bobot nilai), kartu absensi + QR, membuka jendela PIN, laporan
-peringkat se-angkatan + ekspornya, dan `POST /register` untuk Guru/Siswa/Karyawan.
+periode, pengaturan absensi, wali kelas), **pergantian semester aktif**, CRUD data
+induk (siswa, guru, karyawan, kelas, mapel, bobot nilai), kartu absensi + QR,
+membuka jendela PIN, **rekap absensi pegawai lain**, laporan peringkat se-angkatan
++ ekspornya, dan `POST /register` untuk Guru/Siswa/Karyawan.
+
+Singkatnya: seluruh operasional harian sekolah. Yang tersisa hanya urusan **akun
+istimewa** — itulah satu-satunya batas yang dijaga.
 
 **Yang TETAP DIKUNCI** (diuji di suite):
 
@@ -187,10 +191,26 @@ peringkat se-angkatan + ekspornya, dan `POST /register` untuk Guru/Siswa/Karyawa
 | Menghapus / reset password sesama Administrator Sekolah | ❌ 403 |
 | Menghapus karyawan yang juga Administrator Sekolah | ❌ 403 |
 | Menandai dirinya/orang lain sebagai Administrator Sekolah | ❌ flag diabaikan |
-| Mengubah semester aktif | ❌ 403 (dianggap perubahan sistemik) |
 
 Mencabut penanda otomatis **mencabut seluruh token aktif** akun tersebut, agar hak
 tulis yang sudah dicabut tidak terus dipakai sampai token kedaluwarsa.
+
+**Penanda ada di dua tabel** — `users.is_admin_sekolah` (dipakai otorisasi) dan
+`karyawans.is_admin_sekolah` (ditampilkan di daftar karyawan). Gateway menulis
+keduanya dalam satu operasi, jadi normalnya selalu selaras. Kalau seseorang
+mengubah database langsung, keduanya bisa berbeda; arah kegagalannya aman
+(karyawan tampak "TU" tapi hak tulisnya tidak aktif, bukan sebaliknya). Cek
+cepatnya — dijalankan di masing-masing DB, lalu bandingkan email yang muncul:
+
+```sql
+-- DB Gateway
+SELECT email FROM users WHERE role='Karyawan' AND is_admin_sekolah=1;
+-- DB KaryawanService
+SELECT email FROM karyawans WHERE is_admin_sekolah=1 AND deleted_at IS NULL;
+```
+
+Perbaikannya cukup `POST /karyawan/update` dengan `isAdminSekolah` yang benar —
+Gateway akan menyelaraskan ulang keduanya.
 
 ### Proteksi DELETE /users/{id}
 

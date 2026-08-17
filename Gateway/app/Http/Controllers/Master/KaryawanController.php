@@ -90,6 +90,10 @@ class KaryawanController extends Controller
                     'email'       => $request->email,
                     'nip'         => $request->nip,
                     'jabatan'     => $request->jabatan,
+                    // Pemberian hak istimewa harus terekam sejak awal, bukan hanya
+                    // saat diubah — kalau tidak, TU yang dibuat langsung bertanda
+                    // tidak meninggalkan jejak siapa yang mengangkatnya.
+                    'isAdminSekolah' => $payload['isAdminSekolah'] ? 'true' : 'false',
                 ]);
             }
 

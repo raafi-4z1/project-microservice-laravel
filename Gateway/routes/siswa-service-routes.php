@@ -13,7 +13,7 @@ Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.siswa_prefi
     Route::get('/', [SiswaController::class, 'show'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
     Route::post('/', [SiswaController::class, 'store'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
     Route::post('update', [SiswaController::class, 'update'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
-    // Kartu absensi — SuperAdmin/Admin
+    // Kartu absensi — SuperAdmin/Admin/Administrator Sekolah
     Route::post('kartu/terbitkan', [SiswaController::class, 'terbitkanKartu'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
     Route::post('kartu/blokir', [SiswaController::class, 'blokirKartu'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
     Route::delete('/{id}', [SiswaController::class, 'destroy'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');

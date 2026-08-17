@@ -38,6 +38,22 @@ class User extends Authenticatable
 
     public function getIsAdminSekolahAttribute(): bool
     {
+        // Jebakan yang sudah pernah terjadi: query dengan select() parsial tidak
+        // memuat kolomnya, sehingga accessor ini mengembalikan false untuk
+        // Administrator Sekolah yang sebenarnya — bukan "data hilang" melainkan
+        // "data salah", dan tidak ada yang gagal sehingga lolos tanpa disadari.
+        // Untuk otorisasi false memang arah yang aman, tapi untuk respons ke klien
+        // menyesatkan. Jadi kalau modelnya berasal dari DB tapi kolomnya tidak
+        // ikut, catat peringatan agar ketahuan lewat log, bukan diam-diam.
+        if ($this->exists && !array_key_exists('is_admin_sekolah', $this->attributes)) {
+            \Illuminate\Support\Facades\Log::warning(
+                'User::isAdminSekolah dibaca tanpa kolom is_admin_sekolah — '
+                . 'tambahkan kolom itu ke select() agar nilainya tidak salah.',
+                ['user_id' => $this->attributes['id'] ?? null]
+            );
+            return false;
+        }
+
         return $this->role === 'Karyawan'
             && (bool) ($this->attributes['is_admin_sekolah'] ?? false);
     }
