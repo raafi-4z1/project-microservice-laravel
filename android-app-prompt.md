@@ -192,9 +192,23 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
   menerima detail guru yang sudah disaring (lihat modul Guru) — jangan tampilkan
   navigasi ke detail siswa untuk role ini. Untuk foto/avatar siswa sendiri
   (header beranda, layar Profil) pakai `GET /siswa/saya`, BUKAN `GET /siswa?idSiswa=`.
-- **Karyawan** (staf TU): read-only data master (termasuk detail siswa/guru
-  lengkap) + akademik/nilai/raport. Ikut **absen sebagai pegawai** (kartu/PIN)
-  dan bisa mengatur PIN sendiri + melihat rekap absensinya.
+- **Karyawan**: read-only data master (termasuk detail siswa/guru lengkap) +
+  akademik/nilai/raport. Ikut **absen sebagai pegawai** (kartu/PIN) dan bisa
+  mengatur PIN sendiri + melihat rekap absensinya.
+- **Karyawan — Administrator Sekolah** (staf Tata Usaha): karyawan yang ditandai
+  `isAdminSekolah: true`. **Role-nya tetap `Karyawan`**, jadi jangan mengandalkan
+  `role` untuk gating — pakai flag `isAdminSekolah` yang ada di respons **login**
+  dan **`GET /user`**.
+  Ia berhak **menulis** seperti Admin untuk urusan operasional: manajemen akademik
+  (pembagian kelas, pengampu, jadwal, jam, periode, pengaturan absensi, wali kelas),
+  CRUD data induk (siswa, guru, karyawan, kelas, mapel, bobot nilai), kartu absensi
+  + QR, membuka jendela PIN, laporan peringkat se-angkatan + ekspor, serta
+  `POST /register` untuk Guru/Siswa/Karyawan.
+  **Tetap dikunci** (server menolak, jangan tampilkan menunya): membuat/menghapus/
+  mereset akun Admin & SuperAdmin, menyentuh sesama Administrator Sekolah,
+  menandai orang sebagai Administrator Sekolah, dan mengubah semester aktif.
+  Konsekuensi UI: menu **Akademik** yang sekarang admin-only harus ditampilkan
+  juga ketika `isAdminSekolah == true`.
 - **Absensi (lintas role):** SuperAdmin/Admin mengelola kartu, wali kelas,
   jendela PIN, dan pendaftaran terminal; **Guru** menandai absensi siswa saat
   jam pelajarannya dan — sebagai **wali kelas** — menyetujui izin keluar siswa
@@ -389,6 +403,10 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
     jangan pakai indeks baris sebagai nomor peringkat.
   - Predikat: A ≥90, B ≥80, C ≥70, D ≥60, E <60.
   - Daftar kelas satu angkatan untuk dropdown: `GET /class/all?tingkat=3&jurusan=MIPA`.
+  - **Unduh laporan**: `GET /akademik/nilai/ranking/angkatan/export?...&format=csv|pdf`
+    (parameter lain sama). Respons berupa **berkas**, bukan JSON —
+    `Content-Disposition: attachment` dengan nama otomatis. Di Android: simpan
+    lewat MediaStore/SAF, jangan di-parse sebagai JSON. Format lain → 422.
   - Respons raport siswa: `{ siswaId, tahunAjaran, semester, bobot: {bobotHarian,
     bobotUts, bobotUas}, nilai: [{idNilai, pengampuMapelId, guruId, mapelId,
     nilaiHarian, ulanganHarian, nilaiUts, nilaiUas, nilaiAkhir}], rataRata }`

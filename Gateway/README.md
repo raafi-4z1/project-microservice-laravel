@@ -144,9 +144,53 @@ Semua token aktif milik target user langsung dicabut saat password direset.
 |------|-----|--------------------|--------|----------|
 | SuperAdmin | ✅ | ✅ | ✅ | Admin, Guru, Siswa, Karyawan |
 | Admin | ✅ | ✅ | ✅* | Guru, Siswa, Karyawan |
-| Guru / Siswa / Karyawan | ✅ (data sendiri) | ✅ (password sendiri) | ❌ | ❌ |
+| **Karyawan — Administrator Sekolah** | ✅ | ✅ (akademik + master data + kartu) | ✅* | Guru, Siswa, Karyawan |
+| Guru / Siswa / Karyawan lain | ✅ (data sendiri) | ✅ (password sendiri) | ❌ | ❌ |
 
 Role `SuperAdmin` tidak dapat dibuat melalui API — hanya via `php artisan db:seed`.
+
+### Administrator Sekolah (staf Tata Usaha)
+
+Pemetaan peran di sekolah ini: **Admin = Kepala Sekolah**, **SuperAdmin = akun
+cadangan/darurat**, dan **Administrator Sekolah = staf TU** yang menjalankan
+operasional harian. Karena itu staf TU butuh cakupan tulis yang luas tanpa menjadi
+Admin.
+
+**Cara kerjanya.** Akunnya tetap berrole `Karyawan` — sengaja, supaya absensi
+pegawai, `rekap/pegawai/saya`, dan hak baca karyawan tidak berubah. Yang
+membedakan adalah flag `users.is_admin_sekolah`; middleware `check.role` mengenali
+pseudo-role **`AdminSekolah`**:
+
+```php
+->middleware('check.role:SuperAdmin,Admin,AdminSekolah')
+```
+
+SuperAdmin & Admin lolos lewat role; karyawan lolos hanya bila flag-nya menyala.
+Karyawan lain (satpam, kebersihan) tetap **403**.
+
+**Menandai seseorang:** `POST /karyawan` atau `POST /karyawan/update` dengan
+`isAdminSekolah: true` — **hanya boleh oleh SuperAdmin/Admin**. Penanda ikut di
+respons **login** dan **`GET /user`** sebagai `isAdminSekolah` (boolean), supaya
+klien dapat menampilkan menu manajemen tanpa panggilan tambahan.
+
+**Yang BOLEH:** manajemen akademik (pembagian kelas, pengampu, jadwal, jam,
+periode, pengaturan absensi, wali kelas), CRUD data induk (siswa, guru, karyawan,
+kelas, mapel, bobot nilai), kartu absensi + QR, membuka jendela PIN, laporan
+peringkat se-angkatan + ekspornya, dan `POST /register` untuk Guru/Siswa/Karyawan.
+
+**Yang TETAP DIKUNCI** (diuji di suite):
+
+| Percobaan | Hasil |
+|---|---|
+| Membuat akun Admin / SuperAdmin | ❌ 422 |
+| Menghapus / reset password akun Admin / SuperAdmin | ❌ 403 |
+| Menghapus / reset password sesama Administrator Sekolah | ❌ 403 |
+| Menghapus karyawan yang juga Administrator Sekolah | ❌ 403 |
+| Menandai dirinya/orang lain sebagai Administrator Sekolah | ❌ flag diabaikan |
+| Mengubah semester aktif | ❌ 403 (dianggap perubahan sistemik) |
+
+Mencabut penanda otomatis **mencabut seluruh token aktif** akun tersebut, agar hak
+tulis yang sudah dicabut tidak terus dipakai sampai token kedaluwarsa.
 
 ### Proteksi DELETE /users/{id}
 
@@ -155,6 +199,9 @@ Role `SuperAdmin` tidak dapat dibuat melalui API — hanya via `php artisan db:s
 | Admin hapus Guru / Siswa / Karyawan | ✅ Diizinkan |
 | Admin hapus Admin lain | ❌ 403 |
 | Admin hapus SuperAdmin | ❌ 403 |
+| Administrator Sekolah hapus Guru / Siswa / Karyawan biasa | ✅ Diizinkan |
+| Administrator Sekolah hapus Admin / SuperAdmin | ❌ 403 |
+| Administrator Sekolah hapus sesama Administrator Sekolah | ❌ 403 |
 | SuperAdmin hapus Admin / Guru / Siswa / Karyawan | ✅ Diizinkan |
 | Siapapun hapus SuperAdmin | ❌ 403 (tidak bisa via API) |
 | Menghapus akun sendiri | ❌ 403 |
@@ -164,6 +211,9 @@ Hapus bersifat **soft delete** — kolom `deleted_at` terisi, data tetap di data
 ### Proteksi Reset Password
 
 - Admin hanya dapat reset password Guru, Siswa, Karyawan — tidak bisa reset Admin/SuperAdmin
+- Administrator Sekolah dibatasi sama seperti Admin, **plus** tidak boleh mereset
+  password sesama Administrator Sekolah — reset password adalah jalan pintas
+  mengambil alih akun, jadi dijaga seketat penghapusan
 - Password SuperAdmin tidak dapat direset via API
 - `new_password` tidak boleh sama dengan password lama
 

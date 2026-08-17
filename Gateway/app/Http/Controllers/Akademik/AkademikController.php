@@ -693,6 +693,98 @@ class AkademikController extends Controller
         return $this->performRequest('GET', "{$this->reqUrl}/nilai/ranking/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester']), $header);
     }
 
+    /**
+     * GET /akademik/nilai/ranking/angkatan/export?format=csv|pdf&...
+     * SuperAdmin, Admin, Administrator Sekolah.
+     *
+     * Memakai perhitungan yang SAMA dengan getRankingAngkatan (dipanggil ulang
+     * secara internal) supaya angka di layar dan di file tidak pernah berbeda.
+     */
+    public function exportRankingAngkatan(Request $request)
+    {
+        try {
+            $format = strtolower((string) $request->input('format', 'csv'));
+            if (!in_array($format, ['csv', 'pdf'], true)) {
+                return $this->response('format harus csv atau pdf.', Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            // detail=1 selalu, supaya file memuat rincian per mapel bila diminta
+            $hasil = $this->decode($this->getRankingAngkatan($request));
+            if (($hasil['resCode'] ?? null) !== Response::HTTP_OK) {
+                return response()->json($hasil, $hasil['resCode'] ?? Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            $d       = $hasil['data'];
+            $jurusan = $d['jurusan'] ?: 'SEMUA';
+            $namaFile = sprintf(
+                'peringkat-angkatan-%s-%s-%s-sem%s',
+                $this->romawiTingkat($d['tingkat']),
+                $jurusan,
+                str_replace('/', '-', (string) $d['tahunAjaran']),
+                $d['semester']
+            );
+
+            return $format === 'pdf'
+                ? $this->exportPdf($d, $namaFile)
+                : $this->exportCsv($d, $namaFile);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private function romawiTingkat($tingkat): string
+    {
+        return [1 => 'X', 2 => 'XI', 3 => 'XII'][(int) $tingkat] ?? (string) $tingkat;
+    }
+
+    private function exportCsv(array $d, string $namaFile)
+    {
+        $baris = [];
+        $baris[] = ['Laporan Peringkat Se-Angkatan'];
+        $baris[] = ['Tingkat', $this->romawiTingkat($d['tingkat'])];
+        $baris[] = ['Jurusan', $d['jurusan'] ?: 'Semua jurusan'];
+        $baris[] = ['Tahun Ajaran', $d['tahunAjaran']];
+        $baris[] = ['Semester', $d['semester']];
+        $baris[] = ['Rata-rata Angkatan', $d['rataRataAngkatan']];
+        $baris[] = ['Jumlah Siswa', $d['totalSiswa']];
+        $baris[] = [];
+        $baris[] = ['Peringkat', 'NISN', 'Nama', 'Kelas', 'Rata-rata', 'Predikat', 'Mapel Dinilai', 'Belum Dinilai'];
+
+        foreach ($d['ranking'] as $r) {
+            $baris[] = [
+                $r['peringkat'], $r['nisn'], $r['namaLengkap'], $r['kelas'],
+                $r['rataRata'], $r['predikat'],
+                ($r['jumlahMapel'] ?? 0) - ($r['belumDinilai'] ?? 0),
+                $r['belumDinilai'] ?? 0,
+            ];
+        }
+
+        $out = fopen('php://temp', 'r+');
+        // BOM UTF-8 supaya Excel membaca huruf beraksen dengan benar
+        fwrite($out, "\xEF\xBB\xBF");
+        foreach ($baris as $b) {
+            fputcsv($out, $b, ';');   // titik koma: default Excel lokal ID
+        }
+        rewind($out);
+        $isi = stream_get_contents($out);
+        fclose($out);
+
+        return response($isi, Response::HTTP_OK, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$namaFile}.csv\"",
+        ]);
+    }
+
+    private function exportPdf(array $d, string $namaFile)
+    {
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('laporan.ranking-angkatan', [
+            'd'       => $d,
+            'tingkat' => $this->romawiTingkat($d['tingkat']),
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download("{$namaFile}.pdf");
+    }
+
     // Skala predikat (default sekolah). Ambang bawah -> huruf, urut menurun.
     private const SKALA_PREDIKAT = [90 => 'A', 80 => 'B', 70 => 'C', 60 => 'D', 0 => 'E'];
 
@@ -1411,7 +1503,10 @@ class AkademikController extends Controller
 
     private function decode($response): array
     {
-        $raw = $response instanceof \Illuminate\Http\Response
+        // Pakai tipe dasar Symfony, bukan Illuminate\Http\Response: respons
+        // internal dari $this->response() adalah JsonResponse (turunan lain),
+        // dan kalau tidak ikut tertangkap json_decode menerima objek -> [].
+        $raw = $response instanceof \Symfony\Component\HttpFoundation\Response
             ? $response->getContent()
             : $response;
         return json_decode($raw, true) ?? [];

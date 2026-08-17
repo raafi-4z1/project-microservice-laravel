@@ -9,7 +9,7 @@ use App\Http\Controllers\UserManagementController;
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
 // Register & manajemen user — hanya SuperAdmin dan Admin
-Route::middleware(['auth:api', 'force.pwd', 'check.role:SuperAdmin,Admin'])->group(function () {
+Route::middleware(['auth:api', 'force.pwd', 'check.role:SuperAdmin,Admin,AdminSekolah'])->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
 
     Route::get('/users', [UserManagementController::class, 'index']);
@@ -31,6 +31,6 @@ Route::middleware(['auth:api', 'force.pwd'])->group(function () {
 });
 
 // Reset password user lain — hanya SuperAdmin dan Admin
-Route::middleware(['auth:api', 'force.pwd', 'check.role:SuperAdmin,Admin'])->group(function () {
+Route::middleware(['auth:api', 'force.pwd', 'check.role:SuperAdmin,Admin,AdminSekolah'])->group(function () {
     Route::post('/users/{id}/password', [UserManagementController::class, 'resetPassword']);
 });

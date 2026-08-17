@@ -989,7 +989,23 @@ if ($pengampuGuruId -and $pengampuMapelId -and $pengampuKelasId) {
                 $testPengampuId = $p.idPengampuMapel; break
             }
         }
-        Info "Gunakan pengampu_id=$testPengampuId (existing)"
+        # 409 bisa dipicu pengampu milik GURU LAIN (satu mapel per kelas hanya boleh
+        # satu pengampu). Kalau dicari lewat daftar guru yang diminta hasilnya kosong,
+        # dan Phase 10 + 12 ikut ter-skip tanpa ada yang gagal — coverage turun diam-diam.
+        # Jadi cari lagi lewat daftar pengampu kelas tersebut.
+        if (-not $testPengampuId) {
+            $byKelas = (Api GET "akademik/kelas/$pengampuKelasId/pengampu`?tahun_ajaran=$tahun&semester=$semester").data
+            $match = @($byKelas | Where-Object { $_.mapelId -eq $pengampuMapelId }) | Select-Object -First 1
+            if ($match) {
+                $testPengampuId = $match.idPengampuMapel
+                Info "409 dari pengampu guru lain (guruId=$($match.guruId)) — dipakai id=$testPengampuId"
+            }
+        }
+        if ($testPengampuId) { Info "Gunakan pengampu_id=$testPengampuId (existing)" }
+        else {
+            $script:FAIL++
+            Write-Host "  [FAIL] 409 tapi pengampu existing tidak ditemukan — Phase 10 & 12 akan ter-skip" -ForegroundColor Red
+        }
     } else { Chk "POST /akademik/pengampu" $r 201 }
 }
 
@@ -1781,6 +1797,120 @@ if ($guruTok) {
     Chk "Guru -> ranking/angkatan (harus 403)" $r 403
 }
 
+# Ekspor laporan (CSV & PDF) — file, bukan JSON, jadi diuji lewat Invoke-WebRequest
+if ($tingkatAda) {
+    foreach ($fmt in @(@('csv', 'text/csv'), @('pdf', 'application/pdf'))) {
+        $url = "$($CFG.BaseUrl)/akademik/nilai/ranking/angkatan/export`?tingkat=$tingkatAda&$qpAng&format=$($fmt[0])"
+        try {
+            $resp = Invoke-WebRequest -Uri $url -Headers @{ Authorization = "Bearer $($script:TOKEN)" } -UseBasicParsing -TimeoutSec 90
+            $ct   = "$($resp.Headers['Content-Type'])"
+            $cd   = "$($resp.Headers['Content-Disposition'])"
+            if ($resp.StatusCode -eq 200 -and $ct -match [regex]::Escape($fmt[1]) -and $cd -match 'attachment') {
+                $script:PASS++; Write-Host "  [PASS] export format=$($fmt[0]) -> $($resp.RawContentLength) byte, $ct" -ForegroundColor Green
+            } else {
+                $script:FAIL++; Write-Host "  [FAIL] export format=$($fmt[0]) -> status=$($resp.StatusCode) ct=$ct cd=$cd" -ForegroundColor Red
+            }
+        } catch {
+            $script:FAIL++; Write-Host "  [FAIL] export format=$($fmt[0]) -- $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+    $r = Api GET "akademik/nilai/ranking/angkatan/export`?tingkat=$tingkatAda&$qpAng&format=xml"
+    Chk "export format tidak dikenal (harus 422)" $r 422
+} else {
+    Skip "Ekspor laporan angkatan" "belum ada data angkatan untuk diekspor"
+}
+
+# ──────────────────────────────────────────────
+#  PHASE 14.8 — Administrator Sekolah (karyawan staf TU)
+# ──────────────────────────────────────────────
+Section "Phase 14.8: Administrator Sekolah"
+
+# Butuh dua akun karyawan: satu bertanda Administrator Sekolah, satu biasa.
+# Dibuat di sini agar tes berdiri sendiri, lalu dibersihkan di akhir.
+$tsAS       = Get-Date -Format 'HHmmss'
+$emailTU    = "as.tu.$tsAS@sekolah.test"
+$emailBiasa = "as.biasa.$tsAS@sekolah.test"
+$pwAwal     = "AdminSek123"
+$pwBaru     = "AdminSek456"
+
+function New-KaryawanAkun($email, $nama, $jabatan, $isAdminSekolah, $nipSuffix) {
+    $r = Api POST "karyawan" @{
+        email = $email; nip = "3$tsAS$nipSuffix"; namaLengkap = $nama
+        jabatan = $jabatan; isAdminSekolah = $isAdminSekolah
+    }
+    if ($r.resCode -ne 201) { return $null }
+    $kid = $r.data.idKaryawan
+    $u   = Api GET "users`?per_page=300"
+    $uid = @($u.data.data | Where-Object { $_.email -eq $email })[0].id
+    if (-not $uid) { return $null }
+    Api POST "users/$uid/password" @{ new_password = $pwAwal; confirm_password = $pwAwal } | Out-Null
+    $lg = Api POST "login" @{ email = $email; password = $pwAwal; device_name = "as-test" }
+    if ($lg.resCode -ne 200) { return $null }
+    # lepas flag wajib-ganti-password agar token bisa dipakai di endpoint lain
+    Api POST "password" @{ current_password = $pwAwal; new_password = $pwBaru; confirm_password = $pwBaru } -Token $lg.data.token | Out-Null
+    $lg2 = Api POST "login" @{ email = $email; password = $pwBaru; device_name = "as-test" }
+    return @{ kid = $kid; uid = $uid; tok = $lg2.data.token; login = $lg2 }
+}
+
+$asTU    = New-KaryawanAkun $emailTU    "AS TU $tsAS"    "Tata Usaha" $true  "1"
+$asBiasa = New-KaryawanAkun $emailBiasa "AS Satpam $tsAS" "Satpam"    $false "2"
+
+if ($asTU -and $asBiasa) {
+    $script:CREATED['karyawan_as'] = @($asTU.kid, $asBiasa.kid)
+
+    # Penanda muncul di login & GET /user, dan hanya untuk yang ditandai
+    if ($asTU.login.data.isAdminSekolah -eq $true) { $script:PASS++; Write-Host "  [PASS] login TU memuat isAdminSekolah=true" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] login TU isAdminSekolah=$($asTU.login.data.isAdminSekolah)" -ForegroundColor Red }
+    if ($asBiasa.login.data.isAdminSekolah -eq $false) { $script:PASS++; Write-Host "  [PASS] login karyawan biasa isAdminSekolah=false" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] karyawan biasa isAdminSekolah=$($asBiasa.login.data.isAdminSekolah)" -ForegroundColor Red }
+
+    $r = Api GET "user" -Token $asTU.tok
+    Chk "GET /user (Administrator Sekolah)" $r 200; if ($script:LAST_CHK) {
+        if ($r.data.isAdminSekolah -eq $true) { $script:PASS++; Write-Host "  [PASS] GET /user memuat penanda" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] GET /user tanpa penanda" -ForegroundColor Red }
+    }
+
+    # Hak tulis akademik & master data: TU boleh (bukan 403), karyawan biasa 403
+    $tsX = Get-Date -Format 'mmss'
+    foreach ($ep in @(
+        @('akademik/kelas/assign', @{ siswa_id = 99999; kelas_id = 99999; tahun_ajaran = $tahun; semester = [int]$semester }),
+        @('akademik/pengampu',     @{ guru_id = 99999; mapel_id = 99999; kelas_id = 99999; tahun_ajaran = $tahun; semester = [int]$semester }),
+        @('mapel',                 @{ kode = "AS$tsX"; namaPelajaran = "Uji AS $tsX" })
+    )) {
+        $rTU = Api POST $ep[0] $ep[1] -Token $asTU.tok
+        if ($rTU.resCode -ne 403) { $script:PASS++; Write-Host "  [PASS] TU -> POST $($ep[0]) lolos gate role (resCode=$($rTU.resCode))" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] TU -> POST $($ep[0]) masih 403" -ForegroundColor Red }
+
+        $rBi = Api POST $ep[0] $ep[1] -Token $asBiasa.tok
+        Chk "Karyawan biasa -> POST $($ep[0]) (harus 403)" $rBi 403
+    }
+
+    # Guard anti-eskalasi
+    $r = Api POST "register" @{ name = "X"; email = "esc.$tsAS@sekolah.test"; password = "Rahasia123"; confirm_password = "Rahasia123"; role = "Admin" } -Token $asTU.tok
+    Chk "TU -> register role=Admin (harus 422)" $r 422
+
+    $r = Api POST "karyawan" @{ email = "esc2.$tsAS@sekolah.test"; nip = "4$tsAS"; namaLengkap = "Esc $tsAS"; jabatan = "Staf"; isAdminSekolah = $true } -Token $asTU.tok
+    if ($r.resCode -eq 201) {
+        $script:CREATED['karyawan_as'] += $r.data.idKaryawan
+        $cek = Api GET "karyawan`?idKaryawan=$($r.data.idKaryawan)"
+        if (-not $cek.data.isAdminSekolah) { $script:PASS++; Write-Host "  [PASS] TU tidak dapat mengangkat Administrator Sekolah baru (flag diabaikan)" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] TU BERHASIL mengangkat Administrator Sekolah — eskalasi hak!" -ForegroundColor Red }
+    } else {
+        Skip "TU angkat Administrator Sekolah" "pembuatan karyawan gagal ($($r.resCode))"
+    }
+
+    $u = Api GET "users`?per_page=300"
+    $adminUid = @($u.data.data | Where-Object { $_.role -eq 'Admin' })[0].id
+    if ($adminUid) {
+        $r = Api DELETE "users/$adminUid" -Token $asTU.tok
+        Chk "TU -> hapus akun Admin (harus 403)" $r 403
+    }
+    $r = Api DELETE "users/$($asTU.uid)" -Token $asTU.tok
+    Chk "TU -> hapus akun sendiri (harus 403)" $r 403
+} else {
+    Skip "Administrator Sekolah" "gagal menyiapkan akun karyawan uji"
+}
+
 # ──────────────────────────────────────────────
 #  PHASE 15 — CROSS-SERVICE VALIDATION
 # ──────────────────────────────────────────────
@@ -2049,6 +2179,16 @@ Section "Phase 17: Cleanup"
 if ($CFG.SkipCleanup) {
     Write-Host "  [SKIP] Cleanup dilewati (SkipCleanup=`$true)" -ForegroundColor Yellow
 } else {
+    # Hapus karyawan uji Administrator Sekolah (menghapus akun user-nya juga)
+    if ($script:CREATED['karyawan_as']) {
+        foreach ($kid in @($script:CREATED['karyawan_as'])) {
+            if (-not $kid) { continue }
+            $r = Api DELETE "karyawan/$kid"
+            $ok = ($r.resCode -eq 202 -or $r.resCode -eq 200 -or $r.resCode -eq 404)
+            if ($ok) { Write-Host "  [CLEAN] DELETE karyawan id=$kid" -ForegroundColor DarkGray }
+        }
+    }
+
     # Hapus nilai test
     if ($script:CREATED['nilai']) {
         $r = Api DELETE "akademik/nilai/$($script:CREATED['nilai'])"

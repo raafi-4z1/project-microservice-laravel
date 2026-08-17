@@ -11,10 +11,10 @@ Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.siswa_prefi
     // Detail berisi data pribadi (alamat, kontak orang tua, foto) —
     // sesama Siswa tidak boleh mengakses profil lengkap siswa lain
     Route::get('/', [SiswaController::class, 'show'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
-    Route::post('/', [SiswaController::class, 'store'])->middleware('check.role:SuperAdmin,Admin');
-    Route::post('update', [SiswaController::class, 'update'])->middleware('check.role:SuperAdmin,Admin');
+    Route::post('/', [SiswaController::class, 'store'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
+    Route::post('update', [SiswaController::class, 'update'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
     // Kartu absensi — SuperAdmin/Admin
-    Route::post('kartu/terbitkan', [SiswaController::class, 'terbitkanKartu'])->middleware('check.role:SuperAdmin,Admin');
-    Route::post('kartu/blokir', [SiswaController::class, 'blokirKartu'])->middleware('check.role:SuperAdmin,Admin');
-    Route::delete('/{id}', [SiswaController::class, 'destroy'])->middleware('check.role:SuperAdmin,Admin');
+    Route::post('kartu/terbitkan', [SiswaController::class, 'terbitkanKartu'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
+    Route::post('kartu/blokir', [SiswaController::class, 'blokirKartu'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
+    Route::delete('/{id}', [SiswaController::class, 'destroy'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
 });

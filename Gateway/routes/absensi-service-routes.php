@@ -13,7 +13,7 @@ Route::middleware(['auth.terminal'])->prefix('absensi')->group(function () {
 // Manajemen PIN oleh user login.
 Route::middleware(['auth:api', 'force.pwd'])->prefix('absensi')->group(function () {
     // Admin membuka jendela PIN untuk pegawai yang lupa kartu
-    Route::post('pin/buka', [AbsensiController::class, 'bukaPinWindow'])->middleware('check.role:SuperAdmin,Admin');
+    Route::post('pin/buka', [AbsensiController::class, 'bukaPinWindow'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
     // Pegawai mengatur PIN sendiri
     Route::post('pin/atur', [AbsensiController::class, 'aturPin'])->middleware('check.role:Guru,Karyawan');
 });

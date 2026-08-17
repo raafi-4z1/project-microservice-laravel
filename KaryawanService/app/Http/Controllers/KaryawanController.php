@@ -35,7 +35,7 @@ class KaryawanController extends Controller
                 );
             }
 
-            $columns  = ['id', 'nama_lengkap', 'nip', 'email', 'jabatan', 'status_kepegawaian', 'kartu_status'];
+            $columns  = ['id', 'nama_lengkap', 'nip', 'email', 'jabatan', 'is_admin_sekolah', 'status_kepegawaian', 'kartu_status'];
             $perPage  = $request->input('per_page', 5);
 
             $query = Karyawan::select($columns);
@@ -149,6 +149,7 @@ class KaryawanController extends Controller
                 'nip'               => 'required|string|max:20',
                 'namaLengkap'       => 'required',
                 'jabatan'           => 'required',
+                'isAdminSekolah'    => 'sometimes|boolean',
                 'statusKepegawaian' => 'sometimes',
                 'jenisKelamin'      => 'sometimes|in:Laki-Laki,Perempuan',
                 'noTelp'            => 'sometimes|numeric',
@@ -173,6 +174,7 @@ class KaryawanController extends Controller
                 'nip'          => $request->nip,
                 'nama_lengkap' => $request->namaLengkap,
                 'jabatan'      => $request->jabatan,
+                'is_admin_sekolah' => filter_var($request->input('isAdminSekolah', false), FILTER_VALIDATE_BOOLEAN),
             ];
 
             if ($request->filled('statusKepegawaian')) {
@@ -218,6 +220,7 @@ class KaryawanController extends Controller
                 'nip'               => 'sometimes|string|max:20',
                 'namaLengkap'       => 'sometimes',
                 'jabatan'           => 'sometimes',
+                'isAdminSekolah'    => 'sometimes|boolean',
                 'statusKepegawaian' => 'sometimes',
                 'jenisKelamin'      => 'sometimes|in:Laki-Laki,Perempuan',
                 'noTelp'            => 'sometimes|numeric',
@@ -253,6 +256,11 @@ class KaryawanController extends Controller
             }
             if ($request->filled('jabatan')) {
                 $updateData['jabatan'] = $request->jabatan;
+            }
+            // has(), bukan filled(): "false" harus bisa MENCABUT penandanya.
+            // Gateway sudah menyaring siapa yang boleh mengirim field ini.
+            if ($request->has('isAdminSekolah')) {
+                $updateData['is_admin_sekolah'] = filter_var($request->input('isAdminSekolah'), FILTER_VALIDATE_BOOLEAN);
             }
             if ($request->filled('statusKepegawaian')) {
                 $updateData['status_kepegawaian'] = $request->statusKepegawaian;
@@ -514,6 +522,7 @@ class KaryawanController extends Controller
         $map = [
             'id'                   => 'idKaryawan',
             'nama_lengkap'         => 'namaLengkap',
+            'is_admin_sekolah'     => 'isAdminSekolah',
             'status_kepegawaian'   => 'statusKepegawaian',
             'jenis_kelamin'        => 'jenisKelamin',
             'no_telp'              => 'noTelp',

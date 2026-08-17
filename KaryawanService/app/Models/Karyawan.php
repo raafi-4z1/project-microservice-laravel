@@ -22,6 +22,10 @@ class Karyawan extends Model
         'nip',
         'nama_lengkap',
         'jabatan',
+        // Penanda staf Tata Usaha ("Administrator Sekolah"). Otorisasi dibaca
+        // Gateway dari users.is_admin_sekolah; kolom ini sisi domain agar
+        // daftar/detail karyawan bisa menampilkannya.
+        'is_admin_sekolah',
         'status_kepegawaian',
         'jenis_kelamin',
         'no_telp',
@@ -47,6 +51,8 @@ class Karyawan extends Model
     {
         return [
             'kartu_diterbitkan_at' => 'datetime',
+            // boolean asli di JSON, bukan 1/0 — klien memakainya untuk gating menu
+            'is_admin_sekolah'     => 'boolean',
         ];
     }
 

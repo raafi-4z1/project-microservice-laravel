@@ -53,13 +53,38 @@ class KaryawanController extends Controller
         return $response;
     }
 
+    /**
+     * Penanda Administrator Sekolah hanya boleh diberikan oleh SuperAdmin/Admin.
+     * Kalau Administrator Sekolah sendiri boleh menyalakannya, ia bisa mencetak
+     * "admin" baru sesuka hati — eskalasi hak. Nilainya dipaksa apa adanya untuk
+     * pemanggil lain, dan dibuang dari payload yang diteruskan ke service.
+     */
+    private function bolehSetAdminSekolah(Request $request): bool
+    {
+        return in_array(auth()->user()->role, ['SuperAdmin', 'Admin'], true);
+    }
+
+    private function flagAdminSekolah(Request $request): bool
+    {
+        return $this->bolehSetAdminSekolah($request)
+            && filter_var($request->input('isAdminSekolah', false), FILTER_VALIDATE_BOOLEAN);
+    }
+
     public function store(Request $request) {
         try {
-            $response = $this->performRequest($request->method(), "{$this->reqUrl}", $request->all());
+            $payload = $request->all();
+            $payload['isAdminSekolah'] = $this->flagAdminSekolah($request);
+
+            $response = $this->performRequest($request->method(), "{$this->reqUrl}", $payload);
             $decode = $this->decode($response);
 
             if (($decode['resCode'] ?? null) === Response::HTTP_CREATED) {
-                $this->userService->create($request->namaLengkap, $request->email, "Karyawan");
+                $this->userService->create(
+                    $request->namaLengkap,
+                    $request->email,
+                    "Karyawan",
+                    $payload['isAdminSekolah']
+                );
                 $this->auditLog('created', 'karyawan', $decode['data']['idKaryawan'] ?? null, [
                     'namaLengkap' => $request->namaLengkap,
                     'email'       => $request->email,
@@ -76,17 +101,32 @@ class KaryawanController extends Controller
 
     public function update(Request $request) {
         try {
-            $response = $this->performRequest($request->method(), "{$this->reqUrl}/update", $request->all());
+            $payload = $request->all();
+            // Hanya SuperAdmin/Admin yang boleh mengubah penanda ini; kalau
+            // pemanggil tidak berhak, field-nya dibuang agar nilai lama bertahan.
+            $ubahFlag = $request->has('isAdminSekolah') && $this->bolehSetAdminSekolah($request);
+            if (!$ubahFlag) {
+                unset($payload['isAdminSekolah']);
+            } else {
+                $payload['isAdminSekolah'] = filter_var($request->input('isAdminSekolah'), FILTER_VALIDATE_BOOLEAN);
+            }
+
+            $response = $this->performRequest($request->method(), "{$this->reqUrl}/update", $payload);
             $decode = $this->decode($response);
 
             if (($decode['resCode'] ?? null) === Response::HTTP_ACCEPTED) {
                 if ($request->filled('namaLengkap')) {
                     $this->userService->update($decode['data']['email'], $request->namaLengkap);
                 }
+                // Sinkronkan penanda ke akun user (dipakai middleware otorisasi)
+                if ($ubahFlag && !empty($decode['data']['email'])) {
+                    $this->userService->setAdminSekolah($decode['data']['email'], $payload['isAdminSekolah']);
+                }
                 $this->auditLog('updated', 'karyawan', $request->idKaryawan, array_filter([
-                    'namaLengkap' => $request->namaLengkap,
-                    'jabatan'     => $request->jabatan,
-                    'alamat'      => $request->alamat,
+                    'namaLengkap'    => $request->namaLengkap,
+                    'jabatan'        => $request->jabatan,
+                    'alamat'         => $request->alamat,
+                    'isAdminSekolah' => $ubahFlag ? ($payload['isAdminSekolah'] ? 'true' : 'false') : null,
                 ]));
             }
 
@@ -114,6 +154,19 @@ class KaryawanController extends Controller
                 if ($targetUser && in_array($targetUser->role, ['Admin', 'SuperAdmin'])) {
                     return $this->response(
                         'Admin tidak dapat menghapus data milik Admin atau SuperAdmin.',
+                        Response::HTTP_FORBIDDEN
+                    );
+                }
+            }
+
+            // Administrator Sekolah tidak boleh menyingkirkan sesamanya —
+            // menghapus karyawan ikut menghapus akunnya, jadi ini jalur yang
+            // sama berbahayanya dengan DELETE /users/{id}.
+            if ($targetEmail && auth()->user()->isAdminSekolah()) {
+                $targetUser = User::where('email', $targetEmail)->first();
+                if ($targetUser && $targetUser->isAdminSekolah()) {
+                    return $this->response(
+                        'Administrator Sekolah tidak dapat menghapus sesama Administrator Sekolah.',
                         Response::HTTP_FORBIDDEN
                     );
                 }

@@ -23,9 +23,30 @@ class User extends Authenticatable
         'name',
         'email',
         'role',
+        'is_admin_sekolah',
         'password',
         'must_change_password',
     ];
+
+    /**
+     * `isAdminSekolah` (camelCase) ikut di setiap respons yang mengembalikan
+     * model ini — mis. GET /user — supaya klien bisa menentukan menu manajemen
+     * tanpa panggilan tambahan. Kolom mentahnya disembunyikan agar tidak muncul
+     * dua kali dengan gaya penamaan berbeda.
+     */
+    protected $appends = ['isAdminSekolah'];
+
+    public function getIsAdminSekolahAttribute(): bool
+    {
+        return $this->role === 'Karyawan'
+            && (bool) ($this->attributes['is_admin_sekolah'] ?? false);
+    }
+
+    /** Administrator Sekolah = karyawan yang diberi hak tulis operasional. */
+    public function isAdminSekolah(): bool
+    {
+        return $this->getIsAdminSekolahAttribute();
+    }
 
     /**
      * The attributes that should be hidden for serialization.
@@ -35,6 +56,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'is_admin_sekolah', // diekspos sebagai `isAdminSekolah` (lihat $appends)
     ];
 
     /**
@@ -48,6 +70,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'must_change_password' => 'boolean',
+            'is_admin_sekolah' => 'boolean',
         ];
     }
 }

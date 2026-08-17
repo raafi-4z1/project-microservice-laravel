@@ -66,13 +66,20 @@ Saat `POST /karyawan`, Gateway otomatis membuat akun user role `Karyawan` (passw
 | `nip` | ✅ | Nomor induk pegawai, unik (maks 20 karakter) |
 | `namaLengkap` | ✅ | Nama lengkap |
 | `jabatan` | ✅ | Mis. "Staf TU", "Keamanan", "Kebersihan" |
+| `isAdminSekolah` | ❌ | `true` = staf **Administrator Sekolah** (Tata Usaha) yang berhak manajemen akademik. Default `false`. **Hanya SuperAdmin/Admin yang boleh mengirim field ini** — Gateway membuangnya dari pemanggil lain agar tidak terjadi eskalasi hak |
 | `statusKepegawaian` | ❌ | PNS / Honorer / dll. |
 | `jenisKelamin` | ❌ | `Laki-Laki` / `Perempuan` |
 | `noTelp` | ❌ | Nomor telepon |
 | `alamat` | ❌ | Alamat |
 | `foto` | ❌ | JPEG/PNG/JPG maks 2 MB, min 360×480 px |
 
-**Response:** `idKaryawan`, `namaLengkap`, `nip`, `email`, `jabatan`, `statusKepegawaian`, `jenisKelamin`, `noTelp`, `alamat`, `foto` (data-URI base64), `kartuStatus`.
+**Response:** `idKaryawan`, `namaLengkap`, `nip`, `email`, `jabatan`, `isAdminSekolah` (boolean), `statusKepegawaian`, `jenisKelamin`, `noTelp`, `alamat`, `foto` (data-URI base64), `kartuStatus`.
+
+> **Administrator Sekolah.** Kolom `is_admin_sekolah` di sini bersifat **data domain**
+> (agar daftar/detail karyawan menampilkan siapa staf TU). Keputusan **otorisasi**
+> dibaca Gateway dari `users.is_admin_sekolah`; Gateway menulis keduanya dalam satu
+> operasi saat karyawan dibuat/diubah. Rincian hak aksesnya ada di
+> [Gateway/README.md](../Gateway/README.md#administrator-sekolah-staf-tata-usaha).
 
 ---
 

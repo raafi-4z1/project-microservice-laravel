@@ -20,6 +20,38 @@ class UserManagementController extends Controller
     // Role yang Admin boleh hapus
     private const ADMIN_DELETABLE_ROLES = ['Guru', 'Siswa', 'Karyawan'];
 
+    /**
+     * Administrator Sekolah (staf TU) berrole `Karyawan`, sehingga pemeriksaan
+     * berbasis role saja TIDAK menjangkaunya — tanpa ini ia bisa menghapus akun
+     * Admin. Batasnya dibuat sama dengan Admin, PLUS larangan menyentuh sesama
+     * Administrator Sekolah supaya mereka tidak bisa saling menyingkirkan.
+     *
+     * null = boleh; JsonResponse = ditolak.
+     */
+    private function batasiAdminSekolah(User $requester, User $target, string $aksi): ?\Illuminate\Http\JsonResponse
+    {
+        if (!$requester->isAdminSekolah()) {
+            return null;
+        }
+
+        if (!in_array($target->role, self::ADMIN_DELETABLE_ROLES, true)) {
+            return $this->response(
+                "Administrator Sekolah hanya dapat {$aksi} akun dengan role: "
+                    . implode(', ', self::ADMIN_DELETABLE_ROLES) . '.',
+                Response::HTTP_FORBIDDEN
+            );
+        }
+
+        if ($target->isAdminSekolah()) {
+            return $this->response(
+                "Administrator Sekolah tidak dapat {$aksi} akun sesama Administrator Sekolah.",
+                Response::HTTP_FORBIDDEN
+            );
+        }
+
+        return null;
+    }
+
     public function index(Request $request)
     {
         $query = User::select('id', 'name', 'email', 'role', 'must_change_password', 'created_at');
@@ -86,6 +118,10 @@ class UserManagementController extends Controller
             );
         }
 
+        if ($tolak = $this->batasiAdminSekolah($requester, $target, 'menghapus')) {
+            return $tolak;
+        }
+
         // Cabut semua token aktif milik user yang dihapus
         $target->tokens()->where('revoked', false)->each(fn ($t) => $t->revoke());
 
@@ -135,6 +171,12 @@ class UserManagementController extends Controller
                 'Admin hanya dapat mereset password: ' . implode(', ', self::ADMIN_DELETABLE_ROLES) . '.',
                 Response::HTTP_FORBIDDEN
             );
+        }
+
+        // Reset password = jalan pintas mengambil alih akun, jadi dibatasi sama
+        // ketatnya dengan penghapusan (termasuk sesama Administrator Sekolah).
+        if ($tolak = $this->batasiAdminSekolah($requester, $target, 'mereset password')) {
+            return $tolak;
         }
 
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [

@@ -104,6 +104,10 @@ class AuthController extends Controller
                     'user'  => $user->name,
                     'email' => $user->email,
                     'role'  => $user->role,
+                    // Karyawan bertanda Administrator Sekolah (staf TU) punya hak
+                    // tulis operasional setara Admin — klien memakai ini untuk
+                    // memutuskan menampilkan menu manajemen akademik.
+                    'isAdminSekolah' => $user->isAdminSekolah(),
                     // true = akun masih memakai password default; client wajib
                     // mengarahkan ke layar ganti password sebelum fitur lain
                     'mustChangePassword' => (bool) ($user->must_change_password ?? false),

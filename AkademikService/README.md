@@ -193,7 +193,8 @@ Pemetaan slot (`ke`) → jam dinding. Bisa berbeda **per periode** (Ramadan) dan
 | GET | `/akademik/raport/saya` | Siswa | Raport diri sendiri (khusus role Siswa) |
 | GET | `/akademik/nilai/ranking/kelas/{id}` | SuperAdmin, Admin, Karyawan, Guru **wali** | Ranking siswa dalam kelas (guru non-wali → 403) |
 | GET | `/akademik/nilai/ranking/saya` | Siswa | Posisi ranking diri sendiri (khusus role Siswa) |
-| GET | `/akademik/nilai/ranking/angkatan` | SuperAdmin, Admin | Peringkat **se-angkatan** — lihat di bawah |
+| GET | `/akademik/nilai/ranking/angkatan` | SuperAdmin, Admin, Administrator Sekolah | Peringkat **se-angkatan** — lihat di bawah |
+| GET | `/akademik/nilai/ranking/angkatan/export` | SuperAdmin, Admin, Administrator Sekolah | Unduh laporan yang sama sebagai **CSV** atau **PDF** |
 
 > **Aturan akses data se-kelas.** Raport, ranking, seluruh nilai kelas, dan rekap
 > absensi harian kelas hanya boleh dibuka **wali kelas** yang bersangkutan —
@@ -224,6 +225,24 @@ Peringkat dihitung di **Gateway**, bukan service ini: aturan seri memakai urutan
 alfabet nama, sedangkan nama ada di SiswaService. Service ini hanya menyediakan
 data mentah lewat `GET nilai/angkatan/rekap?kelas_ids=1,2,3&...` (dipanggil internal
 oleh Gateway, tidak diekspos ke klien).
+
+#### Unduh laporan — `GET /akademik/nilai/ranking/angkatan/export`
+
+Parameter sama persis dengan endpoint di atas, ditambah `format=csv|pdf`
+(default `csv`). Format lain → **422**.
+
+| Format | Content-Type | Catatan |
+|---|---|---|
+| `csv` | `text/csv; charset=UTF-8` | Diawali BOM UTF-8 dan memakai pemisah `;` agar langsung rapi saat dibuka Excel dengan locale Indonesia |
+| `pdf` | `application/pdf` | Siap cetak/arsip (A4 portrait), dirender `barryvdh/laravel-dompdf` dari view `resources/views/laporan/ranking-angkatan.blade.php` |
+
+Nama berkas otomatis, mis. `peringkat-angkatan-XII-MIPA-2024-2025-sem2.pdf`.
+
+Ekspor **memanggil ulang perhitungan yang sama** (bukan menyalin logika), sehingga
+angka di layar dan di berkas tidak mungkin berbeda.
+
+> Butuh `composer install` di Gateway (paket `barryvdh/laravel-dompdf`). Tanpa itu
+> `format=pdf` akan error; `format=csv` tetap jalan karena murni PHP bawaan.
 
 ### Absensi — Per Pelajaran (Guru)
 

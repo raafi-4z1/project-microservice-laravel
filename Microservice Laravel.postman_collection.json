@@ -1852,6 +1852,12 @@
                   "type": "text"
                 },
                 {
+                  "key": "isAdminSekolah",
+                  "value": "false",
+                  "type": "text",
+                  "description": "true = Administrator Sekolah (staf TU). Hanya SuperAdmin/Admin yang boleh mengirim."
+                },
+                {
                   "key": "statusKepegawaian",
                   "value": "Tetap",
                   "type": "text"
@@ -1887,7 +1893,7 @@
                 "karyawan"
               ]
             },
-            "description": "Tambah karyawan. **SuperAdmin/Admin.** Foto opsional (JPEG/PNG, maks 2MB, min 360x480)."
+            "description": "Tambah karyawan. **SuperAdmin/Admin.** Foto opsional (JPEG/PNG, maks 2MB, min 360x480).\n\n**`isAdminSekolah`** — `true` menandai karyawan ini sebagai **Administrator Sekolah** (staf Tata Usaha) yang berhak manajemen akademik + data induk + kartu + pembuatan akun Guru/Siswa/Karyawan.\n\nHanya **SuperAdmin/Admin** yang boleh mengirim field ini — dari pemanggil lain Gateway membuangnya (anti eskalasi hak). Mencabut penanda otomatis mencabut seluruh token aktif akun tersebut.\n\nPenanda ikut di respons **login** dan **GET /user** sebagai `isAdminSekolah`."
           },
           "response": []
         },
@@ -1916,6 +1922,12 @@
                   "type": "text"
                 },
                 {
+                  "key": "isAdminSekolah",
+                  "value": "false",
+                  "type": "text",
+                  "description": "true = Administrator Sekolah (staf TU). Hanya SuperAdmin/Admin yang boleh mengirim."
+                },
+                {
                   "key": "noTelp",
                   "value": "08987654321",
                   "type": "text"
@@ -1937,7 +1949,7 @@
                 "update"
               ]
             },
-            "description": "Update karyawan. **SuperAdmin/Admin.** Kirim hanya field yang diubah."
+            "description": "Update karyawan. **SuperAdmin/Admin.** Kirim hanya field yang diubah.\n\n**`isAdminSekolah`** — `true` menandai karyawan ini sebagai **Administrator Sekolah** (staf Tata Usaha) yang berhak manajemen akademik + data induk + kartu + pembuatan akun Guru/Siswa/Karyawan.\n\nHanya **SuperAdmin/Admin** yang boleh mengirim field ini — dari pemanggil lain Gateway membuangnya (anti eskalasi hak). Mencabut penanda otomatis mencabut seluruh token aktif akun tersebut.\n\nPenanda ikut di respons **login** dan **GET /user** sebagai `isAdminSekolah`."
           },
           "response": []
         },
@@ -4034,7 +4046,62 @@
                     }
                   ]
                 },
-                "description": "Laporan peringkat **satu angkatan** (satu tingkat pada TA berjalan), opsional dipersempit per jurusan.\n\n**Akses:** SuperAdmin, Admin saja.\n\n**Aturan perhitungan:**\n1. Mapel yang **belum dinilai dihitung 0** (bukan diabaikan) — penyebut rata-rata adalah jumlah pengampu di kelas, bukan jumlah baris nilai. Lihat `belumDinilai`/`jumlahMapel`.\n2. Siswa **non-aktif** (Lulus/Berhenti/Pindah) dibuang SEBELUM peringkat dihitung.\n3. Peringkat kompetisi standar: rata-rata sama -> **peringkat sama**, ditampilkan urut alfabet nama; peringkat berikutnya **melompat** (mis. 1, 2, 2, 4, 5).\n4. `rataRataAngkatan` = rata-rata dari rata-rata seluruh siswa aktif.\n\n**Predikat:** A >=90, B >=80, C >=70, D >=60, E <60.\n\n`detail=1` menambahkan array `nilai` per siswa (per mapel + predikat) untuk cetak laporan lengkap."
+                "description": "Laporan peringkat **satu angkatan** (satu tingkat pada TA berjalan), opsional dipersempit per jurusan.\n\n**Akses:** SuperAdmin, Admin, dan Karyawan bertanda **Administrator Sekolah**.\n\n**Aturan perhitungan:**\n1. Mapel yang **belum dinilai dihitung 0** (bukan diabaikan) — penyebut rata-rata adalah jumlah pengampu di kelas, bukan jumlah baris nilai. Lihat `belumDinilai`/`jumlahMapel`.\n2. Siswa **non-aktif** (Lulus/Berhenti/Pindah) dibuang SEBELUM peringkat dihitung.\n3. Peringkat kompetisi standar: rata-rata sama -> **peringkat sama**, ditampilkan urut alfabet nama; peringkat berikutnya **melompat** (mis. 1, 2, 2, 4, 5).\n4. `rataRataAngkatan` = rata-rata dari rata-rata seluruh siswa aktif.\n\n**Predikat:** A >=90, B >=80, C >=70, D >=60, E <60.\n\n`detail=1` menambahkan array `nilai` per siswa (per mapel + predikat) untuk cetak laporan lengkap."
+              },
+              "response": []
+            },
+            {
+              "name": "GET Ekspor Ranking Se-Angkatan",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "*/*",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/nilai/ranking/angkatan/export?tingkat=3&jurusan=MIPA&tahun_ajaran=2024/2025&semester=2&format=pdf",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "nilai",
+                    "ranking",
+                    "angkatan",
+                    "export"
+                  ],
+                  "query": [
+                    {
+                      "key": "tingkat",
+                      "value": "3",
+                      "description": "WAJIB. 1=X, 2=XI, 3=XII"
+                    },
+                    {
+                      "key": "jurusan",
+                      "value": "MIPA",
+                      "description": "opsional"
+                    },
+                    {
+                      "key": "tahun_ajaran",
+                      "value": "2024/2025",
+                      "description": "opsional; default semester aktif"
+                    },
+                    {
+                      "key": "semester",
+                      "value": "2",
+                      "description": "opsional; default semester aktif"
+                    },
+                    {
+                      "key": "format",
+                      "value": "pdf",
+                      "description": "csv (default) atau pdf; lainnya -> 422"
+                    }
+                  ]
+                },
+                "description": "Unduh laporan peringkat se-angkatan sebagai berkas.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah.\n\n| Format | Hasil |\n|---|---|\n| `csv` | `text/csv; charset=UTF-8`, ber-BOM dan pemisah `;` agar rapi di Excel locale Indonesia |\n| `pdf` | `application/pdf` siap cetak (A4 portrait) |\n\nBerkas dikirim sebagai `Content-Disposition: attachment` dengan nama otomatis, mis. `peringkat-angkatan-XII-MIPA-2024-2025-sem2.pdf`.\n\nAngkanya identik dengan `GET .../ranking/angkatan` karena ekspor memanggil ulang perhitungan yang sama, bukan menyalin logikanya.\n\nDi Postman, klik **Save Response → Save to a file** untuk menyimpan hasilnya."
               },
               "response": []
             }
