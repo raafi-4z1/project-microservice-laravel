@@ -38,6 +38,12 @@ Base URL: `https://gateway.test/api`
 >
 > Pengecualian yang TIDAK ikut terbuka: input/ubah/hapus **nilai** (tetap
 > SuperAdmin/Admin/Guru pengampu) dan endpoint khusus role Siswa/Guru.
+>
+> **Karyawan biasa tidak boleh membaca data akademik siswa.** Nilai, raport,
+> ranking kelas, dan rekap absensi siswa memakai `check.role:...,AdminSekolah,Guru`
+> — tanpa role `Karyawan`. Yang tersisa untuk karyawan biasa: `rekap/pegawai/saya`
+> (rekap dirinya sendiri) dan direktori sekolah versi publik. Rinciannya di
+> [Gateway/README.md](../Gateway/README.md#privasi-baca--direktori-publik-vs-data-pribadi).
 
 ### Semester Aktif
 
@@ -57,8 +63,8 @@ Base URL: `https://gateway.test/api`
 | GET | `/akademik/kelas/{id}/siswa` | Semua | List siswa aktif dalam kelas |
 | GET | `/akademik/siswa/{id}/kelas` | Semua | Kelas aktif siswa per semester |
 | GET | `/akademik/siswa/belum-terdaftar` | SuperAdmin, Admin | Siswa yang belum masuk kelas manapun |
-| GET | `/akademik/kelas/{id}/siswa/riwayat` | SuperAdmin, Admin | Semua siswa pernah di kelas (termasuk yang dipindah) |
-| GET | `/akademik/siswa/{id}/kelas/riwayat` | SuperAdmin, Admin | Semua kelas pernah diikuti siswa |
+| GET | `/akademik/kelas/{id}/siswa/riwayat` | SuperAdmin, Admin, Adm. Sekolah | Semua siswa pernah di kelas (termasuk yang dipindah) |
+| GET | `/akademik/siswa/{id}/kelas/riwayat` | SuperAdmin, Admin, Adm. Sekolah | Semua kelas pernah diikuti siswa |
 
 ### Pengampu Mapel
 
@@ -70,8 +76,8 @@ Base URL: `https://gateway.test/api`
 | GET | `/akademik/kelas/{id}/pengampu` | Semua | Semua pengampu mapel aktif dalam kelas |
 | GET | `/akademik/guru/{id}/mapel` | Semua | Mapel aktif yang diampu guru |
 | GET | `/akademik/mapel/{id}/guru` | Semua | Guru aktif pengampu mapel |
-| GET | `/akademik/guru/{id}/mapel/riwayat` | SuperAdmin, Admin | Semua mapel pernah diampu guru |
-| GET | `/akademik/mapel/{id}/guru/riwayat` | SuperAdmin, Admin | Semua guru pernah mengampu mapel |
+| GET | `/akademik/guru/{id}/mapel/riwayat` | SuperAdmin, Admin, Adm. Sekolah | Semua mapel pernah diampu guru |
+| GET | `/akademik/mapel/{id}/guru/riwayat` | SuperAdmin, Admin, Adm. Sekolah | Semua guru pernah mengampu mapel |
 
 ### Wali Kelas
 
@@ -189,19 +195,19 @@ Pemetaan slot (`ke`) → jam dinding. Bisa berbeda **per periode** (Ramadan) dan
 | POST | `/akademik/nilai` | SuperAdmin, Admin, Guru | Tambah nilai siswa |
 | PATCH | `/akademik/nilai/{id}` | SuperAdmin, Admin, Guru | Update nilai siswa |
 | DELETE | `/akademik/nilai/{id}` | SuperAdmin, Admin, Guru | Hapus record nilai |
-| GET | `/akademik/nilai/pengampu/{id}` | SuperAdmin, Admin, Karyawan, Guru **pengampunya** | Nilai seluruh siswa untuk satu pengampu mapel (guru lain → 403) |
-| GET | `/akademik/nilai/kelas/{id}` | SuperAdmin, Admin, Karyawan, Guru **wali** | Semua nilai dalam satu kelas (guru non-wali → 403) |
-| GET | `/akademik/nilai/siswa/{id}` | SuperAdmin, Admin, Guru, Karyawan | Semua nilai satu siswa |
+| GET | `/akademik/nilai/pengampu/{id}` | SuperAdmin, Admin, Adm. Sekolah, Guru **pengampunya** | Nilai seluruh siswa untuk satu pengampu mapel (guru lain → 403) |
+| GET | `/akademik/nilai/kelas/{id}` | SuperAdmin, Admin, Adm. Sekolah, Guru **wali** | Semua nilai dalam satu kelas (guru non-wali → 403) |
+| GET | `/akademik/nilai/siswa/{id}` | SuperAdmin, Admin, Adm. Sekolah, Guru | Semua nilai satu siswa |
 | GET | `/akademik/nilai/saya` | Siswa | Nilai diri sendiri (khusus role Siswa) |
 
 ### Raport & Ranking
 
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
-| GET | `/akademik/raport/siswa/{id}` | SuperAdmin, Admin, Guru, Karyawan | Raport satu siswa (semua mapel) |
-| GET | `/akademik/raport/kelas/{id}` | SuperAdmin, Admin, Karyawan, Guru **wali** | Raport seluruh siswa dalam kelas (guru non-wali → 403) |
+| GET | `/akademik/raport/siswa/{id}` | SuperAdmin, Admin, Adm. Sekolah, Guru | Raport satu siswa (semua mapel) |
+| GET | `/akademik/raport/kelas/{id}` | SuperAdmin, Admin, Adm. Sekolah, Guru **wali** | Raport seluruh siswa dalam kelas (guru non-wali → 403) |
 | GET | `/akademik/raport/saya` | Siswa | Raport diri sendiri (khusus role Siswa) |
-| GET | `/akademik/nilai/ranking/kelas/{id}` | SuperAdmin, Admin, Karyawan, Guru **wali** | Ranking siswa dalam kelas (guru non-wali → 403) |
+| GET | `/akademik/nilai/ranking/kelas/{id}` | SuperAdmin, Admin, Adm. Sekolah, Guru **wali** | Ranking siswa dalam kelas (guru non-wali → 403) |
 | GET | `/akademik/nilai/ranking/saya` | Siswa | Posisi ranking diri sendiri (khusus role Siswa) |
 | GET | `/akademik/nilai/ranking/angkatan` | SuperAdmin, Admin, Administrator Sekolah | Peringkat **se-angkatan** — lihat di bawah |
 | GET | `/akademik/nilai/ranking/angkatan/export` | SuperAdmin, Admin, Administrator Sekolah | Unduh laporan yang sama sebagai **CSV** atau **PDF** |
@@ -279,10 +285,10 @@ Rentang default = awal bulan berjalan s/d hari ini (WIB); override via `tanggal_
 
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
-| GET | `/akademik/absensi/rekap/harian/kelas/{id}` | SuperAdmin, Admin, Karyawan, Guru **wali** | Rekap per siswa dalam kelas (guru non-wali → 403) |
-| GET | `/akademik/absensi/rekap/harian/siswa/{id}` | SuperAdmin, Admin, Guru, Karyawan | Ringkasan + detail harian 1 siswa |
+| GET | `/akademik/absensi/rekap/harian/kelas/{id}` | SuperAdmin, Admin, Adm. Sekolah, Guru **wali** | Rekap per siswa dalam kelas (guru non-wali → 403) |
+| GET | `/akademik/absensi/rekap/harian/siswa/{id}` | SuperAdmin, Admin, Adm. Sekolah, Guru | Ringkasan + detail harian 1 siswa |
 | GET | `/akademik/absensi/rekap/harian/saya` | Siswa | Rekap harian diri sendiri |
-| GET | `/akademik/absensi/rekap/pelajaran/siswa/{id}` | SuperAdmin, Admin, Guru, Karyawan | Ringkasan absensi per pelajaran 1 siswa |
+| GET | `/akademik/absensi/rekap/pelajaran/siswa/{id}` | SuperAdmin, Admin, Adm. Sekolah, Guru | Ringkasan absensi per pelajaran 1 siswa |
 | GET | `/akademik/absensi/rekap/pelajaran/saya` | Siswa | Rekap pelajaran diri sendiri |
 | GET | `/akademik/absensi/rekap/pegawai/{tipe}/{id}` | SuperAdmin, Admin, Administrator Sekolah | Rekap pegawai lain (`tipe` = `guru`\|`karyawan`) |
 | GET | `/akademik/absensi/rekap/pegawai/saya` | Guru, Karyawan, SuperAdmin, Admin | Rekap absensi **diri sendiri**; subjek diresolve dari email token (guru dulu, lalu karyawan). Bentuk respons identik dengan baris di atas. 404 bila akun bukan pegawai |
@@ -490,6 +496,34 @@ Data akademik dirancang agar tidak ada yang hilang saat siswa naik kelas/semeste
 | Pengampu mapel dihapus | Soft delete pengampu + semua jadwal terkait ikut soft-delete | `/akademik/jadwal/pengampu/{id}/riwayat` |
 
 Endpoint `/riwayat` mengembalikan field tambahan `deletedAt` (`null` = aktif, timestamp = sudah dihapus/dipindah).
+
+### Paginasi opsional pada riwayat
+
+Riwayat lintas-semester bisa tumbuh panjang (kelas lama melintasi banyak tahun
+ajaran). Empat endpoint berikut menerima `page` dan `per_page`:
+
+| Endpoint |
+|---|
+| `GET /akademik/guru/{id}/mapel/riwayat` |
+| `GET /akademik/siswa/{id}/kelas/riwayat` |
+| `GET /akademik/kelas/{id}/siswa/riwayat` |
+| `GET /akademik/mapel/{id}/guru/riwayat` |
+
+Kontraknya dua arah, dan **keduanya diuji di suite**:
+
+- **Tanpa** `page`/`per_page` → `data` tetap **array datar** berisi seluruh baris,
+  persis seperti sebelumnya. Klien lama tidak perlu diubah.
+- **Dengan** salah satunya → `data` menjadi **envelope paginasi yang sama dengan
+  `GET /guru/all`**: `data`, `current_page`, `last_page`, `per_page`, `total`,
+  `from`, `to`, `links`.
+
+Bentuk tiap item **tidak berubah** di kedua mode — hanya pembungkusnya. Default
+`per_page` = 25 (kalau hanya `page` yang dikirim), batas atas 100; di luar rentang
+itu **422**, bukan diam-diam dipaksa ke batas. URL absolut (`next_page_url` dsb.)
+sengaja dibuang karena menunjuk ke host service internal, bukan Gateway — klien
+memakai `links[].query`.
+
+Implementasinya satu tempat: `App\Traits\PaginasiRiwayat`.
 
 ---
 

@@ -78,23 +78,29 @@ Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.akademik_pr
     Route::patch('pengaturan-nilai/{id}', [AkademikController::class, 'updatePengaturanNilai'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
 
     // Nilai & Raport — Write: Admin, SuperAdmin, Guru | Read: sesuai role
+    //
+    // Karyawan biasa (satpam, kebersihan, dsb. — isAdminSekolah=false) TIDAK
+    // boleh membaca nilai/raport siswa: itu data akademik, bukan info sekolah.
+    // Yang berhak: pengelola (SuperAdmin/Admin/Administrator Sekolah) dan guru
+    // sesuai lingkupnya (wali kelas untuk data se-kelas, pengampu untuk
+    // matkulnya sendiri — dijaga di controller lewat OtorisasiGuru).
     Route::post('nilai', [AkademikController::class, 'storeNilai'])->middleware('check.role:SuperAdmin,Admin,Guru');
     Route::patch('nilai/{id}', [AkademikController::class, 'updateNilai'])->middleware('check.role:SuperAdmin,Admin,Guru');
     Route::delete('nilai/{id}', [AkademikController::class, 'destroyNilai'])->middleware('check.role:SuperAdmin,Admin,Guru');
-    Route::get('nilai/pengampu/{pengampu_id}', [AkademikController::class, 'getNilaiByPengampu'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
-    Route::get('nilai/kelas/{kelas_id}', [AkademikController::class, 'getNilaiByKelas'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
-    Route::get('nilai/siswa/{siswa_id}', [AkademikController::class, 'getNilaiBySiswa'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
+    Route::get('nilai/pengampu/{pengampu_id}', [AkademikController::class, 'getNilaiByPengampu'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah,Guru');
+    Route::get('nilai/kelas/{kelas_id}', [AkademikController::class, 'getNilaiByKelas'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah,Guru');
+    Route::get('nilai/siswa/{siswa_id}', [AkademikController::class, 'getNilaiBySiswa'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah,Guru');
     // Siswa: self-only via /nilai/saya
     Route::get('nilai/saya', [AkademikController::class, 'getNilaiSaya'])->middleware('check.role:Siswa');
 
-    // Raport — Admin, SuperAdmin, Guru, Karyawan (full); Siswa (diri sendiri via /saya)
+    // Raport — pengelola + guru (sesuai lingkup); Siswa (diri sendiri via /saya)
     Route::get('raport/saya', [AkademikController::class, 'getRaportSaya'])->middleware('check.role:Siswa');
-    Route::get('raport/siswa/{siswa_id}', [AkademikController::class, 'getRaportSiswa'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
-    Route::get('raport/kelas/{kelas_id}', [AkademikController::class, 'getRaportKelas'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
+    Route::get('raport/siswa/{siswa_id}', [AkademikController::class, 'getRaportSiswa'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah,Guru');
+    Route::get('raport/kelas/{kelas_id}', [AkademikController::class, 'getRaportKelas'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah,Guru');
 
-    // Ranking — Siswa (posisi sendiri via /saya); Admin/Guru/Karyawan (full)
+    // Ranking — Siswa (posisi sendiri via /saya); pengelola + guru wali (full)
     Route::get('nilai/ranking/saya', [AkademikController::class, 'getRankingSaya'])->middleware('check.role:Siswa');
-    Route::get('nilai/ranking/kelas/{kelas_id}', [AkademikController::class, 'getRankingKelas'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
+    Route::get('nilai/ranking/kelas/{kelas_id}', [AkademikController::class, 'getRankingKelas'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah,Guru');
     // Laporan peringkat se-angkatan (satu tingkat, opsional per jurusan) — Admin saja.
     // Didaftarkan SEBELUM ranking/kelas/{id} tidak perlu: path-nya berbeda segmen.
     // /export HARUS didaftarkan sebelum route induknya tidak perlu (segmen beda),
@@ -114,9 +120,11 @@ Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.akademik_pr
     // Rekap absensi — Siswa lihat miliknya via /saya; staf lihat penuh
     Route::get('absensi/rekap/harian/saya', [AkademikController::class, 'rekapHarianSaya'])->middleware('check.role:Siswa');
     Route::get('absensi/rekap/pelajaran/saya', [AkademikController::class, 'rekapPelajaranSaya'])->middleware('check.role:Siswa');
-    Route::get('absensi/rekap/harian/kelas/{kelas_id}', [AkademikController::class, 'rekapHarianKelas'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
-    Route::get('absensi/rekap/harian/siswa/{siswa_id}', [AkademikController::class, 'rekapHarianSiswa'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
-    Route::get('absensi/rekap/pelajaran/siswa/{siswa_id}', [AkademikController::class, 'rekapPelajaranSiswa'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
+    // Rekap absensi SISWA ikut aturan yang sama dengan nilai/raport: data siswa,
+    // jadi karyawan biasa ditutup. Rekap dirinya sendiri tetap terbuka di bawah.
+    Route::get('absensi/rekap/harian/kelas/{kelas_id}', [AkademikController::class, 'rekapHarianKelas'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah,Guru');
+    Route::get('absensi/rekap/harian/siswa/{siswa_id}', [AkademikController::class, 'rekapHarianSiswa'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah,Guru');
+    Route::get('absensi/rekap/pelajaran/siswa/{siswa_id}', [AkademikController::class, 'rekapPelajaranSiswa'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah,Guru');
     // Pegawai (guru/karyawan) melihat rekap absensi DIRINYA sendiri.
     // Subjek diresolve dari email token, jadi tidak bisa dipakai melihat pegawai lain.
     Route::get('absensi/rekap/pegawai/saya', [AkademikController::class, 'rekapPegawaiSaya'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');

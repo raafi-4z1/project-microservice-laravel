@@ -188,13 +188,20 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
   `absensi/pelajaran/tandai` tetap untuk guru **pengampu** di jam pelajarannya.
 - **Siswa**: read-only terbatas; punya endpoint khusus `nilai/saya`, `raport/saya`,
   `ranking/saya`, `GET /siswa/saya` (profil diri + `foto`), dan jadwal kelasnya.
-  **Privasi**: Siswa TIDAK bisa membuka detail siswa lain (`GET /siswa` → 403) dan
-  menerima detail guru yang sudah disaring (lihat modul Guru) — jangan tampilkan
-  navigasi ke detail siswa untuk role ini. Untuk foto/avatar siswa sendiri
-  (header beranda, layar Profil) pakai `GET /siswa/saya`, BUKAN `GET /siswa?idSiswa=`.
-- **Karyawan**: read-only data master (termasuk detail siswa/guru lengkap) +
-  akademik/nilai/raport. Ikut **absen sebagai pegawai** (kartu/PIN) dan bisa
-  mengatur PIN sendiri + melihat rekap absensinya.
+  **Privasi**: Siswa boleh membuka direktori siswa lain (`GET /siswa/all`,
+  `GET /siswa?idSiswa=`) tapi hanya menerima **info publik** — `namaLengkap`,
+  `jenisKelamin`, `status`, `foto` (detail saja); tanpa NISN, tempat/tanggal lahir,
+  alamat, telepon, dan data orang tua. Detail guru juga sudah disaring (lihat modul
+  Guru). Untuk foto/avatar siswa sendiri (header beranda, layar Profil) pakai
+  `GET /siswa/saya` — di situ datanya **lengkap**, karena itu profil diri sendiri.
+- **Karyawan (biasa)**: satpam, kebersihan, dsb. — `isAdminSekolah: false`.
+  Read-only **info publik** direktori guru/karyawan/kelas/mapel. Ikut **absen
+  sebagai pegawai** (kartu/PIN), mengatur PIN sendiri, dan melihat rekap absensinya
+  (`rekap/pegawai/saya`).
+  **TIDAK boleh** (server membalas **403**, jangan tampilkan menunya):
+  seluruh nilai/raport/ranking, rekap absensi **siswa**, dan seluruh direktori
+  siswa (`GET /siswa/all` maupun `GET /siswa?idSiswa=`). Detail guru/karyawan yang
+  ia terima juga **sudah disaring** — tanpa NIK, alamat, telepon, tanggal lahir.
 - **Karyawan — Administrator Sekolah** (staf Tata Usaha): karyawan yang ditandai
   `isAdminSekolah: true`. **Role-nya tetap `Karyawan`**, jadi jangan mengandalkan
   `role` untuk gating — pakai flag `isAdminSekolah` yang ada di respons **login**
@@ -245,20 +252,22 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
 - Foto upload: JPEG/PNG/JPG maks 2 MB, minimal 360×480 px.
   Foto pada respons detail berupa string `data:image/webp;base64,...` — render dengan Coil.
 - **Respons list**: `idGuru`, `namaLengkap`, `nip`, `email`, `jabatan`, `statusKepegawaian`
-- **Respons detail — bergantung role!** SuperAdmin/Admin/Karyawan menerima profil
-  lengkap (tambah: `nik`, `telephone`, `jenisKelamin`, `tempatLahir`, `tanggalLahir`,
-  `alamat`, `agama`, `statusPernikahan`, `tanggalMasuk`, `pendidikanTerakhir`,
-  `jurusan`, `universitas`, `tahunLulus`, `nomorSKPengangkatan`, `nomorSertifikasi`,
-  `pelatihan`, `foto`). Untuk role **Guru/Siswa** Gateway menyaring detail menjadi
-  HANYA: `idGuru`, `namaLengkap`, `nip`, `email`, `jabatan`, `statusKepegawaian`,
-  `pendidikanTerakhir`, `foto` — buat SEMUA field DTO detail nullable agar aman
-  di kedua bentuk.
+- **Respons detail — bergantung role!** Hanya **pengelola** (SuperAdmin, Admin,
+  **Administrator Sekolah**) menerima profil lengkap (tambah: `nik`, `telephone`,
+  `jenisKelamin`, `tempatLahir`, `tanggalLahir`, `alamat`, `agama`,
+  `statusPernikahan`, `tanggalMasuk`, `pendidikanTerakhir`, `jurusan`,
+  `universitas`, `tahunLulus`, `nomorSKPengangkatan`, `nomorSertifikasi`,
+  `pelatihan`, `foto`). Semua viewer lain — **Guru, Siswa, dan karyawan biasa** —
+  menerima HANYA: `idGuru`, `namaLengkap`, `nip`, `email`, `jabatan`,
+  `statusKepegawaian`, `pendidikanTerakhir`, `foto`. Buat SEMUA field DTO detail
+  nullable; field yang disaring **tidak dikirim sama sekali**, dan DTO
+  non-nullable akan melempar `MissingFieldException` (layar blank, bukan kosong).
 
 ### 4. Siswa (dengan foto, multipart/form-data)
 
-- `GET /siswa/all` (list, semua role), `GET /siswa?idSiswa={id}` (detail —
-  **hanya SuperAdmin/Admin/Guru/Karyawan; role Siswa mendapat 403** karena berisi
-  data pribadi), `POST /siswa`, `POST /siswa/update`, `DELETE /siswa/{id}`
+- `GET /siswa/all` (list) dan `GET /siswa?idSiswa={id}` (detail) — **akses:
+  SuperAdmin, Admin, Administrator Sekolah, Guru, Siswa; karyawan biasa 403**.
+  `POST /siswa`, `POST /siswa/update`, `DELETE /siswa/{id}` (pengelola saja).
 - `GET /siswa/saya` (**role Siswa saja**) — profil diri sendiri, bentuk sama
   dengan detail `GET /siswa?idSiswa=` (termasuk `foto` base64). `idSiswa`
   diresolve dari email token. Inilah satu-satunya cara siswa mengambil fotonya
@@ -273,6 +282,10 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
 - **Respons detail** (menambah): `email`, `telephone`, `alamat`, `agama`,
   `namaAyah`, `namaIbu`, `pekerjaanAyah`, `pekerjaanIbu`, `noTelpAyah`, `noTelpIbu`,
   `namaWali`, `hubunganWali`, `noTelpWali`, `foto`
+- **Untuk viewer role Siswa keduanya disaring** menjadi info publik:
+  list → `idSiswa`, `namaLengkap`, `jenisKelamin`, `status`;
+  detail → keempat itu + `foto`. Meta paginasi list tidak berubah.
+  Pengecualian: `GET /siswa/saya` **tidak** disaring (profil diri sendiri).
 
 ### 4b. Karyawan (dengan foto, multipart/form-data)
 
@@ -282,10 +295,13 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
 - Field tambah (multipart): email, nip, namaLengkap, jabatan (wajib); opsional:
   statusKepegawaian, jenisKelamin (Laki-Laki|Perempuan), noTelp, alamat, foto.
 - **Respons list**: `idKaryawan`, `namaLengkap`, `nip`, `email`, `jabatan`, `statusKepegawaian`
-- **Respons detail — bergantung role!** SuperAdmin/Admin/Karyawan menerima
-  profil lengkap (tambah: `jenisKelamin`, `noTelp`, `alamat`, `foto`); role
-  **Guru/Siswa** hanya menerima field publik (`idKaryawan`, `namaLengkap`, `nip`,
-  `email`, `jabatan`, `statusKepegawaian`, `foto`) — buat field DTO detail nullable.
+- **Respons detail — bergantung role!** Hanya **pengelola** (SuperAdmin, Admin,
+  **Administrator Sekolah**) menerima profil lengkap (tambah: `jenisKelamin`,
+  `noTelp`, `alamat`, `kartuUid`, `kartuStatus`, `foto`). **Guru dan karyawan
+  biasa** hanya menerima field publik: `idKaryawan`, `namaLengkap`, `nip`,
+  `email`, `jabatan`, `isAdminSekolah`, `statusKepegawaian`, `foto`.
+  Role **Siswa** mendapat **403** (modul Karyawan memang tidak ada di menu siswa).
+  Buat field DTO detail nullable.
 - Membuat karyawan otomatis membuat akun user role Karyawan (password default =
   email, `mustChangePassword=true`), sama seperti Guru/Siswa.
 
@@ -300,14 +316,14 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
   semester), `PATCH /akademik/kelas/assign/{id}` (kelas_id tujuan),
   `DELETE /akademik/kelas/assign/{id}`,
   `GET /akademik/kelas/{id}/siswa`, `GET /akademik/siswa/{id}/kelas`,
-  `GET /akademik/siswa/belum-terdaftar`, plus varian `/riwayat` (SuperAdmin/Admin).
+  `GET /akademik/siswa/belum-terdaftar`, plus varian `/riwayat` (SuperAdmin/Admin/Adm. Sekolah; menerima `page` & `per_page` opsional — tanpa keduanya balasannya array datar seperti biasa, dengan salah satunya berubah jadi envelope paginasi seperti `/guru/all`, default `per_page`=25, maks 100).
   Respons: `idSiswaKelas`, `siswaId`, `kelasId`, `tahunAjaran`, `semester`
   (+`deletedAt` di varian riwayat).
 - **Pengampu mapel**: `POST /akademik/pengampu` (guru_id, mapel_id, kelas_id,
   tahun_ajaran, semester), `PATCH /akademik/pengampu/{id}` (guru_id pengganti),
   `DELETE /akademik/pengampu/{id}`,
   `GET /akademik/kelas/{id}/pengampu`, `GET /akademik/guru/{id}/mapel`,
-  `GET /akademik/mapel/{id}/guru`, plus varian `/riwayat` (SuperAdmin/Admin).
+  `GET /akademik/mapel/{id}/guru`, plus varian `/riwayat` (SuperAdmin/Admin/Adm. Sekolah; menerima `page` & `per_page` opsional — tanpa keduanya balasannya array datar seperti biasa, dengan salah satunya berubah jadi envelope paginasi seperti `/guru/all`, default `per_page`=25, maks 100).
   Respons: `idPengampuMapel`, `guruId`, `mapelId`, `kelasId`, `tahunAjaran`, `semester`.
 - **Periode khusus** (Ramadan/ujian/libur/kegiatan) — rentang tanggal yang
   mengubah aturan sementara lalu otomatis kembali normal:
@@ -365,6 +381,9 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
   nilai_akhir dihitung otomatis server), `PATCH|DELETE /akademik/nilai/{id}`,
   `GET /akademik/nilai/pengampu/{id}`, `/nilai/kelas/{id}`, `/nilai/siswa/{id}`,
   `/nilai/saya` (khusus Siswa).
+  **Akses baca nilai: SuperAdmin, Admin, Administrator Sekolah, Guru (sesuai
+  lingkup wali/pengampu). Karyawan biasa → 403** — sembunyikan seluruh modul Nilai
+  untuk akun itu.
   Query `tahun_ajaran`/`semester` di GET nilai bersifat OPSIONAL (filter).
   Respons: `idNilai`, `siswaKelasId`, `pengampuMapelId`, `nilaiHarian`,
   `ulanganHarian`, `jumlahUlangan`, `nilaiUts`, `nilaiUas`, `nilaiAkhir`
@@ -387,6 +406,7 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
   `/raport/saya`, `GET /akademik/nilai/ranking/kelas/{id}`, `/nilai/ranking/saya`.
   Query `tahun_ajaran` dan `semester` **WAJIB** di semua endpoint raport/ranking
   (422 jika kosong) — isi otomatis dari semester aktif.
+  **Akses sama dengan Nilai: karyawan biasa → 403.**
 - **Laporan peringkat SE-ANGKATAN** (layar khusus **SuperAdmin/Admin**):
   `GET /akademik/nilai/ranking/angkatan?tingkat=3&jurusan=MIPA&tahun_ajaran=..&semester=..&detail=0|1`
   - `tingkat` **wajib** (1=X, 2=XI, 3=XII); `jurusan` opsional (kosong = gabungan
@@ -490,12 +510,12 @@ perangkat terminal, di-set sekali saat setup kiosk). Body pakai snake_case.
 
 **6f. Rekap absensi** (rentang default = awal bulan s/d hari ini WIB; override
 `tanggal_dari`/`tanggal_sampai`):
-- `GET /akademik/absensi/rekap/harian/kelas/{id}` (Admin/Guru/Karyawan) → per
+- `GET /akademik/absensi/rekap/harian/kelas/{id}` (Admin/Adm. Sekolah/Guru wali; karyawan biasa 403) → per
   siswa `{siswaId, namaLengkap, hadir, terlambat, izin, sakit, alpa, total}`.
-- `GET /akademik/absensi/rekap/harian/siswa/{id}` → `{ringkasan:{...counts,total},
+- `GET /akademik/absensi/rekap/harian/siswa/{id}` (karyawan biasa 403) → `{ringkasan:{...counts,total},
   detail:[{tanggal, jamMasuk, status, metode}]}`.
 - `GET /akademik/absensi/rekap/harian/saya` (Siswa) — rekap harian sendiri.
-- `GET /akademik/absensi/rekap/pelajaran/siswa/{id}`, `/pelajaran/saya` (Siswa).
+- `GET /akademik/absensi/rekap/pelajaran/siswa/{id}` (karyawan biasa 403), `/pelajaran/saya` (Siswa).
 - `GET /akademik/absensi/rekap/pegawai/{tipe}/{id}` (Admin; `tipe`=guru|karyawan).
 - `GET /akademik/absensi/rekap/pegawai/saya` (**Guru/Karyawan**) — rekap absensi
   DIRI SENDIRI. Subjek diresolve dari email token (guru dulu, lalu karyawan), jadi

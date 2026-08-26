@@ -5,8 +5,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.karyawan_prefix'))->group(function(){
     Route::get('all', [KaryawanController::class, 'index']);
-    // Detail berisi data pribadi (alamat, no_telp) — Siswa diblokir; Guru menerima
-    // versi tersaring (field publik saja, lihat KaryawanController::show)
+    // Detail berisi data pribadi (alamat, no_telp). Siswa diblokir (modul
+    // Karyawan memang tidak ada di menu siswa); Guru dan karyawan biasa
+    // menerima versi tersaring — field publik saja, lihat KaryawanController::show.
     Route::get('/', [KaryawanController::class, 'show'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
     Route::post('/', [KaryawanController::class, 'store'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
     Route::post('update', [KaryawanController::class, 'update'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');

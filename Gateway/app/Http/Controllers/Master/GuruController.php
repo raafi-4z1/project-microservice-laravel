@@ -8,13 +8,14 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Traits\ApiResponser;
 use App\Traits\LogsAudit;
+use App\Traits\SaringPii;
 use App\Services\UserService;
 use App\Http\Controllers\Controller;
 use App\Traits\ConsumeMicroserviceService;
 
 class GuruController extends Controller
 {
-    use ConsumeMicroserviceService, ApiResponser, LogsAudit;
+    use ConsumeMicroserviceService, ApiResponser, LogsAudit, SaringPii;
     private $userService, $baseUri, $secret, $reqUrl;
 
     public function __construct(UserService $userService)
@@ -29,9 +30,9 @@ class GuruController extends Controller
         return $this->performRequest($request->method(), "{$this->reqUrl}/all", $request->only(['page', 'per_page', 'search']));
     }
 
-    // Field profil guru yang boleh dilihat role non-administratif (Guru, Siswa).
-    // Data pribadi (NIK, alamat, telepon, tanggal lahir, dll.) hanya untuk
-    // SuperAdmin, Admin, dan Karyawan.
+    // Field profil guru yang boleh dilihat non-pengelola (Guru, Siswa, dan
+    // karyawan biasa). Data pribadi — NIK, alamat, telepon, tanggal lahir, dll. —
+    // hanya untuk SuperAdmin, Admin, dan Administrator Sekolah.
     private const GURU_PUBLIC_FIELDS = [
         'idGuru', 'namaLengkap', 'nip', 'email', 'jabatan',
         'statusKepegawaian', 'pendidikanTerakhir', 'foto',
@@ -40,15 +41,12 @@ class GuruController extends Controller
     public function show(Request $request) {
         $response = $this->performRequest($request->method(), "{$this->reqUrl}", $request->only(['idGuru']));
 
-        if (in_array(auth()->user()->role, ['Guru', 'Siswa'])) {
-            $decode = $this->decode($response);
-            if (($decode['resCode'] ?? null) === Response::HTTP_OK && is_array($decode['data'] ?? null)) {
-                return $this->response(
-                    $decode['resMsg'] ?? 'OK',
-                    Response::HTTP_OK,
-                    array_intersect_key($decode['data'], array_flip(self::GURU_PUBLIC_FIELDS))
-                );
-            }
+        // Sebelumnya kondisinya menyebut role yang DISARING (Guru, Siswa),
+        // sehingga role `Karyawan` — termasuk satpam/kebersihan — lolos melihat
+        // PII rekan kerjanya. Sekarang yang disebut adalah pihak yang BOLEH
+        // penuh; role baru apa pun otomatis tersaring, bukan otomatis bocor.
+        if (!auth()->user()->isPengelola()) {
+            return $this->saringDetail($response, self::GURU_PUBLIC_FIELDS);
         }
 
         return $response;

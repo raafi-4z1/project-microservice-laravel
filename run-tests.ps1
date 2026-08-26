@@ -1473,9 +1473,19 @@ if ($siswaTestToken) {
     $r = Api GET "users" -Token $siswaTestToken
     Chk "GET /users sebagai Siswa (harus 403)" $r 403
 
-    # Privasi: Siswa tidak boleh lihat profil lengkap siswa lain
-    $r = Api GET "siswa`?idSiswa=1" -Token $siswaTestToken
-    Chk "GET /siswa?idSiswa=1 sebagai Siswa (harus 403 - privasi)" $r 403
+    # Privasi: Siswa BOLEH lihat info publik siswa lain, tapi bukan data pribadi.
+    # (Sebelumnya 403 total; keputusan produk membukanya sebagai direktori.)
+    if ($siswaId) {
+        $r = Api GET "siswa`?idSiswa=$siswaId" -Token $siswaTestToken
+        Chk "GET /siswa?idSiswa=$siswaId sebagai Siswa (harus 200, versi publik)" $r 200; if ($script:LAST_CHK) {
+            $d = $r.data
+            $adaPublik = ($null -ne $d.namaLengkap)
+            $tanpaPii  = ($null -eq $d.nisn -and $null -eq $d.tanggalLahir -and $null -eq $d.tempatLahir `
+                          -and $null -eq $d.alamat -and $null -eq $d.telephone -and $null -eq $d.namaAyah)
+            if ($adaPublik -and $tanpaPii) { $script:PASS++; Write-Host "  [PASS] Detail siswa untuk sesama Siswa tersaring (tanpa nisn/lahir/alamat/ortu)" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL] PII siswa bocor ke sesama Siswa (nisn=$($d.nisn) tglLahir=$($d.tanggalLahir) alamat=$($d.alamat) ayah=$($d.namaAyah))" -ForegroundColor Red }
+        }
+    }
 
     # Privasi: detail guru untuk Siswa disaring — field publik ada, field pribadi tidak
     if ($guruId) {
@@ -1495,11 +1505,14 @@ if ($kwTestToken) {
     $r = Api GET "akademik/semester/aktif" -Token $kwTestToken
     Chk "GET /akademik/semester/aktif sebagai Karyawan (harus 200)" $r 200
 
-    # Karyawan (staf TU) tetap boleh lihat detail siswa
+    # Karyawan BIASA (bukan Administrator Sekolah) tidak berkepentingan atas data
+    # siswa — direktori siswa ditutup seluruhnya untuknya, daftar maupun detail.
     if ($siswaId) {
         $r = Api GET "siswa`?idSiswa=$siswaId" -Token $kwTestToken
-        Chk "GET /siswa?idSiswa=$siswaId sebagai Karyawan (harus 200)" $r 200
+        Chk "GET /siswa?idSiswa=$siswaId sebagai Karyawan biasa (harus 403)" $r 403
     }
+    $r = Api GET "siswa/all" -Token $kwTestToken
+    Chk "GET /siswa/all sebagai Karyawan biasa (harus 403)" $r 403
 
     $r = Api POST "akademik/kelas/assign" @{
         siswa_id = 1; kelas_id = 1; tahun_ajaran = $tahun; semester = [int]$semester
@@ -1718,9 +1731,30 @@ if ($rSiswa.resCode -eq 200) {
         if ($punyaFoto) { $script:PASS++; Write-Host "  [PASS] /siswa/saya memuat field foto" -ForegroundColor Green }
         else { $script:FAIL++; Write-Host "  [FAIL] /siswa/saya tidak memuat field foto" -ForegroundColor Red }
     }
-    # Privasi antar-siswa tetap terjaga
-    $r = Api GET "siswa`?idSiswa=1" -Token $siswaTok
-    Chk "Siswa -> /siswa?idSiswa= (privasi, harus 403)" $r 403
+    # Direktori siswa terbuka untuk sesama siswa, tapi hanya info publik.
+    # PENTING: harus siswa LAIN. Record diri sendiri sengaja tidak disaring, jadi
+    # menguji dengan id sendiri akan lolos tanpa membuktikan apa pun — dan akun
+    # siswa test kebetulan memang record id 1.
+    $idSaya  = (Api GET "siswa/saya" -Token $siswaTok).data.idSiswa
+    $daftar  = @((Api GET "siswa/all`?per_page=50").data.data)
+    $idLain  = @($daftar | Where-Object { $_.idSiswa -ne $idSaya })[0].idSiswa
+    if ($idLain) {
+        $r = Api GET "siswa`?idSiswa=$idLain" -Token $siswaTok
+        Chk "Siswa -> /siswa?idSiswa=$idLain (siswa LAIN, direktori publik, harus 200)" $r 200; if ($script:LAST_CHK) {
+            if ($null -eq $r.data.nisn -and $null -eq $r.data.alamat) { $script:PASS++; Write-Host "  [PASS] PII siswa lain tersaring untuk sesama siswa" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL] PII siswa bocor (nisn=$($r.data.nisn) alamat=$($r.data.alamat))" -ForegroundColor Red }
+        }
+
+        # Pasangannya: record DIRI SENDIRI lewat endpoint yang sama tetap penuh.
+        $r = Api GET "siswa`?idSiswa=$idSaya" -Token $siswaTok
+        Chk "Siswa -> /siswa?idSiswa=$idSaya (DIRI SENDIRI, harus 200)" $r 200; if ($script:LAST_CHK) {
+            $keys = $r.data.PSObject.Properties.Name
+            if ($keys -contains 'nisn' -or $keys -contains 'alamat') { $script:PASS++; Write-Host "  [PASS] Record diri sendiri tidak ikut tersaring" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL] Record diri sendiri ikut tersaring — key: $($keys -join ',')" -ForegroundColor Red }
+        }
+    } else {
+        Skip "Penyaringan detail siswa untuk sesama siswa" "hanya ada satu siswa di database — tidak ada pembanding"
+    }
 } else {
     Skip "GET /siswa/saya" "akun siswa test tidak tersedia — jalankan seed-test-accounts.ps1"
 }
@@ -1909,6 +1943,192 @@ if ($asTU -and $asBiasa) {
     Chk "TU -> hapus akun sendiri (harus 403)" $r 403
 } else {
     Skip "Administrator Sekolah" "gagal menyiapkan akun karyawan uji"
+}
+
+# ──────────────────────────────────────────────
+#  PHASE 14.9 — Privasi: karyawan biasa vs Administrator Sekolah
+#  Memakai kembali pasangan akun dari Phase 14.8: satu bertanda TU, satu biasa.
+#  Pasangan itu justru inti tesnya — keduanya berrole "Karyawan", jadi apa pun
+#  yang membedakan hasilnya membuktikan gate membaca penanda, bukan role.
+# ──────────────────────────────────────────────
+Section "Phase 14.9: Privasi karyawan biasa (nilai tertutup + PII tersaring)"
+
+if ($asTU -and $asBiasa) {
+    $qpP = "tahun_ajaran=$([uri]::EscapeDataString($tahun))&semester=$semester"
+    $kelasUji = NullOr $kelasId 1
+    $siswaUji = NullOr $siswaId 1
+
+    # (a) Data akademik siswa tertutup untuk karyawan biasa, terbuka untuk TU.
+    foreach ($ep in @(
+        "akademik/nilai/kelas/$kelasUji",
+        "akademik/nilai/ranking/kelas/$kelasUji",
+        "akademik/raport/kelas/$kelasUji",
+        "akademik/raport/siswa/$siswaUji",
+        "akademik/nilai/siswa/$siswaUji",
+        "akademik/absensi/rekap/harian/kelas/$kelasUji",
+        "akademik/absensi/rekap/harian/siswa/$siswaUji",
+        "akademik/absensi/rekap/pelajaran/siswa/$siswaUji"
+    )) {
+        $r = Api GET "$ep`?$qpP" -Token $asBiasa.tok
+        Chk "Karyawan biasa -> $ep (harus 403)" $r 403
+
+        # Pembanding: Administrator Sekolah harus lolos gate role. Kodenya boleh
+        # 404/422 kalau datanya kosong — yang tidak boleh adalah 403.
+        $rT = Api GET "$ep`?$qpP" -Token $asTU.tok
+        if ($rT.resCode -ne 403) { $script:PASS++; Write-Host "  [PASS] Adm. Sekolah -> $ep lolos gate (resCode=$($rT.resCode))" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] Adm. Sekolah -> $ep ikut tertutup (403)" -ForegroundColor Red }
+    }
+
+    # Yang TETAP boleh karyawan biasa: rekap absensi dirinya sendiri.
+    $r = Api GET "akademik/absensi/rekap/pegawai/saya" -Token $asBiasa.tok
+    Chk "Karyawan biasa -> rekap/pegawai/saya (tetap 200)" $r 200
+
+    # (b) PII direktori pegawai tersaring untuk karyawan biasa, penuh untuk TU.
+    if ($guruId) {
+        $r = Api GET "guru`?idGuru=$guruId" -Token $asBiasa.tok
+        Chk "Karyawan biasa -> /guru?idGuru=$guruId (harus 200)" $r 200; if ($script:LAST_CHK) {
+            $d = $r.data
+            $adaPublik = ($null -ne $d.namaLengkap)
+            $tanpaPii  = ($null -eq $d.nik -and $null -eq $d.alamat -and $null -eq $d.telephone -and $null -eq $d.tanggalLahir)
+            if ($adaPublik -and $tanpaPii) { $script:PASS++; Write-Host "  [PASS] PII guru tersaring untuk karyawan biasa" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL] PII guru BOCOR ke karyawan biasa (nik=$($d.nik) alamat=$($d.alamat) telp=$($d.telephone) lahir=$($d.tanggalLahir))" -ForegroundColor Red }
+        }
+
+        $r = Api GET "guru`?idGuru=$guruId" -Token $asTU.tok
+        Chk "Adm. Sekolah -> /guru?idGuru=$guruId (harus 200)" $r 200; if ($script:LAST_CHK) {
+            # Field pribadi bisa saja kosong di data uji; yang dites adalah
+            # KEBERADAAN key-nya, bukan isinya — proyeksi membuang key.
+            $keys = $r.data.PSObject.Properties.Name
+            if ($keys -contains 'alamat' -or $keys -contains 'nik') { $script:PASS++; Write-Host "  [PASS] Adm. Sekolah tetap menerima detail penuh" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL] Adm. Sekolah ikut tersaring — key: $($keys -join ',')" -ForegroundColor Red }
+        }
+    } else {
+        Skip "Penyaringan PII guru" "tidak ada guruId acuan"
+    }
+
+    $r = Api GET "karyawan`?idKaryawan=$($asTU.kid)" -Token $asBiasa.tok
+    Chk "Karyawan biasa -> /karyawan?idKaryawan= (harus 200)" $r 200; if ($script:LAST_CHK) {
+        $keys = $r.data.PSObject.Properties.Name
+        if (($keys -notcontains 'alamat') -and ($keys -notcontains 'noTelp')) { $script:PASS++; Write-Host "  [PASS] PII karyawan tersaring untuk karyawan biasa" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] PII karyawan BOCOR ke karyawan biasa — key: $($keys -join ',')" -ForegroundColor Red }
+    }
+
+    $r = Api GET "karyawan`?idKaryawan=$($asTU.kid)" -Token $asTU.tok
+    Chk "Adm. Sekolah -> /karyawan?idKaryawan= (harus 200)" $r 200; if ($script:LAST_CHK) {
+        $keys = $r.data.PSObject.Properties.Name
+        if ($keys -contains 'alamat' -or $keys -contains 'noTelp') { $script:PASS++; Write-Host "  [PASS] Adm. Sekolah tetap menerima detail karyawan penuh" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] Adm. Sekolah ikut tersaring — key: $($keys -join ',')" -ForegroundColor Red }
+    }
+
+    # Pengecualian: record DIRI SENDIRI tidak disaring, supaya layar Profil tetap
+    # bisa menampilkan alamat & telepon pemiliknya. Pasangannya adalah tes di atas
+    # (karyawan biasa -> record TU tersaring): sumber token sama, yang berbeda hanya
+    # siapa pemilik record — itu yang membuktikan pencocokannya per-pemilik.
+    $r = Api GET "karyawan`?idKaryawan=$($asBiasa.kid)" -Token $asBiasa.tok
+    Chk "Karyawan biasa -> detail DIRINYA SENDIRI (harus 200)" $r 200; if ($script:LAST_CHK) {
+        $keys = $r.data.PSObject.Properties.Name
+        if ($keys -contains 'alamat' -or $keys -contains 'noTelp') { $script:PASS++; Write-Host "  [PASS] Detail diri sendiri TIDAK ikut tersaring" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] Detail diri sendiri ikut tersaring — layar Profil akan kehilangan alamat/telepon; key: $($keys -join ',')" -ForegroundColor Red }
+    }
+
+    # Direktori guru/karyawan/kelas TETAP boleh dibuka karyawan biasa (info sekolah)
+    foreach ($ep in @('guru/all', 'karyawan/all', 'class/all')) {
+        $r = Api GET $ep -Token $asBiasa.tok
+        Chk "Karyawan biasa -> GET /$ep (tetap 200, info sekolah)" $r 200
+    }
+
+    # (c) Direktori siswa ditutup total untuk karyawan biasa
+    $r = Api GET "siswa/all" -Token $asBiasa.tok
+    Chk "Karyawan biasa -> GET /siswa/all (harus 403)" $r 403
+    $r = Api GET "siswa`?idSiswa=$siswaUji" -Token $asBiasa.tok
+    Chk "Karyawan biasa -> GET /siswa?idSiswa= (harus 403)" $r 403
+    $r = Api GET "siswa/all" -Token $asTU.tok
+    Chk "Adm. Sekolah -> GET /siswa/all (harus 200)" $r 200
+} else {
+    Skip "Privasi karyawan biasa" "pasangan akun karyawan Phase 14.8 tidak tersedia"
+}
+
+# Daftar siswa untuk viewer Siswa: terbuka tapi tanpa PII
+if ($siswaTok) {
+    $r = Api GET "siswa/all`?per_page=5" -Token $siswaTok
+    Chk "Siswa -> GET /siswa/all (direktori publik, harus 200)" $r 200; if ($script:LAST_CHK) {
+        $baris = @($r.data.data)[0]
+        if ($null -eq $baris) {
+            Skip "Penyaringan daftar siswa" "daftar kosong"
+        } else {
+            $keys = $baris.PSObject.Properties.Name
+            $bocor = @('nisn', 'tanggalLahir', 'tempatLahir', 'tanggalMasuk') | Where-Object { $keys -contains $_ }
+            if (-not $bocor -and ($keys -contains 'namaLengkap')) {
+                $script:PASS++; Write-Host "  [PASS] /siswa/all untuk Siswa hanya info publik — key: $($keys -join ',')" -ForegroundColor Green
+            } else {
+                $script:FAIL++; Write-Host "  [FAIL] /siswa/all bocor ke Siswa — field terlarang: $($bocor -join ',')" -ForegroundColor Red
+            }
+        }
+        # Meta paginasi wajib tetap ada agar klien tidak perlu parser berbeda per role
+        if ($null -ne $r.data.current_page -and $null -ne $r.data.total) { $script:PASS++; Write-Host "  [PASS] meta paginasi dipertahankan setelah penyaringan" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] meta paginasi hilang setelah penyaringan" -ForegroundColor Red }
+    }
+} else {
+    Skip "Direktori siswa untuk viewer Siswa" "akun siswa test tidak tersedia"
+}
+
+# Guru tetap menerima detail siswa PENUH (butuh kontak orang tua)
+if ($guruTok -and $siswaId) {
+    $r = Api GET "siswa`?idSiswa=$siswaId" -Token $guruTok
+    Chk "Guru -> /siswa?idSiswa=$siswaId (harus 200 penuh)" $r 200; if ($script:LAST_CHK) {
+        $keys = $r.data.PSObject.Properties.Name
+        if ($keys -contains 'alamat' -or $keys -contains 'nisn') { $script:PASS++; Write-Host "  [PASS] Guru tetap menerima detail siswa penuh" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] Detail siswa untuk Guru ikut tersaring — key: $($keys -join ',')" -ForegroundColor Red }
+    }
+}
+
+# ──────────────────────────────────────────────
+#  PHASE 14.10 — Paginasi opsional endpoint riwayat
+#  Kontraknya dua arah: tanpa param harus tetap array datar (klien lama tidak
+#  boleh rusak), dengan param harus envelope yang sama dengan /guru/all.
+# ──────────────────────────────────────────────
+Section "Phase 14.10: Paginasi Riwayat"
+
+$riwayatEps = @(
+    "akademik/siswa/$(NullOr $siswaId 1)/kelas/riwayat",
+    "akademik/kelas/$(NullOr $kelasId 1)/siswa/riwayat",
+    "akademik/guru/$(NullOr $guruId 1)/mapel/riwayat",
+    "akademik/mapel/$(NullOr $mapelId 1)/guru/riwayat"
+)
+
+foreach ($ep in $riwayatEps) {
+    # Tanpa param: perilaku lama (array datar)
+    $r = Api GET $ep
+    Chk "GET /$ep tanpa paginasi (harus 200)" $r 200; if ($script:LAST_CHK) {
+        $datar = ($r.data -is [array]) -or ($null -eq $r.data)
+        if ($datar) { $script:PASS++; Write-Host "  [PASS] tanpa param -> array datar (kompatibel klien lama)" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] tanpa param sudah berubah jadi envelope — klien lama rusak" -ForegroundColor Red }
+    }
+
+    # Dengan param: envelope paginasi
+    $r = Api GET "$ep`?per_page=2&page=1"
+    Chk "GET /$ep`?per_page=2 (harus 200)" $r 200; if ($script:LAST_CHK) {
+        $d = $r.data
+        $metaLengkap = ($null -ne $d.current_page) -and ($null -ne $d.last_page) `
+                       -and ($null -ne $d.per_page) -and ($null -ne $d.total) -and ($d.data -is [array])
+        if ($metaLengkap -and $d.per_page -eq 2 -and @($d.data).Count -le 2) {
+            $script:PASS++; Write-Host "  [PASS] envelope paginasi lengkap (per_page=$($d.per_page) total=$($d.total) baris=$(@($d.data).Count))" -ForegroundColor Green
+        } else {
+            $script:FAIL++; Write-Host "  [FAIL] envelope paginasi tidak sesuai (per_page=$($d.per_page) total=$($d.total) tipe data=$($d.data.GetType().Name))" -ForegroundColor Red
+        }
+    }
+}
+
+# per_page di luar batas ditolak, bukan diam-diam dipaksa
+$r = Api GET "$($riwayatEps[0])`?per_page=5000"
+Chk "GET riwayat per_page=5000 (di atas batas, harus 422)" $r 422
+$r = Api GET "$($riwayatEps[0])`?per_page=0"
+Chk "GET riwayat per_page=0 (harus 422)" $r 422
+
+# Gate role riwayat tidak ikut longgar gara-gara paginasi
+if ($asBiasa) {
+    $r = Api GET "$($riwayatEps[0])`?per_page=2" -Token $asBiasa.tok
+    Chk "Karyawan biasa -> riwayat berpaginasi (harus tetap 403)" $r 403
 }
 
 # ──────────────────────────────────────────────

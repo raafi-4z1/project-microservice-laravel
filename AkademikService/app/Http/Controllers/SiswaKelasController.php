@@ -8,10 +8,11 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Validator;
 use App\Models\SiswaKelas;
 use App\Traits\ApiResponser;
+use App\Traits\PaginasiRiwayat;
 
 class SiswaKelasController extends Controller
 {
-    use ApiResponser;
+    use ApiResponser, PaginasiRiwayat;
 
     public function assign(Request $request)
     {
@@ -221,10 +222,10 @@ class SiswaKelasController extends Controller
     public function getRiwayatSiswa(Request $request, $siswaId)
     {
         try {
-            $validate = Validator::make($request->all(), [
+            $validate = Validator::make($request->all(), array_merge([
                 'tahun_ajaran' => ['nullable', 'regex:/^\d{4}\/\d{4}$/'],
                 'semester'     => 'nullable|in:1,2',
-            ]);
+            ], $this->aturanPaginasi()));
 
             if ($validate->fails()) {
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
@@ -239,7 +240,7 @@ class SiswaKelasController extends Controller
                 $query->where('semester', $request->semester);
             }
 
-            $records = $query->orderBy('created_at')->get()->map(fn($r) => $this->toApiArray($r->toArray()));
+            $records = $this->hasilRiwayat($request, $query->orderBy('created_at'), fn($r) => $this->toApiArray($r));
 
             return $this->response("Riwayat lengkap kelas siswa id:{$siswaId}.", Response::HTTP_OK, $records);
         } catch (Exception $e) {
@@ -250,10 +251,10 @@ class SiswaKelasController extends Controller
     public function getRiwayatKelas(Request $request, $kelasId)
     {
         try {
-            $validate = Validator::make($request->all(), [
+            $validate = Validator::make($request->all(), array_merge([
                 'tahun_ajaran' => ['nullable', 'regex:/^\d{4}\/\d{4}$/'],
                 'semester'     => 'nullable|in:1,2',
-            ]);
+            ], $this->aturanPaginasi()));
 
             if ($validate->fails()) {
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
@@ -268,7 +269,7 @@ class SiswaKelasController extends Controller
                 $query->where('semester', $request->semester);
             }
 
-            $records = $query->orderBy('created_at')->get()->map(fn($r) => $this->toApiArray($r->toArray()));
+            $records = $this->hasilRiwayat($request, $query->orderBy('created_at'), fn($r) => $this->toApiArray($r));
 
             return $this->response("Riwayat lengkap siswa di kelas id:{$kelasId}.", Response::HTTP_OK, $records);
         } catch (Exception $e) {

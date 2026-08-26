@@ -34,7 +34,7 @@ Base URL: `https://gateway.test/api`
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
 | GET | `/guru/all` | Semua | List seluruh guru (tanpa foto). Query: `page`, `per_page`, `search` (cari di nama/NIP/email/jabatan) |
-| GET | `/guru` | Semua | Detail guru by `idGuru` (query param, termasuk foto). Untuk role Guru/Siswa field pribadi (NIK, alamat, telepon, tanggal lahir, dll.) disaring — hanya SuperAdmin/Admin/Karyawan yang menerima profil lengkap |
+| GET | `/guru` | Semua | Detail guru by `idGuru` (query param, termasuk foto). Untuk semua **non-pengelola** (Guru, Siswa, **karyawan biasa**) field pribadi (NIK, alamat, telepon, tanggal lahir, dll.) disaring — hanya SuperAdmin/Admin/**Administrator Sekolah** yang menerima profil lengkap |
 | POST | `/guru` | SuperAdmin, Admin | Tambah guru baru + foto (multipart/form-data) |
 | POST | `/guru/update` | SuperAdmin, Admin | Update data guru + foto opsional |
 | DELETE | `/guru/{id}` | SuperAdmin, Admin | Hapus guru (soft delete) |

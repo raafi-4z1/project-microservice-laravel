@@ -65,6 +65,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Pengelola sekolah = SuperAdmin, Admin, dan Administrator Sekolah.
+     *
+     * Dipakai untuk keputusan BACA data pribadi. Perhatikan bahwa role
+     * `Karyawan` biasa (satpam, kebersihan, dsb.) TIDAK termasuk: ia anggota
+     * sekolah yang boleh melihat direktori, tapi tidak berkepentingan atas NIK,
+     * alamat, telepon, atau tanggal lahir rekan kerjanya.
+     */
+    public function isPengelola(): bool
+    {
+        return in_array($this->role, ['SuperAdmin', 'Admin'], true)
+            || $this->isAdminSekolah();
+    }
+
+    /**
+     * Boleh melihat data pribadi SISWA (NISN, tempat/tanggal lahir, alamat,
+     * kontak orang tua). Guru ikut karena butuh menghubungi orang tua; siswa
+     * lain dan karyawan biasa tidak.
+     */
+    public function bolehLihatPiiSiswa(): bool
+    {
+        return $this->isPengelola() || $this->role === 'Guru';
+    }
+
+    /**
      * The attributes that should be hidden for serialization.
      *
      * @var list<string>

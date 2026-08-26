@@ -145,9 +145,11 @@ Semua token aktif milik target user langsung dicabut saat password direset.
 | SuperAdmin | ✅ | ✅ | ✅ | Admin, Guru, Siswa, Karyawan |
 | Admin | ✅ | ✅ | ✅* | Guru, Siswa, Karyawan |
 | **Karyawan — Administrator Sekolah** | ✅ | ✅ (akademik + master data + kartu) | ✅* | Guru, Siswa, Karyawan |
-| Guru / Siswa / Karyawan lain | ✅ (data sendiri) | ✅ (password sendiri) | ❌ | ❌ |
+| Guru / Siswa / Karyawan lain | ✅ terbatas — lihat [Privasi BACA](#privasi-baca--direktori-publik-vs-data-pribadi) | ✅ (password sendiri) | ❌ | ❌ |
 
 Role `SuperAdmin` tidak dapat dibuat melalui API — hanya via `php artisan db:seed`.
+Kolom GET di tabel ini hanya menyatakan *boleh memanggil*; **isi** yang dikembalikan
+berbeda per role — data pribadi disaring untuk non-pengelola.
 
 ### Administrator Sekolah (staf Tata Usaha)
 
@@ -211,6 +213,55 @@ SELECT email FROM karyawans WHERE is_admin_sekolah=1 AND deleted_at IS NULL;
 
 Perbaikannya cukup `POST /karyawan/update` dengan `isAdminSekolah` yang benar —
 Gateway akan menyelaraskan ulang keduanya.
+
+### Privasi BACA — direktori publik vs data pribadi
+
+Penanda Administrator Sekolah mengatur hak **tulis**; bagian ini mengatur hak
+**baca**. Keputusan pemilik produk: direktori guru/karyawan/kelas/mapel adalah
+**info sekolah** — boleh dilihat semua warga sekolah. Yang tidak ikut adalah
+**data pribadi** (NIK, alamat, telepon, tanggal lahir, NISN, data orang tua) dan
+**data akademik siswa**.
+
+Karena itu ada dua predikat di `App\Models\User`, dan seluruh keputusan baca
+memakainya — bukan daftar role yang ditulis ulang di tiap controller:
+
+| Predikat | Isinya | Dipakai untuk |
+|---|---|---|
+| `isPengelola()` | SuperAdmin, Admin, Administrator Sekolah | PII pegawai, seluruh data akademik siswa |
+| `bolehLihatPiiSiswa()` | `isPengelola()` + Guru | PII siswa (guru butuh kontak orang tua) |
+
+**Matriks detail yang diterima tiap viewer:**
+
+| Detail | Admin / SuperAdmin / Adm. Sekolah | Guru | Karyawan biasa | Siswa |
+|---|:-:|:-:|:-:|:-:|
+| `GET /guru?idGuru=` | penuh | publik | publik | publik |
+| `GET /karyawan?idKaryawan=` | penuh | publik | publik | ❌ 403 |
+| `GET /siswa?idSiswa=` · `GET /siswa/all` | penuh | penuh | ❌ 403 | publik |
+| Nilai / raport / ranking kelas · rekap absensi siswa | ✅ | ✅ (sesuai lingkup wali/pengampu) | ❌ 403 | hanya `/saya` |
+
+"Publik" = proyeksi whitelist di controller (`GURU_PUBLIC_FIELDS`,
+`KARYAWAN_PUBLIC_FIELDS`, `SISWA_PUBLIC_FIELDS`) lewat trait `App\Traits\SaringPii`.
+Whitelist, **bukan** blacklist: kolom baru di service otomatis tersaring, bukan
+otomatis bocor. Meta paginasi dipertahankan agar klien memakai satu parser untuk
+semua role.
+
+**Karyawan biasa** (satpam, kebersihan — `isAdminSekolah=false`) boleh:
+direktori guru/karyawan/kelas/mapel versi publik, `absensi/rekap/pegawai/saya`,
+PIN sendiri, dan profil sendiri. Selain itu **403**.
+
+**Record milik pemanggil sendiri tidak disaring.** Seorang guru/karyawan yang
+membuka detail dirinya sendiri tetap melihat alamat & nomor teleponnya — yang
+dilindungi adalah data orang lain. Kecocokan diambil dari `email` pada payload
+service dibandingkan email di token, **bukan** dari `id` yang dikirim klien,
+sehingga tidak bisa dipalsukan dengan menebak id.
+
+**`GET /siswa/saya` juga tidak tersaring** — itu profil diri sendiri, dan
+subjeknya diresolve dari email token, bukan dari input klien.
+
+Catatan penulisan: kondisi penyaringan menyebut pihak yang **berhak penuh**
+(`if (!auth()->user()->isPengelola())`), bukan pihak yang disaring. Versi lama
+menyebut role yang disaring (`in_array($role, ['Guru','Siswa'])`) — itulah sebab
+role `Karyawan` ikut menerima PII penuh tanpa ada yang menyadarinya.
 
 ### Proteksi DELETE /users/{id}
 

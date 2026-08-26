@@ -1,5 +1,9 @@
 # Dikirim lewat jalur lain, jangan masuk git:
 # - berisi data capture asli dari DB dev + kredensial akun test
+# Jangan menghapus baris di blok ini tanpa memindahkan kredensialnya lebih dulu.
+# Pernah terjadi: lima baris terhapus dan satu tersisa sebagai "capture-api-samples.ps"
+# (kurang angka 1) — sejak itu kelimanya tidak lagi diabaikan, dan satu `git add -A`
+# akan mengirim password akun test + data siswa hasil capture ke dalam repo.
 api-sample-responses.md
 capture-api-samples.ps1
 seed-test-accounts.ps1

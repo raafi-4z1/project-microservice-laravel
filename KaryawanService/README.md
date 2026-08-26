@@ -34,7 +34,7 @@ Base URL: `https://gateway.test/api`
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
 | GET | `/karyawan/all` | Semua | List karyawan (paginated, `?search=` nama/NIP/email/jabatan) |
-| GET | `/karyawan?idKaryawan={id}` | SuperAdmin, Admin, Karyawan | Detail karyawan |
+| GET | `/karyawan?idKaryawan={id}` | SuperAdmin, Admin, Karyawan, Guru | Detail karyawan. Untuk **non-pengelola** (Guru, karyawan biasa) field pribadi (alamat, `noTelp`, dll.) disaring — hanya SuperAdmin/Admin/**Administrator Sekolah** yang menerima profil lengkap. Role Siswa **403** |
 | POST | `/karyawan` | SuperAdmin, Admin | Tambah karyawan (foto opsional) |
 | POST | `/karyawan/update` | SuperAdmin, Admin | Update (kirim `idKaryawan` + field berubah) |
 | DELETE | `/karyawan/{id}` | SuperAdmin, Admin | Hapus (soft delete) |

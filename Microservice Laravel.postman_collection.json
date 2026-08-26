@@ -882,7 +882,7 @@
                 }
               ]
             },
-            "description": "Ambil detail lengkap satu guru berdasarkan ID. Foto dikembalikan sebagai base64 WebP.\n\n**Privasi:** untuk role Guru/Siswa, field pribadi (NIK, alamat, telepon, tanggal lahir, dll.) disaring oleh Gateway — hanya SuperAdmin/Admin/Karyawan yang menerima profil lengkap."
+            "description": "Ambil detail lengkap satu guru berdasarkan ID. Foto dikembalikan sebagai base64 WebP.\n\n**Privasi:** untuk semua **non-pengelola** — Guru, Siswa, dan **karyawan biasa** — field pribadi (NIK, alamat, telepon, tanggal lahir, dll.) disaring oleh Gateway. Hanya SuperAdmin/Admin/**Administrator Sekolah** yang menerima profil lengkap.\n\nField publik yang dibalas: `idGuru`, `namaLengkap`, `nip`, `email`, `jabatan`, `statusKepegawaian`, `pendidikanTerakhir`, `foto`."
           },
           "response": []
         },
@@ -1312,7 +1312,7 @@
                 }
               ]
             },
-            "description": "Ambil daftar semua siswa dengan pagination.\n\nParameter opsional `search`: cari di nama lengkap atau NISN (partial match).\n\nFoto **tidak disertakan** di list untuk menjaga response tetap ringan. Gunakan **GET Siswa by ID** untuk mendapatkan foto dalam format base64 WebP."
+            "description": "Ambil daftar semua siswa dengan pagination.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah, Guru, Siswa. **Karyawan biasa mendapat 403.**\n\n**Privasi:** viewer **Siswa** menerima proyeksi publik per baris (`idSiswa`, `namaLengkap`, `jenisKelamin`, `status`) — tanpa `nisn`, `tempatLahir`, `tanggalLahir`, `tanggalMasuk`. Meta paginasi tetap sama untuk semua role.\n\nParameter opsional `search`: cari di nama lengkap atau NISN (partial match).\n\nFoto **tidak disertakan** di list untuk menjaga response tetap ringan. Gunakan **GET Siswa by ID** untuk mendapatkan foto dalam format base64 WebP."
           },
           "response": []
         },
@@ -1343,7 +1343,7 @@
                 }
               ]
             },
-            "description": "Ambil detail lengkap satu siswa berdasarkan ID. Foto dikembalikan sebagai base64 WebP.\n\n**Akses:** SuperAdmin, Admin, Guru, Karyawan. Role Siswa mendapat 403 — berisi data pribadi (alamat, kontak orang tua)."
+            "description": "Ambil detail lengkap satu siswa berdasarkan ID. Foto dikembalikan sebagai base64 WebP.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah, Guru, Siswa. **Karyawan biasa mendapat 403**. Viewer **Siswa** menerima proyeksi publik (`idSiswa`, `namaLengkap`, `jenisKelamin`, `status`, `foto`) — tanpa NISN/tanggal lahir/alamat/telepon/data orang tua. Dulu role Siswa diblokir total di sini — berisi data pribadi (alamat, kontak orang tua)."
           },
           "response": []
         },
@@ -1734,7 +1734,7 @@
                 "saya"
               ]
             },
-            "description": "Role **Siswa**: profil diri sendiri termasuk `foto` (base64).\n\nSiswa diblokir dari `GET /siswa?idSiswa=` demi privasi antar-siswa, jadi ini satu-satunya jalur siswa ke datanya sendiri. `idSiswa` diresolve dari email token, bukan dari input klien."
+            "description": "Role **Siswa**: profil diri sendiri termasuk `foto` (base64).\n\nSiswa hanya menerima versi **publik** di `GET /siswa?idSiswa=` (tanpa NISN/alamat/data orang tua), jadi ini satu-satunya jalur siswa ke datanya **sendiri** secara lengkap. `idSiswa` diresolve dari email token, bukan dari input klien."
           },
           "response": []
         }
@@ -1813,7 +1813,7 @@
                 }
               ]
             },
-            "description": "Detail karyawan. Guru/Siswa hanya melihat field publik (tanpa alamat/no_telp)."
+            "description": "Detail karyawan.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah, Guru, Karyawan. Role Siswa mendapat 403.\n\n**Privasi:** semua **non-pengelola** — Guru dan **karyawan biasa** — hanya melihat field publik: `idKaryawan`, `namaLengkap`, `nip`, `email`, `jabatan`, `isAdminSekolah`, `statusKepegawaian`, `foto`. Alamat dan `noTelp` hanya untuk SuperAdmin/Admin/**Administrator Sekolah**."
           },
           "response": []
         },
@@ -2488,10 +2488,22 @@
                       "value": "1",
                       "description": "Filter semester (opsional)",
                       "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Halaman (opsional). Kalau page/per_page dikirim, `data` berubah jadi envelope paginasi seperti GET /guru/all.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "25",
+                      "description": "Baris per halaman (opsional). Default 25, maksimum 100 — di luar itu 422.",
+                      "disabled": true
                     }
                   ]
                 },
-                "description": "Ambil **semua** kelas yang pernah diikuti siswa — termasuk yang sudah dipindah (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nField `deletedAt` menunjukkan kapan siswa dipindah dari kelas tersebut (`null` = masih aktif di kelas itu).\n\nGanti `1` di URL dengan ID siswa."
+                "description": "Ambil **semua** kelas yang pernah diikuti siswa — termasuk yang sudah dipindah (soft-deleted).\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah.\n\nField `deletedAt` menunjukkan kapan siswa dipindah dari kelas tersebut (`null` = masih aktif di kelas itu).\n\nGanti `1` di URL dengan ID siswa.\n\n**Paginasi (opsional):** tanpa `page`/`per_page` respons tetap **array datar** berisi seluruh riwayat (perilaku lama). Dengan salah satunya, `data` menjadi **envelope paginasi** yang sama dengan `GET /guru/all` (`data`, `current_page`, `last_page`, `per_page`, `total`, `from`, `to`, `links`). Bentuk tiap item tidak berubah."
               },
               "response": []
             },
@@ -2530,10 +2542,22 @@
                       "value": "1",
                       "description": "Filter semester (opsional)",
                       "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Halaman (opsional). Kalau page/per_page dikirim, `data` berubah jadi envelope paginasi seperti GET /guru/all.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "25",
+                      "description": "Baris per halaman (opsional). Default 25, maksimum 100 — di luar itu 422.",
+                      "disabled": true
                     }
                   ]
                 },
-                "description": "Ambil **semua** siswa yang pernah masuk kelas ini — termasuk yang sudah dipindah (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nGanti `1` di URL dengan ID kelas."
+                "description": "Ambil **semua** siswa yang pernah masuk kelas ini — termasuk yang sudah dipindah (soft-deleted).\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah.\n\nGanti `1` di URL dengan ID kelas.\n\n**Paginasi (opsional):** tanpa `page`/`per_page` respons tetap **array datar** berisi seluruh riwayat (perilaku lama). Dengan salah satunya, `data` menjadi **envelope paginasi** yang sama dengan `GET /guru/all` (`data`, `current_page`, `last_page`, `per_page`, `total`, `from`, `to`, `links`). Bentuk tiap item tidak berubah."
               },
               "response": []
             },
@@ -2838,10 +2862,22 @@
                       "value": "1",
                       "description": "Filter semester (opsional)",
                       "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Halaman (opsional). Kalau page/per_page dikirim, `data` berubah jadi envelope paginasi seperti GET /guru/all.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "25",
+                      "description": "Baris per halaman (opsional). Default 25, maksimum 100 — di luar itu 422.",
+                      "disabled": true
                     }
                   ]
                 },
-                "description": "Ambil **semua** mapel yang pernah diampu guru — termasuk yang sudah diganti guru lain (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nField `deletedAt` menunjukkan kapan penugasan diakhiri (`null` = masih aktif).\n\nGanti `1` di URL dengan ID guru."
+                "description": "Ambil **semua** mapel yang pernah diampu guru — termasuk yang sudah diganti guru lain (soft-deleted).\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah.\n\nField `deletedAt` menunjukkan kapan penugasan diakhiri (`null` = masih aktif).\n\nGanti `1` di URL dengan ID guru.\n\n**Paginasi (opsional):** tanpa `page`/`per_page` respons tetap **array datar** berisi seluruh riwayat (perilaku lama). Dengan salah satunya, `data` menjadi **envelope paginasi** yang sama dengan `GET /guru/all` (`data`, `current_page`, `last_page`, `per_page`, `total`, `from`, `to`, `links`). Bentuk tiap item tidak berubah."
               },
               "response": []
             },
@@ -2886,10 +2922,22 @@
                       "value": "1",
                       "description": "Filter semester (opsional)",
                       "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Halaman (opsional). Kalau page/per_page dikirim, `data` berubah jadi envelope paginasi seperti GET /guru/all.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "25",
+                      "description": "Baris per halaman (opsional). Default 25, maksimum 100 — di luar itu 422.",
+                      "disabled": true
                     }
                   ]
                 },
-                "description": "Ambil **semua** guru yang pernah mengampu mapel ini — termasuk yang sudah diganti (soft-deleted).\n\n**Akses:** SuperAdmin, Admin.\n\nGanti `1` di URL dengan ID mapel."
+                "description": "Ambil **semua** guru yang pernah mengampu mapel ini — termasuk yang sudah diganti (soft-deleted).\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah.\n\nGanti `1` di URL dengan ID mapel.\n\n**Paginasi (opsional):** tanpa `page`/`per_page` respons tetap **array datar** berisi seluruh riwayat (perilaku lama). Dengan salah satunya, `data` menjadi **envelope paginasi** yang sama dengan `GET /guru/all` (`data`, `current_page`, `last_page`, `per_page`, `total`, `from`, `to`, `links`). Bentuk tiap item tidak berubah."
               },
               "response": []
             }
@@ -3715,7 +3763,7 @@
                     }
                   ]
                 },
-                "description": "Ambil semua nilai untuk seluruh mapel dalam satu kelas.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Akses:** SuperAdmin, Admin, Karyawan, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
+                "description": "Ambil semua nilai untuk seluruh mapel dalam satu kelas.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`.\n\n**Karyawan biasa (`isAdminSekolah=false`) mendapat 403.** Nilai/raport/absensi siswa adalah data akademik, bukan info sekolah — satpam/kebersihan tidak berkepentingan atasnya."
               },
               "response": []
             },
@@ -3754,7 +3802,7 @@
                     }
                   ]
                 },
-                "description": "Ambil semua nilai satu siswa untuk semua mapel.\n\n**Akses:** SuperAdmin, Admin.\n\nGanti 1 di URL dengan idSiswa. Filter tahun_ajaran dan semester opsional."
+                "description": "Ambil semua nilai satu siswa untuk semua mapel.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah, Guru. **Karyawan biasa mendapat 403** — data akademik siswa bukan info sekolah.\n\nGanti 1 di URL dengan idSiswa. Filter tahun_ajaran dan semester opsional."
               },
               "response": []
             },
@@ -3836,7 +3884,7 @@
                     }
                   ]
                 },
-                "description": "Ambil raport satu siswa — semua mapel dengan nilai dan rata-rata tertimbang.\n\n**Akses:** SuperAdmin, Admin.\n\nGanti 1 di URL dengan idSiswa. Filter tahun_ajaran dan semester opsional."
+                "description": "Ambil raport satu siswa — semua mapel dengan nilai dan rata-rata tertimbang.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah, Guru. **Karyawan biasa mendapat 403** — data akademik siswa bukan info sekolah.\n\nGanti 1 di URL dengan idSiswa. Filter tahun_ajaran dan semester opsional."
               },
               "response": []
             },
@@ -3875,7 +3923,7 @@
                     }
                   ]
                 },
-                "description": "Ambil raport seluruh siswa dalam satu kelas — semua mapel dengan nilai dan rata-rata.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Akses:** SuperAdmin, Admin, Karyawan, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
+                "description": "Ambil raport seluruh siswa dalam satu kelas — semua mapel dengan nilai dan rata-rata.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`.\n\n**Karyawan biasa (`isAdminSekolah=false`) mendapat 403.** Nilai/raport/absensi siswa adalah data akademik, bukan info sekolah — satpam/kebersihan tidak berkepentingan atasnya."
               },
               "response": []
             },
@@ -3953,7 +4001,7 @@
                     }
                   ]
                 },
-                "description": "Ambil ranking siswa dalam satu kelas berdasarkan rata-rata nilai_akhir.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Response:** array siswa urut dari tertinggi, dengan field rankingSiswa dan totalSiswa.\n\n**Akses:** SuperAdmin, Admin, Karyawan, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
+                "description": "Ambil ranking siswa dalam satu kelas berdasarkan rata-rata nilai_akhir.\n\nGanti 1 di URL dengan idKelas. Filter tahun_ajaran dan semester opsional.\n\n**Response:** array siswa urut dari tertinggi, dengan field rankingSiswa dan totalSiswa.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`.\n\n**Karyawan biasa (`isAdminSekolah=false`) mendapat 403.** Nilai/raport/absensi siswa adalah data akademik, bukan info sekolah — satpam/kebersihan tidak berkepentingan atasnya."
               },
               "response": []
             },
@@ -5425,7 +5473,7 @@
                     }
                   ]
                 },
-                "description": "Rekap per siswa dalam 1 kelas (hadir/terlambat/izin/sakit/alpa + total), namaLengkap disertakan.\n\n**Akses:** SuperAdmin, Admin, Karyawan, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`."
+                "description": "Rekap per siswa dalam 1 kelas (hadir/terlambat/izin/sakit/alpa + total), namaLengkap disertakan.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah, dan guru **WALI** kelas tersebut.\n\nGuru yang hanya **mengampu** satu mapel di kelas ini mendapat **403** — untuk mapelnya sendiri gunakan `GET akademik/nilai/pengampu/{id}`.\n\n**Karyawan biasa (`isAdminSekolah=false`) mendapat 403.** Nilai/raport/absensi siswa adalah data akademik, bukan info sekolah — satpam/kebersihan tidak berkepentingan atasnya."
               },
               "response": []
             },
@@ -5466,7 +5514,7 @@
                     }
                   ]
                 },
-                "description": "Ringkasan + detail harian 1 siswa. **SuperAdmin/Admin/Guru/Karyawan.**"
+                "description": "Ringkasan + detail harian 1 siswa. **SuperAdmin / Admin / Administrator Sekolah / Guru.** Karyawan biasa 403."
               },
               "response": []
             },
@@ -5535,7 +5583,7 @@
                     }
                   ]
                 },
-                "description": "Ringkasan absensi per pelajaran 1 siswa. **SuperAdmin/Admin/Guru/Karyawan.**"
+                "description": "Ringkasan absensi per pelajaran 1 siswa. **SuperAdmin / Admin / Administrator Sekolah / Guru.** Karyawan biasa 403."
               },
               "response": []
             },

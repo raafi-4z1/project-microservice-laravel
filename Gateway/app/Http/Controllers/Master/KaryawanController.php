@@ -8,13 +8,14 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Traits\ApiResponser;
 use App\Traits\LogsAudit;
+use App\Traits\SaringPii;
 use App\Services\UserService;
 use App\Http\Controllers\Controller;
 use App\Traits\ConsumeMicroserviceService;
 
 class KaryawanController extends Controller
 {
-    use ConsumeMicroserviceService, ApiResponser, LogsAudit;
+    use ConsumeMicroserviceService, ApiResponser, LogsAudit, SaringPii;
     private $userService, $baseUri, $secret, $reqUrl;
 
     public function __construct(UserService $userService)
@@ -29,25 +30,22 @@ class KaryawanController extends Controller
         return $this->performRequest($request->method(), "{$this->reqUrl}/all", $request->only(['page', 'per_page', 'search']));
     }
 
-    // Field profil karyawan yang boleh dilihat role non-administratif (Guru, Siswa).
-    // Data pribadi (alamat, no_telp) hanya untuk SuperAdmin, Admin, Karyawan.
+    // Field profil karyawan yang boleh dilihat non-pengelola (Guru dan karyawan
+    // biasa). Data pribadi (alamat, no_telp) hanya untuk SuperAdmin, Admin, dan
+    // Administrator Sekolah. `isAdminSekolah` ikut karena penanda jabatan itu
+    // memang informasi publik — supaya warga sekolah tahu siapa yang mengurus TU.
     private const KARYAWAN_PUBLIC_FIELDS = [
         'idKaryawan', 'namaLengkap', 'nip', 'email', 'jabatan',
-        'statusKepegawaian', 'foto',
+        'isAdminSekolah', 'statusKepegawaian', 'foto',
     ];
 
     public function show(Request $request) {
         $response = $this->performRequest($request->method(), "{$this->reqUrl}", $request->only(['idKaryawan']));
 
-        if (in_array(auth()->user()->role, ['Guru', 'Siswa'])) {
-            $decode = $this->decode($response);
-            if (($decode['resCode'] ?? null) === Response::HTTP_OK && is_array($decode['data'] ?? null)) {
-                return $this->response(
-                    $decode['resMsg'] ?? 'OK',
-                    Response::HTTP_OK,
-                    array_intersect_key($decode['data'], array_flip(self::KARYAWAN_PUBLIC_FIELDS))
-                );
-            }
+        // Karyawan biasa dulu lolos penuh karena kondisinya menyebut role yang
+        // disaring, bukan yang berhak. Sekarang hanya pengelola yang penuh.
+        if (!auth()->user()->isPengelola()) {
+            return $this->saringDetail($response, self::KARYAWAN_PUBLIC_FIELDS);
         }
 
         return $response;

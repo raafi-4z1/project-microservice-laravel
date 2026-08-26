@@ -9,10 +9,11 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\PengampuMapel;
 use App\Models\JadwalPelajaran;
 use App\Traits\ApiResponser;
+use App\Traits\PaginasiRiwayat;
 
 class PengampuMapelController extends Controller
 {
-    use ApiResponser;
+    use ApiResponser, PaginasiRiwayat;
 
     public function assign(Request $request)
     {
@@ -222,10 +223,10 @@ class PengampuMapelController extends Controller
     public function getRiwayatGuru(Request $request, $guruId)
     {
         try {
-            $validate = Validator::make($request->all(), [
+            $validate = Validator::make($request->all(), array_merge([
                 'tahun_ajaran' => ['nullable', 'regex:/^\d{4}\/\d{4}$/'],
                 'semester'     => 'nullable|in:1,2',
-            ]);
+            ], $this->aturanPaginasi()));
 
             if ($validate->fails()) {
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
@@ -240,7 +241,7 @@ class PengampuMapelController extends Controller
                 $query->where('semester', $request->semester);
             }
 
-            $records = $query->orderBy('created_at')->get()->map(fn($r) => $this->toApiArray($r->toArray()));
+            $records = $this->hasilRiwayat($request, $query->orderBy('created_at'), fn($r) => $this->toApiArray($r));
 
             return $this->response("Riwayat lengkap pengampu guru id:{$guruId}.", Response::HTTP_OK, $records);
         } catch (Exception $e) {
@@ -251,11 +252,11 @@ class PengampuMapelController extends Controller
     public function getRiwayatMapel(Request $request, $mapelId)
     {
         try {
-            $validate = Validator::make($request->all(), [
+            $validate = Validator::make($request->all(), array_merge([
                 'kelas_id'     => 'nullable|integer|min:1',
                 'tahun_ajaran' => ['nullable', 'regex:/^\d{4}\/\d{4}$/'],
                 'semester'     => 'nullable|in:1,2',
-            ]);
+            ], $this->aturanPaginasi()));
 
             if ($validate->fails()) {
                 return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
@@ -273,7 +274,7 @@ class PengampuMapelController extends Controller
                 $query->where('semester', $request->semester);
             }
 
-            $records = $query->orderBy('created_at')->get()->map(fn($r) => $this->toApiArray($r->toArray()));
+            $records = $this->hasilRiwayat($request, $query->orderBy('created_at'), fn($r) => $this->toApiArray($r));
 
             return $this->response("Riwayat lengkap guru pengampu mapel id:{$mapelId}.", Response::HTTP_OK, $records);
         } catch (Exception $e) {

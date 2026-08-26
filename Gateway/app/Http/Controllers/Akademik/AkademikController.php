@@ -256,16 +256,20 @@ class AkademikController extends Controller
         return $this->performRequest('GET', "{$this->reqUrl}/mapel/{$mapelId}/guru", $request->only(['kelas_id', 'tahun_ajaran', 'semester']));
     }
 
-    // GET /akademik/siswa/{siswa_id}/kelas/riwayat — SuperAdmin, Admin
+    // GET /akademik/siswa/{siswa_id}/kelas/riwayat — SuperAdmin, Admin, Administrator Sekolah
+    //
+    // Keempat endpoint riwayat menerima `page`/`per_page` opsional. Tanpa
+    // keduanya balasannya array datar seperti semula; dengan salah satunya
+    // balasannya envelope paginasi yang sama dengan GET /guru/all.
     public function getRiwayatSiswa(Request $request, $siswaId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/siswa/{$siswaId}/kelas/riwayat", $request->only(['tahun_ajaran', 'semester']));
+        return $this->performRequest('GET', "{$this->reqUrl}/siswa/{$siswaId}/kelas/riwayat", $request->only(['tahun_ajaran', 'semester', 'page', 'per_page']));
     }
 
     // GET /akademik/kelas/{kelas_id}/siswa/riwayat — SuperAdmin, Admin
     public function getRiwayatKelas(Request $request, $kelasId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/kelas/{$kelasId}/siswa/riwayat", $request->only(['tahun_ajaran', 'semester']));
+        return $this->performRequest('GET', "{$this->reqUrl}/kelas/{$kelasId}/siswa/riwayat", $request->only(['tahun_ajaran', 'semester', 'page', 'per_page']));
     }
 
     // PATCH /akademik/pengampu/{id} — SuperAdmin, Admin
@@ -300,13 +304,13 @@ class AkademikController extends Controller
     // GET /akademik/guru/{guru_id}/mapel/riwayat — SuperAdmin, Admin
     public function getRiwayatGuru(Request $request, $guruId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/guru/{$guruId}/mapel/riwayat", $request->only(['tahun_ajaran', 'semester']));
+        return $this->performRequest('GET', "{$this->reqUrl}/guru/{$guruId}/mapel/riwayat", $request->only(['tahun_ajaran', 'semester', 'page', 'per_page']));
     }
 
     // GET /akademik/mapel/{mapel_id}/guru/riwayat — SuperAdmin, Admin
     public function getRiwayatMapel(Request $request, $mapelId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/mapel/{$mapelId}/guru/riwayat", $request->only(['kelas_id', 'tahun_ajaran', 'semester']));
+        return $this->performRequest('GET', "{$this->reqUrl}/mapel/{$mapelId}/guru/riwayat", $request->only(['kelas_id', 'tahun_ajaran', 'semester', 'page', 'per_page']));
     }
 
     // GET /akademik/semester/aktif — semua role

@@ -8,13 +8,14 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Traits\ApiResponser;
 use App\Traits\LogsAudit;
+use App\Traits\SaringPii;
 use App\Services\UserService;
 use App\Http\Controllers\Controller;
 use App\Traits\ConsumeMicroserviceService;
 
 class SiswaController extends Controller
 {
-    use ConsumeMicroserviceService, ApiResponser, LogsAudit;
+    use ConsumeMicroserviceService, ApiResponser, LogsAudit, SaringPii;
     private $userService, $baseUri, $secret, $reqUrl;
 
     public function __construct(UserService $userService)
@@ -25,14 +26,41 @@ class SiswaController extends Controller
         $this->secret = config('services.siswa.secret');
     }
 
+    // Info publik siswa: cukup untuk direktori sekolah (siapa, kelas berapa,
+    // masih aktif atau tidak) tanpa membuka jati diri. NISN, tempat/tanggal
+    // lahir, alamat, telepon, dan seluruh data orang tua sengaja TIDAK ada di
+    // sini — sesama siswa tidak berkepentingan atas itu.
+    //
+    // `foto` hanya muncul di detail; daftar `siswa/all` memang tidak memuatnya
+    // karena accessor foto mengubah path menjadi Base64 dan akan membuat satu
+    // halaman daftar membengkak.
+    private const SISWA_PUBLIC_FIELDS = [
+        'idSiswa', 'namaLengkap', 'jenisKelamin', 'status', 'foto',
+    ];
+
     public function index(Request $request)
     {
-        return $this->performRequest($request->method(), "{$this->reqUrl}/all", $request->only(['page', 'per_page', 'search']));
+        $response = $this->performRequest($request->method(), "{$this->reqUrl}/all", $request->only(['page', 'per_page', 'search']));
+
+        // Siswa boleh melihat direktori teman satu sekolah, tapi versi publik.
+        // Sebelumnya daftar ini dibalas apa adanya — termasuk NISN dan tanggal
+        // lahir seluruh siswa — kepada siapa pun yang sudah login.
+        if (!auth()->user()->bolehLihatPiiSiswa()) {
+            return $this->saringDaftar($response, self::SISWA_PUBLIC_FIELDS);
+        }
+
+        return $response;
     }
 
     public function show(Request $request)
     {
-        return $this->performRequest($request->method(), "{$this->reqUrl}", $request->only(['idSiswa']));
+        $response = $this->performRequest($request->method(), "{$this->reqUrl}", $request->only(['idSiswa']));
+
+        if (!auth()->user()->bolehLihatPiiSiswa()) {
+            return $this->saringDetail($response, self::SISWA_PUBLIC_FIELDS);
+        }
+
+        return $response;
     }
 
     // GET /siswa/saya — role Siswa: profil DIRI SENDIRI (termasuk foto).
