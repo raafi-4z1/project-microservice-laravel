@@ -33,7 +33,7 @@ Base URL: `https://gateway.test/api`
 
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
-| GET | `/siswa/all` | SuperAdmin, Admin, Adm. Sekolah, Guru, Siswa | List seluruh siswa (tanpa foto). Query: `page`, `per_page`, `search` (cari di nama/NISN). **Viewer Siswa menerima proyeksi publik** (`idSiswa`, `namaLengkap`, `jenisKelamin`, `status`) — tanpa NISN/tempat/tanggal lahir. Karyawan biasa **403** |
+| GET | `/siswa/all` | SuperAdmin, Admin, Adm. Sekolah, Guru, Siswa | List seluruh siswa (tanpa foto). Query: `page`, `per_page`, `search` (cari di nama/NISN; untuk viewer **Siswa** pencarian dibatasi ke **nama saja** — lihat catatan oracle di bawah). **Viewer Siswa menerima proyeksi publik** (`idSiswa`, `namaLengkap`, `jenisKelamin`, `status`) — tanpa NISN/tempat/tanggal lahir. Karyawan biasa **403** |
 | GET | `/siswa` | SuperAdmin, Admin, Adm. Sekolah, Guru, Siswa | Detail siswa by `idSiswa` (query param, termasuk foto). **Viewer Siswa menerima proyeksi publik** (`idSiswa`, `namaLengkap`, `jenisKelamin`, `status`, `foto`) — tanpa NISN/tanggal lahir/alamat/telepon/data orang tua. Karyawan biasa **403** |
 | GET | `/siswa/saya` | Siswa | Profil **diri sendiri** (bentuk sama dengan `/siswa`, termasuk `foto`). `idSiswa` diresolve dari email token, bukan input klien. **Tidak ikut disaring** — ini profil diri sendiri, jadi lengkap; `/siswa?idSiswa=` untuk siswa lain hanya versi publik |
 | POST | `/siswa` | SuperAdmin, Admin | Tambah siswa baru + foto (multipart/form-data) |

@@ -24,6 +24,8 @@ class SiswaController extends Controller
                 'page'     => 'sometimes|numeric|min:1',
                 'per_page' => 'sometimes|numeric|min:1',
                 'search'   => 'sometimes|string|max:100',
+                // Diset Gateway, bukan diteruskan dari klien: lihat blok pencarian.
+                'search_publik' => 'sometimes|in:0,1',
             ]);
 
             if ($validate->fails()) {
@@ -43,12 +45,27 @@ class SiswaController extends Controller
 
             $query = Siswa::select($columns);
 
-            // Cari di nama lengkap atau NISN
+            // Cari di nama lengkap atau NISN.
+            //
+            // PENCARIAN IKUT DISARING. Membuang kolom `nisn` dari respons saja
+            // tidak cukup: selama NISN masih dipakai sebagai kunci cari, jumlah
+            // baris yang cocok menjadi oracle. Terbukti bisa memulihkan NISN utuh
+            // digit demi digit — "0" cocok 5 baris, "012" 2 baris, "0123456784"
+            // 1 baris — lengkap dengan nama pemiliknya, padahal field nisn-nya
+            // sudah hilang dari respons.
+            //
+            // Gateway menyalakan `search_publik` untuk pemanggil yang tidak berhak
+            // melihat NISN (viewer role Siswa). Flag ini ditentukan server dari
+            // token; klien tidak bisa mengirimnya sendiri karena Gateway hanya
+            // meneruskan page/per_page/search.
             if ($request->filled('search')) {
                 $s = $request->input('search');
-                $query->where(function ($q) use ($s) {
-                    $q->where('nama_lengkap', 'like', "%{$s}%")
-                      ->orWhere('nisn', 'like', "%{$s}%");
+                $hanyaNama = filter_var($request->input('search_publik', false), FILTER_VALIDATE_BOOLEAN);
+                $query->where(function ($q) use ($s, $hanyaNama) {
+                    $q->where('nama_lengkap', 'like', "%{$s}%");
+                    if (!$hanyaNama) {
+                        $q->orWhere('nisn', 'like', "%{$s}%");
+                    }
                 });
             }
 

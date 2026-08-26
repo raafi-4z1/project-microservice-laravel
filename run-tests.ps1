@@ -2068,6 +2068,37 @@ if ($siswaTok) {
         if ($null -ne $r.data.current_page -and $null -ne $r.data.total) { $script:PASS++; Write-Host "  [PASS] meta paginasi dipertahankan setelah penyaringan" -ForegroundColor Green }
         else { $script:FAIL++; Write-Host "  [FAIL] meta paginasi hilang setelah penyaringan" -ForegroundColor Red }
     }
+
+    # Oracle pencarian: membuang kolom nisn dari respons TIDAK cukup. Selama NISN
+    # masih dipakai sebagai kunci cari, jumlah baris yang cocok membocorkan NISN
+    # itu sendiri digit demi digit — dan pernah terbukti demikian.
+    $idSayaS = (Api GET "siswa/saya" -Token $siswaTok).data.idSiswa
+    $lainS   = @((Api GET "siswa/all`?per_page=50").data.data | Where-Object { $_.idSiswa -ne $idSayaS -and $_.nisn })[0]
+    if ($lainS) {
+        $r = Api GET "siswa/all`?search=$($lainS.nisn)" -Token $siswaTok
+        Chk "Siswa -> cari NISN siswa lain (harus 200)" $r 200; if ($script:LAST_CHK) {
+            if (@($r.data.data).Count -eq 0) { $script:PASS++; Write-Host "  [PASS] NISN tidak dipakai sebagai kunci cari untuk viewer Siswa" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL] Oracle NISN terbuka — pencarian NISN membalas $(@($r.data.data).Count) baris meski field nisn disaring" -ForegroundColor Red }
+        }
+
+        # Klien tidak boleh bisa membalikkan aturan dengan menitipkan flag sendiri
+        $r = Api GET "siswa/all`?search=$($lainS.nisn)&search_publik=0" -Token $siswaTok
+        if (@($r.data.data).Count -eq 0) { $script:PASS++; Write-Host "  [PASS] search_publik dari klien diabaikan" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] Klien dapat mematikan penyaringan pencarian lewat search_publik=0" -ForegroundColor Red }
+
+        # Jangan sampai penutupan oracle ikut mematikan pencarian nama
+        $namaDepan = (("$($lainS.namaLengkap)" -split ' ')[0])
+        $r = Api GET "siswa/all`?search=$namaDepan" -Token $siswaTok
+        if (@($r.data.data).Count -ge 1) { $script:PASS++; Write-Host "  [PASS] Pencarian nama tetap berfungsi untuk Siswa" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] Pencarian nama ikut mati untuk Siswa" -ForegroundColor Red }
+
+        # Pengelola & guru tidak boleh ikut kehilangan pencarian NISN
+        $r = Api GET "siswa/all`?search=$($lainS.nisn)"
+        if (@($r.data.data).Count -ge 1) { $script:PASS++; Write-Host "  [PASS] Admin tetap dapat mencari lewat NISN" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] Pencarian NISN ikut mati untuk Admin" -ForegroundColor Red }
+    } else {
+        Skip "Oracle pencarian NISN" "tidak ada siswa lain ber-NISN sebagai pembanding"
+    }
 } else {
     Skip "Direktori siswa untuk viewer Siswa" "akun siswa test tidak tersedia"
 }

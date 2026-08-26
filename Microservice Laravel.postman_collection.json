@@ -1312,7 +1312,7 @@
                 }
               ]
             },
-            "description": "Ambil daftar semua siswa dengan pagination.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah, Guru, Siswa. **Karyawan biasa mendapat 403.**\n\n**Privasi:** viewer **Siswa** menerima proyeksi publik per baris (`idSiswa`, `namaLengkap`, `jenisKelamin`, `status`) — tanpa `nisn`, `tempatLahir`, `tanggalLahir`, `tanggalMasuk`. Meta paginasi tetap sama untuk semua role.\n\nParameter opsional `search`: cari di nama lengkap atau NISN (partial match).\n\nFoto **tidak disertakan** di list untuk menjaga response tetap ringan. Gunakan **GET Siswa by ID** untuk mendapatkan foto dalam format base64 WebP."
+            "description": "Ambil daftar semua siswa dengan pagination.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah, Guru, Siswa. **Karyawan biasa mendapat 403.**\n\n**Privasi:** viewer **Siswa** menerima proyeksi publik per baris (`idSiswa`, `namaLengkap`, `jenisKelamin`, `status`) — tanpa `nisn`, `tempatLahir`, `tanggalLahir`, `tanggalMasuk`. Meta paginasi tetap sama untuk semua role.\n\nParameter opsional `search`: cari di nama lengkap atau NISN (partial match).\n\nFoto **tidak disertakan** di list untuk menjaga response tetap ringan. Gunakan **GET Siswa by ID** untuk mendapatkan foto dalam format base64 WebP.\n\n**Pencarian per role:** `search` mencocokkan nama **dan NISN** untuk pengelola & guru. Untuk viewer **Siswa** dibatasi ke **nama saja** — kalau NISN ikut jadi kunci cari, jumlah baris yang cocok membocorkan NISN itu sendiri digit demi digit meskipun kolom `nisn` sudah dibuang dari respons. Batasan ini ditentukan server dari token; parameter `search_publik` yang dikirim klien diabaikan."
           },
           "response": []
         },

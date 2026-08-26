@@ -249,6 +249,16 @@ semua role.
 direktori guru/karyawan/kelas/mapel versi publik, `absensi/rekap/pegawai/saya`,
 PIN sendiri, dan profil sendiri. Selain itu **403**.
 
+**Pencarian ikut disaring, bukan hanya respons.** `GET /siswa/all?search=` mencari
+di nama **dan NISN**. Membuang kolom `nisn` dari respons saja tidak cukup: selama
+NISN masih jadi kunci cari, jumlah baris yang cocok menjadi oracle — terbukti bisa
+memulihkan NISN utuh digit demi digit (`0` cocok 5 baris, `012` 2 baris,
+`0123456784` 1 baris) lengkap dengan nama pemiliknya. Karena itu Gateway
+menyalakan `search_publik=1` untuk viewer yang tidak berhak melihat NISN, dan
+SiswaService membatasi pencarian ke nama saja. Flag itu ditentukan server dari
+token; Gateway hanya meneruskan `page`/`per_page`/`search`, jadi klien tidak bisa
+menitipkannya sendiri.
+
 **Record milik pemanggil sendiri tidak disaring.** Seorang guru/karyawan yang
 membuka detail dirinya sendiri tetap melihat alamat & nomor teleponnya — yang
 dilindungi adalah data orang lain. Kecocokan diambil dari `email` pada payload

@@ -40,12 +40,24 @@ class SiswaController extends Controller
 
     public function index(Request $request)
     {
-        $response = $this->performRequest($request->method(), "{$this->reqUrl}/all", $request->only(['page', 'per_page', 'search']));
+        $bolehPii = auth()->user()->bolehLihatPiiSiswa();
+
+        // Whitelist parameter DULU, baru tambahkan flag — supaya klien tidak bisa
+        // menitipkan `search_publik` sendiri untuk membuka kembali pencarian NISN.
+        $params = $request->only(['page', 'per_page', 'search']);
+        if (!$bolehPii) {
+            // Membuang kolom nisn dari respons saja tidak cukup: selama NISN masih
+            // bisa dipakai sebagai kata kunci, jumlah baris yang cocok membocorkan
+            // NISN itu sendiri digit demi digit. Lihat SiswaService::index.
+            $params['search_publik'] = '1';
+        }
+
+        $response = $this->performRequest($request->method(), "{$this->reqUrl}/all", $params);
 
         // Siswa boleh melihat direktori teman satu sekolah, tapi versi publik.
         // Sebelumnya daftar ini dibalas apa adanya — termasuk NISN dan tanggal
         // lahir seluruh siswa — kepada siapa pun yang sudah login.
-        if (!auth()->user()->bolehLihatPiiSiswa()) {
+        if (!$bolehPii) {
             return $this->saringDaftar($response, self::SISWA_PUBLIC_FIELDS);
         }
 

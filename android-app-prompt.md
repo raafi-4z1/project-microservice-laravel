@@ -282,6 +282,10 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
 - **Respons detail** (menambah): `email`, `telephone`, `alamat`, `agama`,
   `namaAyah`, `namaIbu`, `pekerjaanAyah`, `pekerjaanIbu`, `noTelpAyah`, `noTelpIbu`,
   `namaWali`, `hubunganWali`, `noTelpWali`, `foto`
+- **Pencarian juga dibatasi untuk viewer Siswa**: `?search=` hanya mencocokkan
+  **nama**, tidak NISN (kalau NISN ikut jadi kunci cari, jumlah hasil membocorkan
+  NISN itu sendiri). Pada layar direktori siswa untuk role Siswa pakai placeholder
+  "Cari nama siswa"; untuk pengelola & guru boleh "Cari nama atau NISN".
 - **Untuk viewer role Siswa keduanya disaring** menjadi info publik:
   list → `idSiswa`, `namaLengkap`, `jenisKelamin`, `status`;
   detail → keempat itu + `foto`. Meta paginasi list tidak berubah.
