@@ -1,15 +1,11 @@
-# Dikirim lewat jalur lain, jangan masuk git:
-# - berisi data capture asli dari DB dev + kredensial akun test
-# Jangan menghapus baris di blok ini tanpa memindahkan kredensialnya lebih dulu.
-# Pernah terjadi: lima baris terhapus dan satu tersisa sebagai "capture-api-samples.ps"
-# (kurang angka 1) — sejak itu kelimanya tidak lagi diabaikan, dan satu `git add -A`
-# akan mengirim password akun test + data siswa hasil capture ke dalam repo.
-api-sample-responses.md
-capture-api-samples.ps1
-seed-test-accounts.ps1
-android-build-phases.md
-security-tests.ps1
+# Perkakas uji (run-tests, seed-test-accounts, capture-api-samples, security-tests)
+# dan hasil capture-nya SENGAJA ikut repo — isinya akun test + data seed, bukan
+# data sekolah sungguhan. Kalau repo ini suatu saat dibuka ke publik, ganti dulu
+# password akun test yang tercantum di api-sample-responses.md.
+
+# Dokumen desain internal & brief kerja — bukan bagian dari repo
 absensi-schema.md
+backend-rbac-todo.md
 
 # Output backup database (berisi data) — skrip backup-databases.ps1 boleh commit
 db-backups/
@@ -20,5 +16,3 @@ test_*.jpg
 
 # Config Claude Code lokal (berisi path absolut khas mesin) - jangan commit
 .claude/
-
-backend-rbac-todo.md
