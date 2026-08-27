@@ -540,6 +540,27 @@ Add-Sample POST "login" (RawApi POST "login" @{ email = "superadmin@example.com"
 Add-Sample POST "akademik/kelas/assign" (RawApi POST "akademik/kelas/assign" @{ siswa_id = 99999; kelas_id = 1; tahun_ajaran = $tahun; semester = [int]$semester }) "404 validasi cross-service: siswa_id tidak ada di SiswaService."
 Add-Sample POST "mapel" (RawApi POST "mapel" @{ keterangan = "tanpa field wajib" }) "422 validasi: resMsg berisi pesan pertama; bentuk data BERVARIASI antar modul -- jangan parsing data untuk 422."
 Add-Sample POST "akademik/pengaturan-nilai" (RawApi POST "akademik/pengaturan-nilai" @{ tahun_ajaran = $tahun; semester = [int]$semester; bobot_harian = 40; bobot_uts = 30; bobot_uas = 30 }) "409 konflik bisnis: pengaturan semester ini sudah ada. Tampilkan resMsg apa adanya."
+Add-Sample POST "karyawan" (RawApi POST "karyawan" @{ email = "akuntest.karyawan@example.com"; nip = "8000009"; namaLengkap = "Contoh Email Ganda"; jabatan = "Satpam" }) "422 email sudah dipakai akun lain. Gateway menolak SEBELUM menulis record domain -- kalau tidak, recordnya terlanjur tersimpan tanpa akun login dan pemanggil hanya menerima 500. ``users`` memakai soft delete sedangkan emailnya unik di DB, jadi akun yang sudah DIHAPUS pun masih memegang emailnya."
+Add-Note @"
+> **Respons 500 tidak memuat detail internal.** ``resMsg``-nya selalu berbentuk
+> ``"Terjadi kesalahan di server. Sertakan kode A1B2C3D4 saat melaporkannya."`` --
+> aman ditampilkan apa adanya ke pengguna. Detail aslinya (termasuk SQL) ada di log
+> server dengan kode rujukan yang sama. Tidak dicontohkan di sini karena memicunya
+> butuh membuat kondisi galat sungguhan.
+>
+> Service juga SELALU membalas envelope ``resCode``/``resMsg``, termasuk untuk error
+> yang tidak tertangkap. Sebelumnya bentuknya bawaan Laravel (``message``/``exception``/
+> ``trace``) yang tidak bisa di-parse DTO envelope -- satu DTO kini cukup untuk semua.
+"@
+Add-Note @"
+> **Upload foto: dimensi 360x480 s/d 6000x6000 px**, di luar itu **422**
+> ``The foto field has invalid image dimensions``. Tidak dicontohkan di sini karena
+> butuh multipart. **Klien wajib memperkecil sebelum unggah** -- foto HP kelas atas
+> melebihi 6000 px walau sudah di-crop 3:4 (iPhone 48 MP = 8064x6048 -> crop jadi
+> +-4536x6048). Perkecil sisi terpanjang ke +-1600 px setelah crop.
+>
+> **``per_page`` maksimum 200** di semua endpoint berpaginasi; di luar 1-200 -> **422**.
+"@
 [void]$MD.AppendLine(@"
 ### ``POST /login`` -- 429 rate limit (contoh terdokumentasi, tidak di-capture ulang agar tidak mengunci akun)
 

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "fa1ef22d-c0df-47ab-9e0e-d6b01000f670",
     "name": "Microservice Laravel",
-    "description": "Koleksi API Gateway untuk project microservice Laravel.\n\n**Base URL:** `https://gateway.test/api`\n\n**Cara Pakai:**\n1. Jalankan **Login** → token otomatis tersimpan ke variabel `token`\n2. Semua request sudah menggunakan Bearer `token` secara otomatis\n3. Endpoint write (CREATE / PATCH / UPDATE / DELETE) butuh role **SuperAdmin** atau **Admin**\n4. Endpoint riwayat akademik (`/riwayat`) butuh role **SuperAdmin** atau **Admin**\n\n**Keamanan:**\n- `/register` hanya bisa diakses oleh SuperAdmin atau Admin (wajib login terlebih dahulu)\n- SuperAdmin dapat membuat: Admin, Guru, Siswa, Karyawan\n- Admin hanya dapat membuat: Guru, Siswa, Karyawan\n- SuperAdmin tidak dapat dibuat melalui API — hanya via seeder/database\n- Semua aksi tulis (create/update/delete/register) dicatat di audit log database\n\n**Retensi Data Akademik:**\n- Semua tabel akademik menggunakan soft delete — data tidak pernah hilang\n- Endpoint `/riwayat` menampilkan data aktif + yang sudah dihapus (field `deletedAt`)\n- Semester aktif diset via POST `/akademik/semester/aktif` — otomatis menutup semester sebelumnya\n\n**Foto (Guru & Siswa):**\n- Format: JPEG / PNG / JPG\n- Ukuran maksimal: 2 MB\n- Dimensi sumber: min 360×480 px\n- Output: dikonversi otomatis ke **3:4 portrait (360×480 px)** WebP kualitas 85\n- **GET /all**: foto **tidak disertakan** (respon ringan)\n- **GET by ID**: foto dikembalikan sebagai `data:image/webp;base64,...`",
+    "description": "Koleksi API Gateway untuk project microservice Laravel.\n\n**Base URL:** `https://gateway.test/api`\n\n**Cara Pakai:**\n1. Jalankan **Login** → token otomatis tersimpan ke variabel `token`\n2. Semua request sudah menggunakan Bearer `token` secara otomatis\n3. Endpoint write (CREATE / PATCH / UPDATE / DELETE) butuh role **SuperAdmin** atau **Admin**\n4. Endpoint riwayat akademik (`/riwayat`) butuh role **SuperAdmin** atau **Admin**\n\n**Keamanan:**\n- `/register` hanya bisa diakses oleh SuperAdmin atau Admin (wajib login terlebih dahulu)\n- SuperAdmin dapat membuat: Admin, Guru, Siswa, Karyawan\n- Admin hanya dapat membuat: Guru, Siswa, Karyawan\n- SuperAdmin tidak dapat dibuat melalui API — hanya via seeder/database\n- Semua aksi tulis (create/update/delete/register) dicatat di audit log database\n\n**Retensi Data Akademik:**\n- Semua tabel akademik menggunakan soft delete — data tidak pernah hilang\n- Endpoint `/riwayat` menampilkan data aktif + yang sudah dihapus (field `deletedAt`)\n- Semester aktif diset via POST `/akademik/semester/aktif` — otomatis menutup semester sebelumnya\n\n**Foto (Guru & Siswa):**\n- Format: JPEG / PNG / JPG\n- Ukuran maksimal: 2 MB\n- Dimensi sumber: min 360×480 px\n- Output: dikonversi otomatis ke **3:4 portrait (360×480 px)** WebP kualitas 85\n- **GET /all**: foto **tidak disertakan** (respon ringan)\n- **GET by ID**: foto dikembalikan sebagai `data:image/webp;base64,...`\n\n---\n\n**Respons 500 tidak memuat detail internal.** `resMsg` selalu berbentuk `\"Terjadi kesalahan di server. Sertakan kode A1B2C3D4 saat melaporkannya.\"` — aman ditampilkan apa adanya. Detail aslinya ada di log server dengan kode rujukan yang sama. Service juga SELALU membalas envelope `resCode`/`resMsg`, termasuk saat error tak tertangkap, jadi satu DTO cukup untuk semua respons.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "14041935"
   },
@@ -336,7 +336,7 @@
                 }
               ]
             },
-            "description": "Ambil daftar semua akun user yang terdaftar di Gateway (hasil /register), dengan pagination.\n\nParameter opsional:\n- `page` – nomor halaman (default: 1)\n- `per_page` – jumlah item per halaman (default: 10)\n- `role` – filter by role\n- `search` – cari di nama atau email (partial match)\n\nResponse pagination:\n- `current_page` – halaman saat ini\n- `last_page` – total halaman\n- `total` – total seluruh data\n- `next_page_url` – URL halaman berikutnya (null jika sudah halaman terakhir)\n- `prev_page_url` – URL halaman sebelumnya (null jika halaman pertama)"
+            "description": "Ambil daftar semua akun user yang terdaftar di Gateway (hasil /register), dengan pagination.\n\nParameter opsional:\n- `page` – nomor halaman (default: 1)\n- `per_page` – jumlah item per halaman (default: 10)\n- `role` – filter by role\n- `search` – cari di nama atau email (partial match)\n\nResponse pagination:\n- `current_page` – halaman saat ini\n- `last_page` – total halaman\n- `total` – total seluruh data\n- `next_page_url` – URL halaman berikutnya (null jika sudah halaman terakhir)\n- `prev_page_url` – URL halaman sebelumnya (null jika halaman pertama)\n\n**`per_page` maksimum 200**, minimum 1, harus numerik — di luar itu **422**. Sebelumnya nilainya masuk langsung ke paginate() tanpa diperiksa: `per_page=abc` dan `per_page=-5` melempar **500**. Untuk menemukan satu akun pakai `?search=` (nama/email) atau `?role=`, jangan `per_page` besar lalu menyaring di klien."
           },
           "response": []
         },
@@ -475,7 +475,7 @@
                 }
               ]
             },
-            "description": "Ambil daftar semua mata pelajaran dengan pagination.\n\nParameter opsional `search`: cari di kode atau nama pelajaran (partial match)."
+            "description": "Ambil daftar semua mata pelajaran dengan pagination.\n\nParameter opsional `search`: cari di kode atau nama pelajaran (partial match).\n\n**`per_page` maksimum 200**, minimum 1, harus numerik — di luar itu **422**, bukan diam-diam dipaksa ke batas. Untuk menemukan satu baris tertentu pakai `?search=` (atau `?role=` di `/users`), jangan `per_page` besar lalu menyaring di klien."
           },
           "response": []
         },
@@ -669,7 +669,7 @@
                 }
               ]
             },
-            "description": "Ambil daftar semua kelas dengan pagination.\n\nParameter opsional `search`: cari di nama kelas atau jurusan (partial match)."
+            "description": "Ambil daftar semua kelas dengan pagination.\n\nParameter opsional `search`: cari di nama kelas atau jurusan (partial match).\n\n**`per_page` maksimum 200**, minimum 1, harus numerik — di luar itu **422**, bukan diam-diam dipaksa ke batas. Untuk menemukan satu baris tertentu pakai `?search=` (atau `?role=` di `/users`), jangan `per_page` besar lalu menyaring di klien."
           },
           "response": []
         },
@@ -851,7 +851,7 @@
                 }
               ]
             },
-            "description": "Ambil daftar semua guru dengan pagination.\n\nParameter opsional `search`: cari di nama, NIP, email, atau jabatan (partial match).\n\nFoto **tidak disertakan** di list untuk menjaga response tetap ringan. Gunakan **GET Guru by ID** untuk mendapatkan foto dalam format base64 WebP."
+            "description": "Ambil daftar semua guru dengan pagination.\n\nParameter opsional `search`: cari di nama, NIP, email, atau jabatan (partial match).\n\nFoto **tidak disertakan** di list untuk menjaga response tetap ringan. Gunakan **GET Guru by ID** untuk mendapatkan foto dalam format base64 WebP.\n\n**`per_page` maksimum 200**, minimum 1, harus numerik — di luar itu **422**, bukan diam-diam dipaksa ke batas. Untuk menemukan satu baris tertentu pakai `?search=` (atau `?role=` di `/users`), jangan `per_page` besar lalu menyaring di klien."
           },
           "response": []
         },
@@ -1048,7 +1048,7 @@
                 "guru"
               ]
             },
-            "description": "Tambah data guru baru dengan upload foto.\n\nFoto akan dikonversi otomatis ke format WebP dan disimpan di storage private.\n\n**Catatan NIK/NIP:** Maksimal 16 digit."
+            "description": "Tambah data guru baru dengan upload foto.\n\nFoto akan dikonversi otomatis ke format WebP dan disimpan di storage private.\n\n**Catatan NIK/NIP:** Maksimal 16 digit.\n\n**Dimensi foto: 360×480 s/d 6000×6000 px.** Di luar itu **422** `The foto field has invalid image dimensions`. Batas atas mencegah *decompression bomb* — PNG warna solid 20000×20000 px terkompresi jadi ratusan KB (lolos batas 2 MB) tapi butuh ~1,6 GB saat server men-decode-nya.\n\n⚠️ **Klien wajib memperkecil sebelum unggah.** Foto HP kelas atas melebihi 6000 px walau sudah di-crop 3:4 (iPhone 48 MP = 8064×6048 → crop ±4536×6048). Perkecil sisi terpanjang ke ±1600 px setelah crop.\n\n**Email / NIP / NIK / NISN wajib unik** — duplikat dibalas **422** dengan pesan yang bisa ditampilkan, bukan 500. Untuk email, Gateway menolak lebih dulu sebelum menulis apa pun: akun yang sudah **dihapus** tetap memegang emailnya, jadi pakai email lain."
           },
           "response": []
         },
@@ -1238,7 +1238,7 @@
                 "update"
               ]
             },
-            "description": "Update data guru. Aktifkan (enable) hanya field yang ingin diubah.\n\nJika `foto` dikirim, foto lama akan dihapus dan diganti otomatis."
+            "description": "Update data guru. Aktifkan (enable) hanya field yang ingin diubah.\n\nJika `foto` dikirim, foto lama akan dihapus dan diganti otomatis.\n\n**Dimensi foto: 360×480 s/d 6000×6000 px.** Di luar itu **422** `The foto field has invalid image dimensions`. Batas atas mencegah *decompression bomb* — PNG warna solid 20000×20000 px terkompresi jadi ratusan KB (lolos batas 2 MB) tapi butuh ~1,6 GB saat server men-decode-nya.\n\n⚠️ **Klien wajib memperkecil sebelum unggah.** Foto HP kelas atas melebihi 6000 px walau sudah di-crop 3:4 (iPhone 48 MP = 8064×6048 → crop ±4536×6048). Perkecil sisi terpanjang ke ±1600 px setelah crop."
           },
           "response": []
         },
@@ -1312,7 +1312,7 @@
                 }
               ]
             },
-            "description": "Ambil daftar semua siswa dengan pagination.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah, Guru, Siswa. **Karyawan biasa mendapat 403.**\n\n**Privasi:** viewer **Siswa** menerima proyeksi publik per baris (`idSiswa`, `namaLengkap`, `jenisKelamin`, `status`) — tanpa `nisn`, `tempatLahir`, `tanggalLahir`, `tanggalMasuk`. Meta paginasi tetap sama untuk semua role.\n\nParameter opsional `search`: cari di nama lengkap atau NISN (partial match).\n\nFoto **tidak disertakan** di list untuk menjaga response tetap ringan. Gunakan **GET Siswa by ID** untuk mendapatkan foto dalam format base64 WebP.\n\n**Pencarian per role:** `search` mencocokkan nama **dan NISN** untuk pengelola & guru. Untuk viewer **Siswa** dibatasi ke **nama saja** — kalau NISN ikut jadi kunci cari, jumlah baris yang cocok membocorkan NISN itu sendiri digit demi digit meskipun kolom `nisn` sudah dibuang dari respons. Batasan ini ditentukan server dari token; parameter `search_publik` yang dikirim klien diabaikan."
+            "description": "Ambil daftar semua siswa dengan pagination.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah, Guru, Siswa. **Karyawan biasa mendapat 403.**\n\n**Privasi:** viewer **Siswa** menerima proyeksi publik per baris (`idSiswa`, `namaLengkap`, `jenisKelamin`, `status`) — tanpa `nisn`, `tempatLahir`, `tanggalLahir`, `tanggalMasuk`. Meta paginasi tetap sama untuk semua role.\n\nParameter opsional `search`: cari di nama lengkap atau NISN (partial match).\n\nFoto **tidak disertakan** di list untuk menjaga response tetap ringan. Gunakan **GET Siswa by ID** untuk mendapatkan foto dalam format base64 WebP.\n\n**Pencarian per role:** `search` mencocokkan nama **dan NISN** untuk pengelola & guru. Untuk viewer **Siswa** dibatasi ke **nama saja** — kalau NISN ikut jadi kunci cari, jumlah baris yang cocok membocorkan NISN itu sendiri digit demi digit meskipun kolom `nisn` sudah dibuang dari respons. Batasan ini ditentukan server dari token; parameter `search_publik` yang dikirim klien diabaikan.\n\n**`per_page` maksimum 200**, minimum 1, harus numerik — di luar itu **422**, bukan diam-diam dipaksa ke batas. Untuk menemukan satu baris tertentu pakai `?search=` (atau `?role=` di `/users`), jangan `per_page` besar lalu menyaring di klien."
           },
           "response": []
         },
@@ -1501,7 +1501,7 @@
                 "siswa"
               ]
             },
-            "description": "Tambah data siswa baru dengan upload foto.\n\nSetelah berhasil, akun login (email + password default) untuk siswa otomatis dibuat di Gateway."
+            "description": "Tambah data siswa baru dengan upload foto.\n\nSetelah berhasil, akun login (email + password default) untuk siswa otomatis dibuat di Gateway.\n\n**Dimensi foto: 360×480 s/d 6000×6000 px.** Di luar itu **422** `The foto field has invalid image dimensions`. Batas atas mencegah *decompression bomb* — PNG warna solid 20000×20000 px terkompresi jadi ratusan KB (lolos batas 2 MB) tapi butuh ~1,6 GB saat server men-decode-nya.\n\n⚠️ **Klien wajib memperkecil sebelum unggah.** Foto HP kelas atas melebihi 6000 px walau sudah di-crop 3:4 (iPhone 48 MP = 8064×6048 → crop ±4536×6048). Perkecil sisi terpanjang ke ±1600 px setelah crop.\n\n**Email / NIP / NIK / NISN wajib unik** — duplikat dibalas **422** dengan pesan yang bisa ditampilkan, bukan 500. Untuk email, Gateway menolak lebih dulu sebelum menulis apa pun: akun yang sudah **dihapus** tetap memegang emailnya, jadi pakai email lain."
           },
           "response": []
         },
@@ -1684,7 +1684,7 @@
                 "update"
               ]
             },
-            "description": "Update data siswa. Aktifkan (enable) hanya field yang ingin diubah.\n\nJika `namaLengkap` diubah, nama di akun login juga ikut terupdate.\nJika `foto` dikirim, foto lama akan dihapus dan diganti otomatis."
+            "description": "Update data siswa. Aktifkan (enable) hanya field yang ingin diubah.\n\nJika `namaLengkap` diubah, nama di akun login juga ikut terupdate.\nJika `foto` dikirim, foto lama akan dihapus dan diganti otomatis.\n\n**Dimensi foto: 360×480 s/d 6000×6000 px.** Di luar itu **422** `The foto field has invalid image dimensions`. Batas atas mencegah *decompression bomb* — PNG warna solid 20000×20000 px terkompresi jadi ratusan KB (lolos batas 2 MB) tapi butuh ~1,6 GB saat server men-decode-nya.\n\n⚠️ **Klien wajib memperkecil sebelum unggah.** Foto HP kelas atas melebihi 6000 px walau sudah di-crop 3:4 (iPhone 48 MP = 8064×6048 → crop ±4536×6048). Perkecil sisi terpanjang ke ±1600 px setelah crop."
           },
           "response": []
         },
@@ -1782,7 +1782,7 @@
                 }
               ]
             },
-            "description": "Daftar karyawan (paginasi). Foto tidak disertakan."
+            "description": "Daftar karyawan (paginasi). Foto tidak disertakan.\n\n**`per_page` maksimum 200**, minimum 1, harus numerik — di luar itu **422**, bukan diam-diam dipaksa ke batas. Untuk menemukan satu baris tertentu pakai `?search=` (atau `?role=` di `/users`), jangan `per_page` besar lalu menyaring di klien."
           },
           "response": []
         },
@@ -1893,7 +1893,7 @@
                 "karyawan"
               ]
             },
-            "description": "Tambah karyawan. **SuperAdmin/Admin.** Foto opsional (JPEG/PNG, maks 2MB, min 360x480).\n\n**`isAdminSekolah`** — `true` menandai karyawan ini sebagai **Administrator Sekolah** (staf Tata Usaha) yang berhak manajemen akademik + data induk + kartu + pembuatan akun Guru/Siswa/Karyawan.\n\nHanya **SuperAdmin/Admin** yang boleh mengirim field ini — dari pemanggil lain Gateway membuangnya (anti eskalasi hak). Mencabut penanda otomatis mencabut seluruh token aktif akun tersebut.\n\nPenanda ikut di respons **login** dan **GET /user** sebagai `isAdminSekolah`."
+            "description": "Tambah karyawan. **SuperAdmin/Admin.** Foto opsional (JPEG/PNG, maks 2MB, min 360x480).\n\n**`isAdminSekolah`** — `true` menandai karyawan ini sebagai **Administrator Sekolah** (staf Tata Usaha) yang berhak manajemen akademik + data induk + kartu + pembuatan akun Guru/Siswa/Karyawan.\n\nHanya **SuperAdmin/Admin** yang boleh mengirim field ini — dari pemanggil lain Gateway membuangnya (anti eskalasi hak). Mencabut penanda otomatis mencabut seluruh token aktif akun tersebut.\n\nPenanda ikut di respons **login** dan **GET /user** sebagai `isAdminSekolah`.\n\n**Dimensi foto: 360×480 s/d 6000×6000 px.** Di luar itu **422** `The foto field has invalid image dimensions`. Batas atas mencegah *decompression bomb* — PNG warna solid 20000×20000 px terkompresi jadi ratusan KB (lolos batas 2 MB) tapi butuh ~1,6 GB saat server men-decode-nya.\n\n⚠️ **Klien wajib memperkecil sebelum unggah.** Foto HP kelas atas melebihi 6000 px walau sudah di-crop 3:4 (iPhone 48 MP = 8064×6048 → crop ±4536×6048). Perkecil sisi terpanjang ke ±1600 px setelah crop.\n\n**Email / NIP / NIK / NISN wajib unik** — duplikat dibalas **422** dengan pesan yang bisa ditampilkan, bukan 500. Untuk email, Gateway menolak lebih dulu sebelum menulis apa pun: akun yang sudah **dihapus** tetap memegang emailnya, jadi pakai email lain."
           },
           "response": []
         },
@@ -1949,7 +1949,7 @@
                 "update"
               ]
             },
-            "description": "Update karyawan. **SuperAdmin/Admin.** Kirim hanya field yang diubah.\n\n**`isAdminSekolah`** — `true` menandai karyawan ini sebagai **Administrator Sekolah** (staf Tata Usaha) yang berhak manajemen akademik + data induk + kartu + pembuatan akun Guru/Siswa/Karyawan.\n\nHanya **SuperAdmin/Admin** yang boleh mengirim field ini — dari pemanggil lain Gateway membuangnya (anti eskalasi hak). Mencabut penanda otomatis mencabut seluruh token aktif akun tersebut.\n\nPenanda ikut di respons **login** dan **GET /user** sebagai `isAdminSekolah`."
+            "description": "Update karyawan. **SuperAdmin/Admin.** Kirim hanya field yang diubah.\n\n**`isAdminSekolah`** — `true` menandai karyawan ini sebagai **Administrator Sekolah** (staf Tata Usaha) yang berhak manajemen akademik + data induk + kartu + pembuatan akun Guru/Siswa/Karyawan.\n\nHanya **SuperAdmin/Admin** yang boleh mengirim field ini — dari pemanggil lain Gateway membuangnya (anti eskalasi hak). Mencabut penanda otomatis mencabut seluruh token aktif akun tersebut.\n\nPenanda ikut di respons **login** dan **GET /user** sebagai `isAdminSekolah`.\n\n**Dimensi foto: 360×480 s/d 6000×6000 px.** Di luar itu **422** `The foto field has invalid image dimensions`. Batas atas mencegah *decompression bomb* — PNG warna solid 20000×20000 px terkompresi jadi ratusan KB (lolos batas 2 MB) tapi butuh ~1,6 GB saat server men-decode-nya.\n\n⚠️ **Klien wajib memperkecil sebelum unggah.** Foto HP kelas atas melebihi 6000 px walau sudah di-crop 3:4 (iPhone 48 MP = 8064×6048 → crop ±4536×6048). Perkecil sisi terpanjang ke ±1600 px setelah crop."
           },
           "response": []
         },
