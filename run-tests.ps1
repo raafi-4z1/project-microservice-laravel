@@ -830,6 +830,18 @@ Section "Phase 8: Siswa Kelas (Pembagian Kelas)"
 $r = Api GET "akademik/siswa/belum-terdaftar`?tahun_ajaran=$tahun&semester=$semester"
 Chk "GET /akademik/siswa/belum-terdaftar" $r 200; if ($script:LAST_CHK) {
     Info "Total siswa=$($r.data.total_siswa) | terdaftar=$($r.data.total_terdaftar) | belum=$($r.data.total_belum)"
+
+    # Endpoint ini menyusun daftarnya dari SELURUH siswa (halaman demi halaman ke
+    # SiswaService) dikurangi yang sudah terdaftar. Kalau paging-nya terpotong,
+    # hasilnya tetap 200 dan hanya terlihat sebagai "siswa lebih sedikit" —
+    # jenis kegagalan yang lolos dari pemeriksaan resCode saja. Jadi cocokkan
+    # cacahnya dengan total sebenarnya di direktori siswa.
+    $totalAsli = (Api GET "siswa/all`?per_page=1").data.total
+    if ($r.data.total_siswa -eq $totalAsli) {
+        $script:PASS++; Write-Host "  [PASS] total_siswa ($($r.data.total_siswa)) cocok dengan /siswa/all — paging lintas-service utuh" -ForegroundColor Green
+    } else {
+        $script:FAIL++; Write-Host "  [FAIL] total_siswa=$($r.data.total_siswa) tapi /siswa/all total=$totalAsli — daftar terpotong" -ForegroundColor Red
+    }
 }
 
 # Pilih siswa untuk test enrollment

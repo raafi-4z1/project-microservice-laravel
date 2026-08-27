@@ -840,14 +840,16 @@ class AkademikController extends Controller
             $detail = (string) $request->input('detail', '0') === '1';
 
             // 1. Kelas pada tingkat (+jurusan) ini
-            $paramKelas = ['tingkat' => $request->tingkat, 'per_page' => 200];
+            // Dipaging lewat helper, bukan satu request `per_page` besar: dulu nilainya
+            // pas di batas 200, jadi tingkat dengan lebih dari 200 kelas akan terpotong
+            // diam-diam — laporan peringkatnya kehilangan siswa tanpa ada yang gagal.
+            $paramKelas = ['tingkat' => $request->tingkat];
             if ($request->filled('jurusan')) {
                 $paramKelas['jurusan'] = strtoupper($request->jurusan);
             }
-            $kelasResp = $this->decode(
-                $this->callService($this->classBaseUri, $this->classSecret, 'GET', "{$this->classReqUrl}/all", $paramKelas)
-            );
-            $kelasRows = $kelasResp['data']['data'] ?? [];
+            $kelasRows = $this->ambilSemuaHalaman(
+                $this->classBaseUri, $this->classSecret, "{$this->classReqUrl}/all", $paramKelas
+            ) ?? [];
             if (empty($kelasRows)) {
                 return $this->response('Tidak ada kelas pada tingkat/jurusan tersebut.', Response::HTTP_NOT_FOUND);
             }
@@ -1468,15 +1470,13 @@ class AkademikController extends Controller
             // mencari siswa yang BELUM terdaftar = seluruh siswa MINUS yang terdaftar,
             // jadi daftar lengkap memang dibutuhkan dan id targetnya belum diketahui.
             // Endpoint admin, jarang dipakai (saat pembagian kelas per semester).
-            $siswaResp = $this->decode(
-                $this->callService($this->siswaBaseUri, $this->siswaSecret, 'GET', "{$this->siswaReqUrl}/all", ['per_page' => 9999])
+            $allSiswa = $this->ambilSemuaHalaman(
+                $this->siswaBaseUri, $this->siswaSecret, "{$this->siswaReqUrl}/all"
             );
 
-            if (($siswaResp['resCode'] ?? null) !== Response::HTTP_OK) {
+            if ($allSiswa === null) {
                 return $this->response('Gagal mengambil data siswa.', Response::HTTP_INTERNAL_SERVER_ERROR);
             }
-
-            $allSiswa = $siswaResp['data']['data'] ?? [];
 
             $belumTerdaftar = array_values(
                 array_filter($allSiswa, fn($s) => !in_array($s['idSiswa'] ?? null, $enrolledIds))
@@ -1493,6 +1493,57 @@ class AkademikController extends Controller
         } catch (Exception $e) {
             return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /** Batas per_page yang berlaku di service — panggilan internal tidak dikecualikan. */
+    private const PER_PAGE_SERVICE = 200;
+
+    /** Penjaga agar loop paging tidak jalan tanpa henti kalau meta paginasi rusak. */
+    private const MAX_HALAMAN = 100;
+
+    /**
+     * Ambil SELURUH baris dari endpoint daftar berpaginasi milik service lain.
+     *
+     * Batas `per_page` 200 sengaja berlaku juga untuk panggilan internal: kalau
+     * dikecualikan, batas itu jadi tidak berarti karena selalu ada jalur yang
+     * lolos. Jadi daftar penuh diambil per halaman, bukan lewat satu request
+     * raksasa — sebelumnya `per_page => 9999`, yang setelah batas dipasang
+     * ditolak 422 dan membuat endpoint pemanggilnya balas 500.
+     *
+     * @return array|null  seluruh baris, atau null bila ada halaman yang gagal
+     */
+    private function ambilSemuaHalaman(string $baseUri, string $secret, string $url, array $params = []): ?array
+    {
+        $semua = [];
+        $page  = 1;
+        $last  = 1;
+
+        do {
+            $resp = $this->decode($this->callService($baseUri, $secret, 'GET', $url, $params + [
+                'per_page' => self::PER_PAGE_SERVICE,
+                'page'     => $page,
+            ]));
+
+            if (($resp['resCode'] ?? null) !== Response::HTTP_OK) {
+                return null;
+            }
+
+            $semua = array_merge($semua, $resp['data']['data'] ?? []);
+            $last  = (int) ($resp['data']['last_page'] ?? 1);
+            $page++;
+        } while ($page <= $last && $page <= self::MAX_HALAMAN);
+
+        // Kalau penjaga yang menghentikan loop, hasilnya terpotong. Jangan diam:
+        // data yang kurang di sini terlihat seperti "siswa sudah terdaftar semua",
+        // bukan seperti error.
+        if ($last > self::MAX_HALAMAN) {
+            \Illuminate\Support\Facades\Log::warning(
+                'ambilSemuaHalaman berhenti di batas halaman — hasil kemungkinan terpotong.',
+                ['url' => $url, 'last_page' => $last, 'batas' => self::MAX_HALAMAN]
+            );
+        }
+
+        return $semua;
     }
 
     // Panggil service lain dengan swap baseUri/secret sementara
