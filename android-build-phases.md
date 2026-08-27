@@ -265,7 +265,7 @@ berbeda dari modul akademik yang snake_case; detail via query param
 > server**: kirim `per_page=25&page=n`, hentikan saat `current_page == last_page`.
 > Tanpa param respons berupa array datar (perilaku lama) — DENGAN param `data`
 > menjadi envelope seperti `/guru/all`; siapkan parser untuk bentuk berparam saja
-> kalau memang selalu mengirim param. `per_page` maksimum 100 (di luar itu 422).
+> kalau memang selalu mengirim param. `per_page` maksimum 200 (di luar itu 422) — batas yang sama berlaku di semua endpoint berpaginasi.
 > Panel riwayat hanya untuk SuperAdmin/Admin/Administrator Sekolah.
 > Request akademik snake_case, response camelCase. Verifikasi terhadap backend
 > sungguhan: assign siswa -> muncul di daftar kelas; buat jadwal bentrok -> pesan

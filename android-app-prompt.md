@@ -320,14 +320,14 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
   semester), `PATCH /akademik/kelas/assign/{id}` (kelas_id tujuan),
   `DELETE /akademik/kelas/assign/{id}`,
   `GET /akademik/kelas/{id}/siswa`, `GET /akademik/siswa/{id}/kelas`,
-  `GET /akademik/siswa/belum-terdaftar`, plus varian `/riwayat` (SuperAdmin/Admin/Adm. Sekolah; menerima `page` & `per_page` opsional — tanpa keduanya balasannya array datar seperti biasa, dengan salah satunya berubah jadi envelope paginasi seperti `/guru/all`, default `per_page`=25, maks 100).
+  `GET /akademik/siswa/belum-terdaftar`, plus varian `/riwayat` (SuperAdmin/Admin/Adm. Sekolah; menerima `page` & `per_page` opsional — tanpa keduanya balasannya array datar seperti biasa, dengan salah satunya berubah jadi envelope paginasi seperti `/guru/all`, default `per_page`=25, maks 200).
   Respons: `idSiswaKelas`, `siswaId`, `kelasId`, `tahunAjaran`, `semester`
   (+`deletedAt` di varian riwayat).
 - **Pengampu mapel**: `POST /akademik/pengampu` (guru_id, mapel_id, kelas_id,
   tahun_ajaran, semester), `PATCH /akademik/pengampu/{id}` (guru_id pengganti),
   `DELETE /akademik/pengampu/{id}`,
   `GET /akademik/kelas/{id}/pengampu`, `GET /akademik/guru/{id}/mapel`,
-  `GET /akademik/mapel/{id}/guru`, plus varian `/riwayat` (SuperAdmin/Admin/Adm. Sekolah; menerima `page` & `per_page` opsional — tanpa keduanya balasannya array datar seperti biasa, dengan salah satunya berubah jadi envelope paginasi seperti `/guru/all`, default `per_page`=25, maks 100).
+  `GET /akademik/mapel/{id}/guru`, plus varian `/riwayat` (SuperAdmin/Admin/Adm. Sekolah; menerima `page` & `per_page` opsional — tanpa keduanya balasannya array datar seperti biasa, dengan salah satunya berubah jadi envelope paginasi seperti `/guru/all`, default `per_page`=25, maks 200).
   Respons: `idPengampuMapel`, `guruId`, `mapelId`, `kelasId`, `tahunAjaran`, `semester`.
 - **Periode khusus** (Ramadan/ujian/libur/kegiatan) — rentang tanggal yang
   mengubah aturan sementara lalu otomatis kembali normal:

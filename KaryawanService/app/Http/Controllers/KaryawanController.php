@@ -23,7 +23,10 @@ class KaryawanController extends Controller
         try {
             $validate = Validator::make($request->all(), [
                 'page'     => 'sometimes|numeric|min:1',
-                'per_page' => 'sometimes|numeric|min:1',
+                // Batas atas 200 seragam di seluruh endpoint berpaginasi. Tanpa batas,
+                // satu request `per_page=100000` memaksa query tak terbatas —
+                // tidak terasa selagi data kecil, mahal begitu data bertambah.
+                'per_page' => 'sometimes|numeric|min:1|max:200',
                 'search'   => 'sometimes|string|max:100',
             ]);
 

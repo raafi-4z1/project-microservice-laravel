@@ -24,8 +24,12 @@ use Illuminate\Http\Request;
  */
 trait PaginasiRiwayat
 {
-    /** Batas atas per_page: penjaga agar satu permintaan tak menarik semuanya sekaligus. */
-    public const RIWAYAT_MAX_PER_PAGE = 100;
+    /**
+     * Batas atas per_page: penjaga agar satu permintaan tak menarik semuanya
+     * sekaligus. Angkanya sengaja SAMA dengan endpoint daftar lain (siswa/all,
+     * guru/all, /users) supaya klien cukup mengingat satu batas.
+     */
+    public const RIWAYAT_MAX_PER_PAGE = 200;
 
     /** Dipakai kalau klien hanya mengirim `page` tanpa `per_page`. */
     public const RIWAYAT_DEFAULT_PER_PAGE = 25;

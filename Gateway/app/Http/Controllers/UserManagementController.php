@@ -8,6 +8,7 @@ use App\Traits\LogsAudit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 
 class UserManagementController extends Controller
@@ -52,8 +53,29 @@ class UserManagementController extends Controller
         return null;
     }
 
+    /** Batas atas per_page, seragam dengan endpoint berpaginasi lainnya. */
+    private const MAX_PER_PAGE = 200;
+
     public function index(Request $request)
     {
+        // Sebelumnya `per_page` masuk langsung ke paginate() tanpa diperiksa:
+        // `per_page=abc` dan `per_page=-5` melempar 500, `per_page=100000`
+        // diterima apa adanya. Divalidasi supaya jadi 422 yang bisa dibaca klien.
+        $validate = Validator::make($request->all(), [
+            'page'     => 'sometimes|numeric|min:1',
+            'per_page' => 'sometimes|numeric|min:1|max:' . self::MAX_PER_PAGE,
+            'role'     => 'sometimes|string|max:30',
+            'search'   => 'sometimes|string|max:100',
+        ]);
+
+        if ($validate->fails()) {
+            return $this->response(
+                $validate->errors()->first(),
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+                $validate->errors()
+            );
+        }
+
         $query = // 'is_admin_sekolah' WAJIB ikut di-select: accessor isAdminSekolah membacanya
         // dari atribut model, jadi kalau kolomnya tidak dimuat hasilnya bukan "hilang"
         // melainkan selalu false — daftar user akan menyatakan tidak ada Administrator
@@ -73,7 +95,7 @@ class UserManagementController extends Controller
             });
         }
 
-        $users = $query->paginate($request->get('per_page', 10));
+        $users = $query->paginate((int) $request->input('per_page', 10));
 
         return $this->response('Data users.', Response::HTTP_OK, $users);
     }

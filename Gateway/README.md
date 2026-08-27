@@ -214,6 +214,24 @@ SELECT email FROM karyawans WHERE is_admin_sekolah=1 AND deleted_at IS NULL;
 Perbaikannya cukup `POST /karyawan/update` dengan `isAdminSekolah` yang benar —
 Gateway akan menyelaraskan ulang keduanya.
 
+### Batas paginasi
+
+Seluruh endpoint berpaginasi memakai **satu** batas: `per_page` maksimum **200**,
+minimum 1, dan harus numerik. Di luar itu **422** — bukan diam-diam dipaksa ke
+batas, supaya klien tahu permintaannya tidak dipenuhi apa adanya.
+
+Berlaku di `GET /users`, `GET /siswa/all`, `/guru/all`, `/karyawan/all`,
+`/class/all`, `/mapel/all`, dan keempat endpoint `/riwayat` di AkademikService.
+
+Sebelumnya tidak ada batas sama sekali: `per_page=100000` diterima apa adanya dan
+memaksa query tak terbatas. Di `GET /users` lebih buruk — nilainya masuk langsung
+ke `paginate()` tanpa diperiksa, sehingga `per_page=abc` dan `per_page=-5`
+melempar **500**.
+
+> Kalau butuh menemukan satu baris tertentu, pakai filter server (`?search=`,
+> `?role=`) — bukan `per_page` besar lalu menyaring di klien. Pola kedua diam-diam
+> gagal begitu jumlah baris melewati ukuran halaman.
+
 ### Privasi BACA — direktori publik vs data pribadi
 
 Penanda Administrator Sekolah mengatur hak **tulis**; bagian ini mengatur hak

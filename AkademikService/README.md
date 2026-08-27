@@ -518,8 +518,9 @@ Kontraknya dua arah, dan **keduanya diuji di suite**:
   `from`, `to`, `links`.
 
 Bentuk tiap item **tidak berubah** di kedua mode — hanya pembungkusnya. Default
-`per_page` = 25 (kalau hanya `page` yang dikirim), batas atas 100; di luar rentang
-itu **422**, bukan diam-diam dipaksa ke batas. URL absolut (`next_page_url` dsb.)
+`per_page` = 25 (kalau hanya `page` yang dikirim), batas atas **200** — sama dengan
+seluruh endpoint berpaginasi lain; di luar rentang itu **422**, bukan diam-diam
+dipaksa ke batas. URL absolut (`next_page_url` dsb.)
 sengaja dibuang karena menunjuk ke host service internal, bukan Gateway — klien
 memakai `links[].query`.
 

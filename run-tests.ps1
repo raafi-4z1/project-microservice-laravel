@@ -1424,8 +1424,10 @@ Chk "POST /register buat user Siswa (untuk role test)" $r 201; if ($script:LAST_
     $loginS = Api POST "login" @{ email = $siswaTestEmail; password = $siswaTestPw }
     Chk "Login sebagai Siswa test" $loginS 200; if ($script:LAST_CHK) {
         $siswaTestToken = $loginS.data.token
-        # Ambil id untuk cleanup
-        $usrs = @((Api GET "users`?per_page=200").data.data)
+        # Ambil id untuk cleanup lewat filter SERVER (?search=), bukan menarik
+        # halaman besar lalu menyaring di klien: pola itu diam-diam gagal begitu
+        # jumlah user melewati ukuran halaman, dan kegagalannya menular ke fase lain.
+        $usrs = @((Api GET "users`?search=$([uri]::EscapeDataString($siswaTestEmail))&per_page=5").data.data)
         foreach ($u in $usrs) { if ($u.email -eq $siswaTestEmail) { $siswaTestUserId = $u.id; break } }
     }
 }
@@ -1447,7 +1449,7 @@ Chk "POST /register buat user Karyawan (untuk role test)" $r 201; if ($script:LA
     $loginK = Api POST "login" @{ email = $kwTestEmail; password = $kwTestPw }
     Chk "Login sebagai Karyawan test" $loginK 200; if ($script:LAST_CHK) {
         $kwTestToken = $loginK.data.token
-        $usrs = @((Api GET "users`?per_page=200").data.data)
+        $usrs = @((Api GET "users`?search=$([uri]::EscapeDataString($kwTestEmail))&per_page=5").data.data)
         foreach ($u in $usrs) { if ($u.email -eq $kwTestEmail) { $kwTestUserId = $u.id; break } }
     }
 }
@@ -1570,10 +1572,13 @@ if ($testToken) {
     Chk "GET /akademik/nilai/ranking/saya sebagai Admin (harus 403)" $r 403
 }
 
-# Karyawan bisa baca nilai (bukan hanya semester)
+# Karyawan BIASA tidak boleh baca nilai — termasuk lewat jalur pengampu.
+# Dulu tes ini mengharapkan 200; nilai per pengampu tetap data akademik siswa,
+# jadi membiarkannya terbuka akan menyisakan jalan memutar ke data yang sudah
+# ditutup di nilai/kelas dan raport.
 if ($kwTestToken -and $testPengampuId) {
     $r = Api GET "akademik/nilai/pengampu/$testPengampuId" -Token $kwTestToken
-    Chk "GET /akademik/nilai/pengampu/{id} sebagai Karyawan (harus 200)" $r 200
+    Chk "GET /akademik/nilai/pengampu/{id} sebagai Karyawan biasa (harus 403)" $r 403
 }
 
 # ──────────────────────────────────────────────
@@ -1874,7 +1879,7 @@ function New-KaryawanAkun($email, $nama, $jabatan, $isAdminSekolah, $nipSuffix) 
     }
     if ($r.resCode -ne 201) { return $null }
     $kid = $r.data.idKaryawan
-    $u   = Api GET "users`?per_page=300"
+    $u   = Api GET "users`?search=$([uri]::EscapeDataString($email))&per_page=5"
     $uid = @($u.data.data | Where-Object { $_.email -eq $email })[0].id
     if (-not $uid) { return $null }
     Api POST "users/$uid/password" @{ new_password = $pwAwal; confirm_password = $pwAwal } | Out-Null
@@ -1933,7 +1938,7 @@ if ($asTU -and $asBiasa) {
         Skip "TU angkat Administrator Sekolah" "pembuatan karyawan gagal ($($r.resCode))"
     }
 
-    $u = Api GET "users`?per_page=300"
+    $u = Api GET "users`?role=Admin&per_page=5"
     $adminUid = @($u.data.data | Where-Object { $_.role -eq 'Admin' })[0].id
     if ($adminUid) {
         $r = Api DELETE "users/$adminUid" -Token $asTU.tok
@@ -2155,6 +2160,23 @@ $r = Api GET "$($riwayatEps[0])`?per_page=5000"
 Chk "GET riwayat per_page=5000 (di atas batas, harus 422)" $r 422
 $r = Api GET "$($riwayatEps[0])`?per_page=0"
 Chk "GET riwayat per_page=0 (harus 422)" $r 422
+
+# ── Batas per_page seragam 200 di SELURUH endpoint berpaginasi ──
+# Tanpa batas, satu request `per_page=100000` memaksa query tak terbatas. Di
+# /users bahkan lebih buruk: `per_page=abc` dan `per_page=-5` dulu melempar 500
+# karena nilainya masuk langsung ke paginate() tanpa diperiksa.
+foreach ($ep in @('siswa/all', 'guru/all', 'karyawan/all', 'class/all', 'mapel/all', 'users')) {
+    $r = Api GET "$ep`?per_page=100000"
+    Chk "GET /$ep per_page=100000 (di atas batas 200, harus 422)" $r 422
+
+    $r = Api GET "$ep`?per_page=200"
+    Chk "GET /$ep per_page=200 (tepat di batas, harus 200)" $r 200
+}
+# Input non-numerik & negatif harus 422, bukan 500
+foreach ($v in @('abc', '-5')) {
+    $r = Api GET "users`?per_page=$v"
+    Chk "GET /users per_page=$v (harus 422, bukan 500)" $r 422
+}
 
 # Gate role riwayat tidak ikut longgar gara-gara paginasi
 if ($asBiasa) {
