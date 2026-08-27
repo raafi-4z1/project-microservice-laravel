@@ -550,6 +550,32 @@ Untuk detail endpoint per service, lihat README masing-masing service:
 - [KaryawanService/README.md](KaryawanService/README.md) — Karyawan + kartu/PIN
 - [AkademikService/README.md](AkademikService/README.md) — Semester, Kelas, Pengampu, Jam, Jadwal, Nilai, Raport, Absensi (harian/pelajaran/keluar/rekap)
 
+### Audit dependensi (jalankan sebelum tiap deploy)
+
+Suite otomatis menguji perilaku aplikasi, **bukan** kerentanan di paket pihak
+ketiga. Keduanya perlu dijalankan:
+
+```bash
+cd Gateway && composer audit          # ulangi di tiap service
+```
+
+Pernah terjadi: audit ini tidak pernah dijalankan sampai jauh setelah sistem
+dianggap selesai, dan menemukan **dua advisory high severity yang menyerang
+lapisan otorisasi** — `laravel/passport` (CVE-2026-39976, TokenGuard
+mengautentikasi user yang tidak berkaitan) dan `symfony/http-foundation`
+(CVE-2025-64500, parsing PATH_INFO salah → authorization bypass). Keduanya
+membatalkan sebagian gating yang dibangun di lapisan aplikasi, dan tidak akan
+pernah tertangkap oleh `run-tests.ps1` sebanyak apa pun asersinya.
+
+Perbaikan terarah (tanpa mengubah constraint di `composer.json`) biasanya cukup:
+
+```bash
+composer update laravel/passport symfony/http-foundation --no-interaction
+```
+
+Selalu jalankan `run-tests.ps1` sesudahnya. Kalau ada regresi,
+`git checkout -- composer.lock && composer install` mengembalikannya.
+
 ### Testing Otomatis (PowerShell)
 
 Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**358 asersi**,
