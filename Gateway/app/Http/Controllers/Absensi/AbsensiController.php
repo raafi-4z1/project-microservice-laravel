@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Models\PinWindow;
 use App\Traits\ApiResponser;
+use App\Traits\LogsAudit;
 use App\Http\Controllers\Controller;
 use App\Traits\ConsumeMicroserviceService;
 
@@ -20,7 +21,11 @@ use App\Traits\ConsumeMicroserviceService;
  */
 class AbsensiController extends Controller
 {
-    use ConsumeMicroserviceService, ApiResponser;
+    // Catatan cakupan audit: `scan` dan `absenPin` SENGAJA tidak diaudit.
+    // Keduanya berjalan puluhan sampai ratusan kali tiap pagi, dan catatan
+    // absensinya sendiri sudah menjadi jejaknya. Mengauditnya hanya akan
+    // menenggelamkan aksi istimewa yang justru perlu terlihat.
+    use ConsumeMicroserviceService, ApiResponser, LogsAudit;
 
     private $baseUri, $secret, $reqUrl; // akademik (target performRequest aktif)
 
@@ -140,10 +145,22 @@ class AbsensiController extends Controller
                 return $this->response('Profil pegawai tidak ditemukan untuk akun ini.', Response::HTTP_NOT_FOUND);
             }
 
-            return $this->callService($baseUri, $secret, 'POST', "{$reqUrl}/pin/set", [
+            $response = $this->callService($baseUri, $secret, 'POST', "{$reqUrl}/pin/set", [
                 $idKey => $lookup['data'][$idKey],
                 'pin'  => $request->input('pin'),
             ]);
+
+            // PIN-nya sendiri TIDAK ikut dicatat — yang direkam hanya fakta
+            // bahwa pemiliknya menggantinya, kapan, dan untuk pegawai yang mana.
+            $decode = $this->decode($response);
+            if (in_array(($decode['resCode'] ?? null), [Response::HTTP_OK, Response::HTTP_CREATED, Response::HTTP_ACCEPTED], true)) {
+                $this->auditLog('updated', 'pin', $lookup['data'][$idKey], [
+                    'subjekTipe' => $tipe,
+                    'olehSendiri' => 'true',
+                ]);
+            }
+
+            return $response;
         } catch (Exception $e) {
             return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
@@ -180,6 +197,16 @@ class AbsensiController extends Controller
                 'dibuka_oleh'    => $request->user()->id,
                 'dibuka_at'      => $now,
                 'berlaku_sampai' => $now->copy()->addMinutes($durasi),
+            ]);
+
+            // Aksi paling istimewa di modul ini: membuka jalur absensi TANPA kartu
+            // untuk orang lain. Kalau ada absensi yang dipertanyakan, inilah jejak
+            // yang menjawab siapa membukanya, untuk siapa, dan sampai kapan.
+            $this->auditLog('created', 'pin_window', $window->id, [
+                'subjekTipe'    => $tipe,
+                'subjekId'      => (string) $subjekId,
+                'durasiMenit'   => (string) $durasi,
+                'berlakuSampai' => $window->berlaku_sampai->toDateTimeString(),
             ]);
 
             return $this->response('Jendela PIN dibuka.', Response::HTTP_CREATED, [

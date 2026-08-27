@@ -174,6 +174,60 @@ function Skip {
     $script:SKIP++
 }
 
+# PowerShell 5.1 tidak punya Invoke-WebRequest -Form, jadi multipart dirakit
+# manual. Sebelum ini suite tidak pernah mengunggah berkas sama sekali — seluruh
+# jalur upload foto (validasi tipe, ukuran, dimensi) tanpa cakupan tes.
+function Api-Upload {
+    param([string]$Path, [hashtable]$Fields, [string]$FilePath,
+          [string]$FileField = 'foto', [string]$FileMime = 'image/png', [string]$Token)
+    $b   = [System.Guid]::NewGuid().ToString()
+    $enc = [System.Text.Encoding]::GetEncoding('iso-8859-1')
+    $LF  = "`r`n"
+    $sb  = New-Object System.Text.StringBuilder
+    foreach ($k in $Fields.Keys) {
+        [void]$sb.Append("--$b$LF")
+        [void]$sb.Append("Content-Disposition: form-data; name=`"$k`"$LF$LF")
+        [void]$sb.Append("$($Fields[$k])$LF")
+    }
+    [void]$sb.Append("--$b$LF")
+    [void]$sb.Append("Content-Disposition: form-data; name=`"$FileField`"; filename=`"$(Split-Path $FilePath -Leaf)`"$LF")
+    [void]$sb.Append("Content-Type: $FileMime$LF$LF")
+    [void]$sb.Append($enc.GetString([System.IO.File]::ReadAllBytes($FilePath)))
+    [void]$sb.Append("$LF--$b--$LF")
+
+    $h = @{ Accept = 'application/json' }
+    $tok = if ($Token) { $Token } else { $script:TOKEN }
+    if ($tok) { $h['Authorization'] = "Bearer $tok" }
+    try {
+        $r = Invoke-WebRequest -Uri "$($CFG.BaseUrl)/$Path" -Method POST -Headers $h -UseBasicParsing `
+             -TimeoutSec $CFG.Timeout -ContentType "multipart/form-data; boundary=$b" -Body $enc.GetBytes($sb.ToString())
+        return $r.Content | ConvertFrom-Json
+    } catch {
+        $er = $_.Exception.Response
+        if ($er) { try { $rd=[System.IO.StreamReader]::new($er.GetResponseStream()); $t=$rd.ReadToEnd(); $rd.Close(); return $t | ConvertFrom-Json } catch {} }
+        return [PSCustomObject]@{ resCode = 0; resMsg = $_.Exception.Message; data = $null }
+    }
+}
+
+# PNG yang HEADER-nya menyatakan WxH, tanpa data piksel (45 byte) — persis yang
+# dibaca getimagesize(), sehingga aturan `dimensions` bisa diuji tanpa pernah
+# membuat gambar raksasa sungguhan. Dibangkitkan lewat PHP: pemaketan bit + CRC32
+# di PowerShell mudah salah karena presedensi operator, dan hasil yang salah
+# ditolak sebagai "bukan gambar" — tes akan lulus tanpa menguji apa pun.
+function New-PngHeaderOnly([string]$Path, [int]$W, [int]$H) {
+    $php = @'
+<?php
+$out = $argv[1]; $w = (int)$argv[2]; $h = (int)$argv[3];
+$chunk = function ($t, $d) { return pack('N', strlen($d)) . $t . $d . pack('N', crc32($t . $d)); };
+$ihdr = pack('N', $w) . pack('N', $h) . chr(8) . chr(2) . chr(0) . chr(0) . chr(0);
+file_put_contents($out, "\x89PNG\r\n\x1a\n" . $chunk('IHDR', $ihdr) . $chunk('IEND', ''));
+'@
+    $tmp = [System.IO.Path]::GetTempFileName() + '.php'
+    Set-Content -LiteralPath $tmp -Value $php -Encoding UTF8
+    & php $tmp $Path $W $H | Out-Null
+    Remove-Item $tmp -ErrorAction SilentlyContinue
+}
+
 function Section([string]$Title) {
     Write-Host ""
     Write-Host "═══ $Title" -ForegroundColor Cyan
@@ -2263,6 +2317,41 @@ if ($bocorTotal.Count -eq 0) {
     $script:FAIL++; Write-Host "  [FAIL] Detail internal bocor di: $($bocorTotal -join ' | ')" -ForegroundColor Red
 }
 
+# -- Batas dimensi foto: decompression bomb --
+# `max:2048` membatasi ukuran BERKAS, bukan ukuran GAMBAR. PNG warna solid
+# 20000x20000 px terkompresi jadi ratusan KB, lolos batas 2 MB, lalu GD harus
+# men-decode-nya (1,6 GB) sebelum coverDown() sempat mengecilkan -> PHP mati
+# kehabisan memori dan worker Apache ikut tumbang.
+$imgDir = [System.IO.Path]::GetTempPath()
+$imgBig = Join-Path $imgDir "uji-dimensi-besar-$TS.png"
+$imgKecil = Join-Path $imgDir "uji-dimensi-kecil-$TS.png"
+New-PngHeaderOnly $imgBig 7000 7000
+New-PngHeaderOnly $imgKecil 100 100
+
+$fieldSiswa = @{
+    email = "dim.$TS@example.com"; nisn = "77$TS"; namaLengkap = "Uji Dimensi $TS"
+    telephone = "0811$TS"; jenisKelamin = "Laki-Laki"; tempatLahir = "Tanjung"
+    tanggalLahir = "2010-01-01"; tanggalMasuk = "2024-07-01"; alamat = "Jl. Uji"; namaIbu = "Ibu Uji"
+}
+foreach ($kasus in @(
+    @{ f = $imgBig;   label = "7000x7000 (di atas max 6000)" }
+    @{ f = $imgKecil; label = "100x100 (di bawah min 360x480)" }
+)) {
+    $r = Api-Upload "siswa" $fieldSiswa $kasus.f
+    Chk "POST /siswa foto $($kasus.label) (harus 422)" $r 422
+    if ($script:LAST_CHK) {
+        # Wajib dipastikan ALASANNYA dimensi. Berkas rusak juga membalas 422
+        # ("must be an image"), jadi tanpa pemeriksaan ini tes bisa lulus
+        # meski aturan max_*/min_* dihapus sama sekali.
+        if ("$($r.resMsg)" -match 'dimension|dimensi') {
+            $script:PASS++; Write-Host "  [PASS] ditolak KARENA dimensi: $($r.resMsg)" -ForegroundColor Green
+        } else {
+            $script:FAIL++; Write-Host "  [FAIL] 422 tapi bukan soal dimensi: $($r.resMsg)" -ForegroundColor Red
+        }
+    }
+}
+Remove-Item $imgBig, $imgKecil -ErrorAction SilentlyContinue
+
 # ──────────────────────────────────────────────
 #  PHASE 15 — CROSS-SERVICE VALIDATION
 # ──────────────────────────────────────────────
@@ -2312,7 +2401,7 @@ if ($ok) { $script:PASS++; Write-Host "  [PASS $($r.resCode)] GET /mapel?idPelaj
 else     { $script:FAIL++; Write-Host "  [FAIL $($r.resCode)] GET /mapel?idPelajaran=99999 seharusnya 404/422" -ForegroundColor Red }
 
 # ──────────────────────────────────────────────
-#  PHASE 16 — CLEANUP
+#  PHASE 16 — ABSENSI
 # ──────────────────────────────────────────────
 Section "Phase 16: Absensi"
 
@@ -2524,6 +2613,28 @@ if ($guruId) {
         else { $script:FAIL++; Write-Host "  [FAIL] override durasi = $($r.data.durasiMenit), harusnya 7" -ForegroundColor Red }
         $r = Api DELETE "akademik/pengaturan-absensi/$pengDefId"; Chk "DELETE pengaturan default (cleanup)" $r 202
     } else { Skip "durasi PIN dari pengaturan" "gagal buat pengaturan default (mungkin sudah ada)" }
+}
+
+# ──────────────────────────────────────────────
+#  PHASE 16.9 — JEJAK AUDIT UNTUK AKSI ISTIMEWA
+#  Ditempatkan SETELAH semua fase: aksinya baru terjadi di atas (ekspor di 14.7,
+#  pin/buka di 16). Versi pertama tes ini diletakkan di 14.10 dan gagal bukan
+#  karena auditnya hilang, melainkan karena aksinya belum dijalankan saat itu.
+# ──────────────────────────────────────────────
+Section "Phase 16.9: Jejak Audit"
+
+# Tidak ada endpoint audit, jadi diperiksa langsung ke tabelnya. Dua aksi ini
+# yang paling perlu jejak: membuka jendela PIN (memberi orang lain jalur absensi
+# TANPA kartu) dan mengekspor peringkat se-angkatan (satu-satunya endpoint yang
+# mengeluarkan nama + NISN + nilai satu angkatan sebagai berkas yang dibawa pergi).
+foreach ($res in @('pin_window', 'ranking_angkatan')) {
+    $q = "echo App\Models\AuditLog::where('resource','$res')->count();"
+    $n = (& php Gateway/artisan tinker --execute=$q 2>$null | Select-Object -Last 1)
+    if ("$n" -match '^\s*([0-9]+)\s*$' -and [int]$Matches[1] -gt 0) {
+        $script:PASS++; Write-Host "  [PASS] audit '$res' tercatat ($($Matches[1]) baris)" -ForegroundColor Green
+    } else {
+        $script:FAIL++; Write-Host "  [FAIL] audit '$res' TIDAK tercatat (hasil: '$n') - aksi istimewa tanpa jejak" -ForegroundColor Red
+    }
 }
 
 Section "Phase 17: Cleanup"

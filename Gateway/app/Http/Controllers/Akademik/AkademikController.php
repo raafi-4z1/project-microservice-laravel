@@ -718,6 +718,19 @@ class AkademikController extends Controller
                 return response()->json($hasil, $hasil['resCode'] ?? Response::HTTP_INTERNAL_SERVER_ERROR);
             }
 
+            // Satu-satunya endpoint yang mengeluarkan data satu ANGKATAN sekaligus
+            // (nama + NISN + nilai) sebagai berkas yang bisa dibawa pergi. Berbeda
+            // dari endpoint baca lain yang menampilkan sepotong di layar, ini
+            // ekspor massal — jadi dicatat siapa mengunduh apa, dan kapan.
+            $this->auditLog('exported', 'ranking_angkatan', $request->input('tingkat'), [
+                'tingkat'     => (string) $request->input('tingkat'),
+                'jurusan'     => $request->input('jurusan') ?: 'semua',
+                'tahunAjaran' => (string) ($hasil['data']['tahunAjaran'] ?? ''),
+                'semester'    => (string) ($hasil['data']['semester'] ?? ''),
+                'format'      => $format,
+                'jumlahSiswa' => (string) ($hasil['data']['totalSiswa'] ?? ''),
+            ]);
+
             $d       = $hasil['data'];
             $jurusan = $d['jurusan'] ?: 'SEMUA';
             $namaFile = sprintf(

@@ -164,7 +164,13 @@ class GuruController extends Controller
                 'foto'               => [
                     'required', 'file', 'image',
                     'mimes:jpeg,png,jpg,gif', 'max:2048', 'bail',
-                    'dimensions:min_width=360,min_height=480',
+                    // max_* menutup decompression bomb: `max:2048` membatasi ukuran BERKAS,
+                    // bukan ukuran GAMBAR. PNG warna solid 20000x20000 px terkompresi
+                    // jadi ratusan KB, lolos batas 2 MB, lalu GD harus men-decode-nya
+                    // (20000*20000*4 = 1,6 GB) sebelum coverDown() sempat mengecilkan —
+                    // PHP mati kehabisan memori. Aturan `dimensions` memakai getimagesize()
+                    // yang hanya membaca header, jadi penolakan terjadi SEBELUM decode.
+                    'dimensions:min_width=360,min_height=480,max_width=6000,max_height=6000',
                 ],
                 'statusKepegawaian'  => 'required',
                 'nomorSKPengangkatan'=> 'sometimes|numeric',
@@ -260,7 +266,7 @@ class GuruController extends Controller
                 'foto'               => [
                     'sometimes', 'file', 'image',
                     'mimes:jpeg,png,jpg,gif', 'max:2048', 'bail',
-                    'dimensions:min_width=360,min_height=480',
+                    'dimensions:min_width=360,min_height=480,max_width=6000,max_height=6000',
                 ],
                 'statusKepegawaian'  => 'sometimes',
                 'nomorSKPengangkatan'=> 'sometimes|numeric',
