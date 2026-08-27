@@ -576,6 +576,22 @@ composer update laravel/passport symfony/http-foundation --no-interaction
 Selalu jalankan `run-tests.ps1` sesudahnya. Kalau ada regresi,
 `git checkout -- composer.lock && composer install` mengembalikannya.
 
+> **Setelah update massal, `composer install` bukan langkah opsional.** Pernah
+> terjadi: `composer update -W` menulis `composer.lock` tapi tidak menuntaskan
+> `vendor/` di satu service. `symfony/translation` ada di lock, tidak ada di disk,
+> autoloader tetap me-`require` file yang hilang — service membalas **warning HTML,
+> bukan JSON**, dan Gateway meneruskannya apa adanya. Exit code composer tetap 0.
+>
+> Jadi pemeriksaannya bukan "composer sukses", melainkan "tiap service benar-benar
+> membalas envelope JSON":
+>
+> ```bash
+> for h in classmicroservices mapelservice guruservice siswaservice karyawanservice akademikservice; do
+>   printf "%-20s " "$h"
+>   curl -s "http://$h.test/api/tidak-ada" -H 'Accept: application/json' | grep -q resCode && echo OK || echo RUSAK
+> done
+> ```
+
 ### Testing Otomatis (PowerShell)
 
 Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**358 asersi**,
