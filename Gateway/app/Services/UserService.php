@@ -14,6 +14,20 @@ class UserService
      * Password awal = email (agar guru/siswa bisa login pertama kali),
      * tapi akun ditandai wajib ganti password sebelum bisa mengakses fitur lain.
      */
+    /**
+     * Apakah email sudah terpakai akun lain (termasuk yang sudah dihapus)?
+     *
+     * `users.email` unik di level database dan model User memakai soft delete,
+     * jadi akun yang "dihapus" masih memegang emailnya. Tanpa pemeriksaan ini,
+     * POST /guru|siswa|karyawan menulis record domain LEBIH DULU, lalu gagal saat
+     * membuat akun user — record domainnya terlanjur tersimpan tanpa akun login
+     * (tidak ada transaksi lintas-service), dan pemanggil hanya menerima 500.
+     */
+    public function emailDipakai(string $email): bool
+    {
+        return User::withTrashed()->where('email', $email)->exists();
+    }
+
     public function create(string $name, string $email, string $role, bool $isAdminSekolah = false) {
         $attributes = [
             'name'     => $name,

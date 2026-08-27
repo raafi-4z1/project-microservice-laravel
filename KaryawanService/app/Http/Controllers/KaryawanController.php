@@ -148,8 +148,11 @@ class KaryawanController extends Controller
         $path = '';
         try {
             $validate = Validator::make($request->all(), [
-                'email'             => 'required|email',
-                'nip'               => 'required|string|max:20',
+                // `email` & `nip` unik di level DB. Tanpa aturan unique di sini,
+                // duplikatnya lolos validasi lalu meledak sebagai 500 dari driver DB
+                // alih-alih 422 yang bisa ditampilkan ke pengguna.
+                'email'             => 'required|email|unique:karyawans,email',
+                'nip'               => 'required|string|max:20|unique:karyawans,nip',
                 'namaLengkap'       => 'required',
                 'jabatan'           => 'required',
                 'isAdminSekolah'    => 'sometimes|boolean',

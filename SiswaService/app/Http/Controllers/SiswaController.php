@@ -166,8 +166,10 @@ class SiswaController extends Controller
         $path = '';
         try {
             $validate = Validator::make($request->all(), [
-                'email'        => 'required|email',
-                'nisn'         => 'required|numeric',
+                // Unik di level DB — tanpa aturan unique di sini duplikatnya
+                // meledak jadi 500 dari driver, bukan 422 yang bisa ditampilkan.
+                'email'        => 'required|email|unique:siswas,email',
+                'nisn'         => 'required|numeric|unique:siswas,nisn',
                 'namaLengkap'  => 'required',
                 'telephone'    => 'required|numeric',
                 'jenisKelamin' => 'required|in:Laki-Laki,Perempuan',

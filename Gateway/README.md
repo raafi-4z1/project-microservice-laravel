@@ -283,6 +283,25 @@ satu-satunya penghalang terlalu rapuh.
 Validasi (`ValidationException`) sengaja dibiarkan ditangani Laravel supaya
 bentuk 422 beserta daftar error per field tidak berubah.
 
+### Email/NIP/NISN ganda → 422, bukan 500 + data yatim
+
+`POST /guru|siswa|karyawan` menulis **dua** tempat: record domain di service, lalu
+akun user di Gateway. Tidak ada transaksi lintas-service, jadi urutannya penting.
+
+Dulu Gateway membuat record domain lebih dulu. Kalau emailnya sudah dipakai akun
+lain, `User::create()` gagal — record domainnya **terlanjur tersimpan tanpa akun
+login**, dan pemanggil hanya menerima 500. Percobaan ulang lalu gagal dengan
+alasan berbeda ("duplicate karyawans"), sehingga terlihat seperti buntu.
+
+Sekarang Gateway memeriksa `UserService::emailDipakai()` **sebelum** menulis apa
+pun dan membalas **422**. Pemeriksaannya memakai `withTrashed()`: `users` pakai
+soft delete sedangkan `users.email` unik di level DB, jadi akun yang "dihapus"
+masih memegang emailnya.
+
+Di sisi service, `email`/`nip`/`nik`/`nisn` kini divalidasi `unique:` juga —
+sebelumnya kolomnya unik di DB tapi tidak divalidasi, sehingga duplikatnya lolos
+validasi lalu meledak sebagai 500 dari driver alih-alih 422 yang bisa ditampilkan.
+
 ### Privasi BACA — direktori publik vs data pribadi
 
 Penanda Administrator Sekolah mengatur hak **tulis**; bagian ini mengatur hak

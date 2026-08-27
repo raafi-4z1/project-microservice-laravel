@@ -148,9 +148,11 @@ class GuruController extends Controller
         $path = '';
         try {
             $validate = Validator::make($request->all(), [
-                'email'              => 'required|email',
-                'nik'                => 'required|numeric',
-                'nip'                => 'required|numeric',
+                // Unik di level DB — tanpa aturan unique di sini duplikatnya
+                // meledak jadi 500 dari driver, bukan 422 yang bisa ditampilkan.
+                'email'              => 'required|email|unique:gurus,email',
+                'nik'                => 'required|numeric|unique:gurus,nik',
+                'nip'                => 'required|numeric|unique:gurus,nip',
                 'namaLengkap'        => 'required',
                 'telephone'          => 'required|numeric',
                 'jenisKelamin'       => 'required|in:Laki-Laki,Perempuan',

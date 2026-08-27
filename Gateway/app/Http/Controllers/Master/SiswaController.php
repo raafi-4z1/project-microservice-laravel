@@ -99,6 +99,16 @@ class SiswaController extends Controller
     public function store(Request $request)
     {
         try {
+            // Dicek SEBELUM record domain dibuat: kalau tidak, record-nya
+            // terlanjur tersimpan lalu pembuatan akun gagal (lihat
+            // UserService::emailDipakai).
+            if ($request->filled('email') && $this->userService->emailDipakai($request->email)) {
+                return $this->response(
+                    'Email sudah terpakai akun lain. Kalau akun lama sudah dihapus, emailnya tetap tercatat — pakai email berbeda.',
+                    Response::HTTP_UNPROCESSABLE_ENTITY
+                );
+            }
+
             $response = $this->performRequest($request->method(), "{$this->reqUrl}", $request->all());
             $decode = $this->decode($response);
 

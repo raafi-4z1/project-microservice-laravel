@@ -552,8 +552,8 @@ Untuk detail endpoint per service, lihat README masing-masing service:
 
 ### Testing Otomatis (PowerShell)
 
-Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**354 asersi**,
-terakhir 354 PASS / 0 FAIL / 1 SKIP) mencakup auth, CRUD semua service, akademik,
+Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**358 asersi**,
+terakhir 358 PASS / 0 FAIL / 1 SKIP) mencakup auth, CRUD semua service, akademik,
 **absensi** (kartu/QR, keluar, rekap, jendela PIN, wali kelas, autentikasi
 terminal), RBAC 5 akun (termasuk pasangan pembanding karyawan biasa vs
 Administrator Sekolah), **privasi baca** (penyaringan PII direktori + oracle

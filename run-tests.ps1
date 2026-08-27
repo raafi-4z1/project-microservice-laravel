@@ -2201,16 +2201,66 @@ if ($asBiasa) {
 # menerima SQL utuh, nama database, host+port, bahkan hash password bcrypt dari
 # statement INSERT yang gagal. Dipicu di sini dengan email karyawan yang sudah
 # terpakai — pelanggaran unique constraint, tidak membuat data apa pun.
+# Email yang sudah dipakai akun lain harus ditolak 422 SEBELUM apa pun ditulis.
+# Dulu Gateway membuat record domain lebih dulu, baru akun user — kalau emailnya
+# bentrok, record domainnya terlanjur tersimpan tanpa akun login (tidak ada
+# transaksi lintas-service) dan pemanggil hanya menerima 500.
+$sebelum = (Api GET "karyawan/all`?per_page=1").data.total
 $r = Api POST "karyawan" @{
-    email = "akuntest.karyawan@example.com"; nip = "8000001"
-    namaLengkap = "Pemicu Duplikat"; jabatan = "Satpam"
+    email = "akuntest.karyawan@example.com"; nip = "8000002"
+    namaLengkap = "Pemicu Email Ganda"; jabatan = "Satpam"
 }
-if ($r.resCode -eq 500) {
-    $bocor = @('SQLSTATE', 'insert into', 'Database:', 'Connection:', '$2y$') | Where-Object { "$($r.resMsg)" -like "*$_*" }
-    if (-not $bocor) { $script:PASS++; Write-Host "  [PASS] Respons 500 tidak memuat SQL/DB/hash — pesan: $($r.resMsg)" -ForegroundColor Green }
-    else { $script:FAIL++; Write-Host "  [FAIL] Respons 500 BOCOR detail internal ($($bocor -join ',')) — $($r.resMsg)" -ForegroundColor Red }
+Chk "POST /karyawan email sudah dipakai (harus 422, bukan 500)" $r 422
+$sesudah = (Api GET "karyawan/all`?per_page=1").data.total
+if ($sesudah -eq $sebelum) { $script:PASS++; Write-Host "  [PASS] Tidak ada record yatim tertinggal (total karyawan tetap $sebelum)" -ForegroundColor Green }
+else { $script:FAIL++; Write-Host "  [FAIL] Record yatim tertinggal: total karyawan $sebelum -> $sesudah" -ForegroundColor Red }
+
+# Duplikat NIP juga harus 422, bukan 500 dari driver DB.
+# NIP-nya diambil dari karyawan yang BENAR-BENAR ada. Versi sebelumnya memakai
+# NIP dari POST di atas — padahal POST itu ditolak 422 oleh guard email, jadi
+# NIP-nya tidak pernah terpakai dan tes ini malah sukses 201 sambil meninggalkan
+# record nyasar.
+$nipAda = @((Api GET "karyawan/all`?per_page=1").data.data)[0].nip
+if ($nipAda) {
+    $r = Api POST "karyawan" @{
+        email = "pemicu.nip.$TS@example.com"; nip = "$nipAda"
+        namaLengkap = "Pemicu NIP Ganda"; jabatan = "Satpam"
+    }
+    Chk "POST /karyawan NIP duplikat (harus 422, bukan 500)" $r 422
+    if ($r.resCode -eq 201) {
+        # Jangan tinggalkan sampah kalau ternyata lolos
+        $script:CREATED['karyawan_as'] = @($script:CREATED['karyawan_as']) + $r.data.idKaryawan
+    }
 } else {
-    Skip "Sanitasi respons 500" "pemicu tidak menghasilkan 500 (resCode=$($r.resCode)) — data uji mungkin berubah"
+    Skip "POST /karyawan NIP duplikat" "tidak ada karyawan sebagai acuan NIP"
+}
+
+# -- Tidak ada respons error yang boleh membocorkan detail internal --
+# Diuji sebagai SIFAT, bukan lewat satu bug tertentu: bug pemicunya sudah
+# diperbaiki, tapi jalur kebocorannya (pesan exception mentah di resMsg / data /
+# render bawaan Laravel) harus tetap tertutup untuk error apa pun di masa depan.
+$penanda = @('SQLSTATE', 'insert into', 'select * from', 'Database:', 'Connection:',
+             '$2y$', 'vendor\laravel', 'C:\Users', '"trace"', '"exception"')
+$pemicu = @(
+    @{ m = 'GET';  p = "rute-tidak-ada-$TS" }
+    @{ m = 'GET';  p = "login" }
+    @{ m = 'POST'; p = "user" }
+    @{ m = 'GET';  p = "users/abc" }
+    @{ m = 'GET';  p = "siswa`?idSiswa=99999" }
+    @{ m = 'POST'; p = "karyawan" }
+    @{ m = 'GET';  p = "akademik/nilai/kelas/99999`?tahun_ajaran=$tahun&semester=$semester" }
+)
+$bocorTotal = @()
+foreach ($t in $pemicu) {
+    $resp = Api $t.m $t.p
+    $teks = "$($resp.resMsg) $($resp.data | ConvertTo-Json -Depth 4 -Compress)"
+    $hit  = @($penanda | Where-Object { $teks -like "*$_*" })
+    if ($hit.Count -gt 0) { $bocorTotal += "$($t.m) /$($t.p) -> $($hit -join ',')" }
+}
+if ($bocorTotal.Count -eq 0) {
+    $script:PASS++; Write-Host "  [PASS] $($pemicu.Count) respons error diperiksa - tidak ada SQL/path/stack trace bocor" -ForegroundColor Green
+} else {
+    $script:FAIL++; Write-Host "  [FAIL] Detail internal bocor di: $($bocorTotal -join ' | ')" -ForegroundColor Red
 }
 
 # ──────────────────────────────────────────────
