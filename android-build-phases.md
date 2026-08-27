@@ -212,7 +212,9 @@ snake_case di GET /user.
 > detail + form create/edit + hapus untuk Mapel, Kelas, Guru, Siswa: pagination
 > infinite scroll (data.data, current_page < last_page), search bar debounce 400ms
 > yang reset ke halaman 1, pull-to-refresh, empty/error/loading state. Guru & Siswa:
-> form multipart dengan image picker + crop 3:4 (foto wajib saat create, opsional
+> form multipart dengan image picker + crop 3:4 LALU **perkecil sisi terpanjang
+> ke ~1600 px** (batas server 6000 px; foto HP kelas atas melebihinya walau sudah
+> di-crop) (foto wajib saat create, opsional
 > saat edit); render foto detail (data-URI base64) dengan Coil. DTO detail guru
 > DAN siswa: SEMUA field nullable — server menyaring field pribadi untuk setiap
 > viewer non-pengelola (Guru, Siswa, karyawan biasa); lihat Aturan main #9 dan
@@ -230,7 +232,9 @@ snake_case di GET /user.
 
 **Gate:**
 - CRUD keempat entitas sukses end-to-end (data benar-benar berubah di backend)
-- Upload foto guru/siswa dari galeri emulator berhasil (< 2MB, min 360x480)
+- Upload foto guru/siswa dari galeri emulator berhasil (< 2MB, 360x480 s/d 6000x6000)
+- **Uji dengan foto kamera beresolusi penuh**, bukan hanya gambar contoh kecil:
+  tanpa langkah perkecil, foto HP kelas atas ditolak 422 "invalid image dimensions"
 - Search + infinite scroll bekerja; role Siswa tidak melihat tombol aksi
 - **Tidak ada crash parsing** saat membuka detail guru/karyawan/siswa memakai akun
   Siswa dan akun karyawan biasa (bukti DTO sudah nullable — lihat Aturan main #9)

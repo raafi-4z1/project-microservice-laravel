@@ -249,7 +249,15 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
 - `GET /guru/all` (list tanpa foto), `GET /guru?idGuru={id}` (detail + foto)
 - `POST /guru` multipart (data + file foto), `POST /guru/update` (idGuru + field berubah,
   foto opsional), `DELETE /guru/{id}`
-- Foto upload: JPEG/PNG/JPG maks 2 MB, minimal 360×480 px.
+- Foto upload: JPEG/PNG/JPG maks 2 MB, **360×480 s/d 6000×6000 px**.
+  **WAJIB perkecil sebelum unggah.** Batas atas 6000 px itu nyata terlewati oleh
+  HP kelas atas: iPhone 48 MP = 8064×6048, sebagian Android jauh di atas itu.
+  Crop 3:4 saja TIDAK cukup — memotong 8064×6048 menghasilkan ±4536×6048, tetap
+  di atas 6000 dan dibalas **422 "invalid image dimensions"**. Setelah crop,
+  perkecil sisi terpanjang ke ±1600 px (server toh menyimpannya sebagai 360×480).
+  Itu sekaligus menyelesaikan batas 2 MB tanpa menurunkan kualitas yang terlihat.
+  Batas atas ini ada untuk mencegah *decompression bomb*: berkas kecil tapi
+  dimensinya raksasa akan menghabiskan memori server saat di-decode.
   Foto pada respons detail berupa string `data:image/webp;base64,...` — render dengan Coil.
 - **Respons list**: `idGuru`, `namaLengkap`, `nip`, `email`, `jabatan`, `statusKepegawaian`
 - **Respons detail — bergantung role!** Hanya **pengelola** (SuperAdmin, Admin,
@@ -311,6 +319,12 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
 
 ### 5. Akademik (prefix `/akademik`)
 
+- **Paginasi (berlaku di SEMUA endpoint berpaginasi)**: `per_page` maksimum
+  **200**, minimum 1, harus numerik. Di luar itu **422** — bukan diam-diam
+  dipaksa ke batas. Berlaku di `/users`, `/siswa/all`, `/guru/all`,
+  `/karyawan/all`, `/class/all`, `/mapel/all`, dan keempat `/riwayat`.
+  Untuk mencari satu baris tertentu pakai `?search=` atau `?role=`, jangan
+  `per_page` besar lalu menyaring di klien.
 - **Semester**: `GET /akademik/semester/aktif`, `GET /akademik/semester/riwayat`,
   `POST /akademik/semester/aktif` (tahun_ajaran "YYYY/YYYY", semester 1|2, tanggal_mulai).
   Respons: `idSemesterAktif`, `tahunAjaran`, `semester`, `tanggalMulai`,
