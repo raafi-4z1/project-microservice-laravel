@@ -266,6 +266,23 @@ grep A1B2C3D4 KaryawanService/storage/logs/laravel.log
 Diuji di suite (Fase 14.10): respons 500 tidak boleh memuat `SQLSTATE`,
 `insert into`, `Database:`, `Connection:`, atau `$2y$`.
 
+**Tiga jalur yang harus ditutup semua** — menutup satu saja tidak cukup, karena
+error bisa keluar lewat jalur mana pun:
+
+| Jalur | Dulu | Sekarang |
+|---|---|---|
+| `ApiResponser::response()` (184 pemanggilan `$e->getMessage()`) | pesan exception mentah di `resMsg` | kalimat umum + kode rujukan |
+| Handler fallback Gateway (`bootstrap/app.php`) | pesan exception mentah di **`data`** | `data` dikosongkan untuk 5xx |
+| Service **tanpa** handler sama sekali | render bawaan Laravel: `exception`, **path absolut file**, stack trace — dan **bukan** envelope, jadi klien tak bisa mem-parse | envelope `resCode/resMsg` + 5xx disanitasi |
+
+Yang terakhir paling mudah terlewat: body service diteruskan Gateway **apa adanya**
+ke klien, jadi render bawaan Laravel di service ikut sampai ke luar. `APP_DEBUG=false`
+di produksi memang menutupi sebagian, tapi mengandalkan satu setelan env sebagai
+satu-satunya penghalang terlalu rapuh.
+
+Validasi (`ValidationException`) sengaja dibiarkan ditangani Laravel supaya
+bentuk 422 beserta daftar error per field tidak berubah.
+
 ### Privasi BACA — direktori publik vs data pribadi
 
 Penanda Administrator Sekolah mengatur hak **tulis**; bagian ini mengatur hak

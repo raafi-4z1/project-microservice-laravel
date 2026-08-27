@@ -70,12 +70,24 @@ return Application::configure(basePath: dirname(__DIR__))
                     $err = 401;
                 }
 
+                // `data` dulu selalu berisi pesan exception mentah. Untuk 401/405
+                // isinya info routing yang tidak sensitif dan membantu debugging,
+                // tapi untuk 500 bisa apa saja — pernah terjadi SQL utuh beserta
+                // hash password. Jadi khusus 5xx: detail ke log, klien dapat kode.
+                $detail = $e->getMessage();
+                if ($err >= 500) {
+                    $ref = strtoupper(bin2hex(random_bytes(4)));
+                    \Illuminate\Support\Facades\Log::error("[{$ref}] " . $detail);
+                    $msg    = "Terjadi kesalahan di server. Sertakan kode {$ref} saat melaporkannya.";
+                    $detail = "";
+                }
+
                 return response()->json([
                     'resCode' => $err,
                     'resPhrase' => $msg,
                     'resStatus' => "fail",
                     'resMsg' => $msg,
-                    'data' => $e->getMessage()
+                    'data' => $detail
                 ], $err);
             // }
         });
