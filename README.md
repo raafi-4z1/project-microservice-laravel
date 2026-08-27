@@ -552,11 +552,16 @@ Untuk detail endpoint per service, lihat README masing-masing service:
 
 ### Testing Otomatis (PowerShell)
 
-Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (186 skenario)
-mencakup auth, CRUD semua service, akademik, **absensi** (kartu/QR, keluar,
-rekap, jendela PIN, wali kelas, autentikasi terminal), RBAC 4 role, sesi
-multi-device, dan validasi cross-service. Kredensial dibaca dari environment variable
-(tidak ditulis di file).
+Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**354 asersi**,
+terakhir 354 PASS / 0 FAIL / 1 SKIP) mencakup auth, CRUD semua service, akademik,
+**absensi** (kartu/QR, keluar, rekap, jendela PIN, wali kelas, autentikasi
+terminal), RBAC 5 akun (termasuk pasangan pembanding karyawan biasa vs
+Administrator Sekolah), **privasi baca** (penyaringan PII direktori + oracle
+pencarian NISN), **batas paginasi**, sesi multi-device, dan validasi
+cross-service. Kredensial dibaca dari environment variable (tidak ditulis di file).
+
+Satu SKIP yang wajar: uji scan terminal, butuh `php artisan terminal:register`
+manual — lihat di bawah.
 
 ```powershell
 $env:TEST_ADMIN_PASSWORD = "PasswordSuperAdmin"
@@ -594,7 +599,8 @@ App Android dibangun dari spesifikasi (`android-app-prompt.md`) + panduan fase
 ini. Untuk merakit folder dokumen yang dibutuhkan:
 
 ```powershell
-# generate dulu referensi DTO (berisi akun test — gitignored)
+# generate dulu referensi DTO (regenerasi WAJIB tiap kali bentuk respons berubah —
+# capture yang usang lebih menyesatkan daripada tidak ada)
 $env:TEST_ADMIN_PASSWORD = "PasswordSuperAdmin"
 powershell -ExecutionPolicy Bypass -File capture-api-samples.ps1
 

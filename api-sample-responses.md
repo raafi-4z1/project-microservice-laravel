@@ -1,5 +1,27 @@
 # Contoh Response API - SIM Sekolah (hasil capture asli)
 
+> ## ⚠️ CAPTURE INI USANG — REGENERASI SEBELUM DIPAKAI
+>
+> Direkam **2026-08-17**, sebelum aturan privasi baca diberlakukan (26-08).
+> Beberapa contoh di bawah **sudah tidak benar**:
+>
+> | Bagian | Isi capture | Perilaku sebenarnya sekarang |
+> |---|---|---|
+> | `GET /guru?idGuru=` | "hanya diterima SuperAdmin/Admin/**Karyawan**" | karyawan biasa ikut disaring; yang penuh hanya pengelola |
+> | `GET /siswa?idSiswa=` | "Role Siswa mendapat **403**" | Siswa dapat **200 versi publik**; karyawan biasa yang 403 |
+> | Perilaku per Role | pembanding karyawan biasa terekam **401** | tokennya sudah dicabut saat itu — pembandingnya tidak valid |
+>
+> Sampai diregenerasi, pakai `android-todo-rbac-angkatan.md` **Perubahan 8**
+> sebagai acuan bentuk data per role.
+>
+> ```powershell
+> $env:TEST_ADMIN_PASSWORD = "..."   # SuperAdmin
+> powershell -ExecutionPolicy Bypass -File capture-api-samples.ps1
+> ```
+>
+> Menjalankan skrip itu menimpa file ini beserta banner ini.
+
+
 Dokumen ini berisi response JSON **asli** yang direkam dari Gateway pada 2026-08-17,
 sebagai referensi bentuk DTO untuk pengembangan aplikasi client (Android, dsb).
 

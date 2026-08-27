@@ -53,6 +53,16 @@ SUPERADMIN_PASSWORD="MinimalDuabelasKarakter1"
 
 Base URL: `https://gateway.test/api`
 
+> **Baca kolom Role begini:** di seluruh tabel di bawah, **"SuperAdmin, Admin"
+> juga mencakup karyawan bertanda [Administrator Sekolah](#administrator-sekolah-staf-tata-usaha)**
+> (staf TU) — mereka berrole `Karyawan` tapi lolos lewat pseudo-role
+> `AdminSekolah`. Karyawan biasa (satpam, kebersihan) tetap **403**.
+> Konvensi yang sama dipakai di [AkademikService/README.md](../AkademikService/README.md).
+>
+> Kolom Role hanya menyatakan siapa yang boleh **memanggil**. **Isi** respons bisa
+> berbeda per role — data pribadi disaring untuk non-pengelola, lihat
+> [Privasi BACA](#privasi-baca--direktori-publik-vs-data-pribadi).
+
 ### Auth
 
 | Method | Endpoint | Role | Keterangan |
