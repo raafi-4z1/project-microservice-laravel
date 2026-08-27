@@ -231,7 +231,12 @@ Add-Sample GET "guru`?idGuru=99999" (RawApi GET "guru`?idGuru=99999") "ID tidak 
 
 # ══════════════════ 6. SISWA ══════════════════
 Add-Section "Siswa"
+$siswaAllRaw = RawApi GET "siswa/all`?page=1&per_page=50"
 Add-Sample GET "siswa/all`?page=1&per_page=3" (RawApi GET "siswa/all`?page=1&per_page=3")
+# id siswa yang BENAR-BENAR ada, untuk contoh per-role di bawah. Sebelumnya
+# id-nya di-hardcode (2) dan siswa itu keburu dihapus, sehingga sampel terpenting
+# untuk aturan privasi malah merekam 404 "Data sudah dihapus."
+$siswaIds = @((($siswaAllRaw.raw | ConvertFrom-Json).data.data) | ForEach-Object { $_.idSiswa })
 Add-Sample GET "siswa`?idSiswa=1" (RawApi GET "siswa`?idSiswa=1") "Detail lengkap termasuk data orang tua/wali -- untuk PENGELOLA dan Guru. Role Siswa menerima versi publik, karyawan biasa mendapat 403 (lihat bagian Perilaku per Role)."
 
 # ══════════════════ 7. AKADEMIK - SEMESTER & JAM ══════════════════
@@ -453,9 +458,19 @@ $kwToken = ($lk.raw | ConvertFrom-Json).data.token
 
 if ($siswaToken) {
     Add-Sample GET "guru`?idGuru=1" (RawApi GET "guru`?idGuru=1" -Token $siswaToken) "Detail guru DILIHAT NON-PENGELOLA (Guru, Siswa, karyawan biasa): field pribadi (nik, alamat, telephone, tanggalLahir, dll.) DISARING oleh Gateway -- field-nya TIDAK DIKIRIM, bukan dikirim kosong. Bandingkan dengan versi lengkap di bagian Guru. Buat semua field DTO detail nullable, kalau tidak parser akan melempar MissingFieldException dan layar jadi blank."
-    Add-Sample GET "siswa`?idSiswa=2" (RawApi GET "siswa`?idSiswa=2" -Token $siswaToken) "Detail siswa lain DILIHAT ROLE SISWA: 200 tapi hanya INFO PUBLIK (idSiswa, namaLengkap, jenisKelamin, status, foto). NISN, tempat/tanggal lahir, alamat, telepon, dan seluruh data orang tua TIDAK dikirim."
+    # Harus siswa LAIN: record diri sendiri sengaja TIDAK disaring, jadi memakai
+    # id sendiri akan merekam bentuk yang penuh dan menyesatkan pembaca.
+    $siswaSayaRaw = RawApi GET "siswa/saya" -Token $siswaToken
+    $idSiswaSaya  = (($siswaSayaRaw.raw | ConvertFrom-Json).data.idSiswa)
+    $idSiswaLain = @($siswaIds | Where-Object { $_ -ne $idSiswaSaya }) | Select-Object -First 1
+    if ($idSiswaLain) {
+        Add-Sample GET "siswa`?idSiswa=$idSiswaLain" (RawApi GET "siswa`?idSiswa=$idSiswaLain" -Token $siswaToken) "Detail siswa LAIN dilihat ROLE SISWA: 200 tapi hanya INFO PUBLIK (idSiswa, namaLengkap, jenisKelamin, status, foto). NISN, tempat/tanggal lahir, alamat, telepon, dan seluruh data orang tua TIDAK dikirim. Bandingkan dengan ``GET /siswa/saya`` di bawah yang tetap lengkap."
+    } else {
+        Add-Note "> **Contoh detail siswa LAIN untuk viewer Siswa tidak terekam** -- hanya ada satu siswa di database, jadi tidak ada pembanding. Bentuk yang diharapkan: ``idSiswa``, ``namaLengkap``, ``jenisKelamin``, ``status``, ``foto`` saja."
+        Write-Host "  [!!] Tidak ada siswa pembanding - sampel privasi detail siswa dilewati" -ForegroundColor Yellow
+    }
     Add-Sample GET "siswa/all`?page=1&per_page=3" (RawApi GET "siswa/all`?page=1&per_page=3" -Token $siswaToken) "Daftar siswa DILIHAT ROLE SISWA: tiap baris hanya idSiswa, namaLengkap, jenisKelamin, status. Meta paginasi TIDAK berubah, jadi parser daftar tetap satu untuk semua role."
-    Add-Sample GET "siswa/saya" (RawApi GET "siswa/saya" -Token $siswaToken) "Profil DIRI SENDIRI untuk role Siswa -- LENGKAP, termasuk ``foto`` (data-URI base64). Tidak ikut disaring karena ini datanya sendiri; ``GET /siswa?idSiswa=`` untuk siswa lain hanya versi publik. idSiswa diresolve dari email token."
+    Add-Sample GET "siswa/saya" $siswaSayaRaw "Profil DIRI SENDIRI untuk role Siswa -- LENGKAP, termasuk ``foto`` (data-URI base64). Tidak ikut disaring karena ini datanya sendiri; ``GET /siswa?idSiswa=`` untuk siswa lain hanya versi publik. idSiswa diresolve dari email token."
     Add-Sample GET "akademik/nilai/saya`?$tq" (RawApi GET "akademik/nilai/saya`?$tq" -Token $siswaToken) "Khusus role Siswa; siswa_id di-resolve server dari email token."
     Add-Sample GET "akademik/raport/saya`?$tq" (RawApi GET "akademik/raport/saya`?$tq" -Token $siswaToken)
     Add-Sample GET "akademik/nilai/ranking/saya`?$tq" (RawApi GET "akademik/nilai/ranking/saya`?$tq" -Token $siswaToken) "Hanya posisi diri sendiri -- tanpa daftar siswa lain."
@@ -481,6 +496,13 @@ if ($kwToken) {
     Add-Sample GET "akademik/nilai/kelas/1`?$tq" $kwPrivasiRaw['nilai'] "Karyawan biasa TIDAK boleh membaca data akademik siswa: 403. Berlaku juga untuk raport, ranking kelas, dan rekap absensi siswa. Administrator Sekolah tetap 200."
     Add-Sample GET "siswa/all`?page=1&per_page=3" $kwPrivasiRaw['siswa'] "Direktori siswa ditutup seluruhnya untuk karyawan biasa: 403, daftar maupun detail."
     Add-Sample GET "akademik/absensi/rekap/pegawai/saya" $kwPrivasiRaw['sendiri'] "Yang TETAP boleh karyawan biasa: rekap absensi DIRINYA SENDIRI. Subjek diresolve dari email token."
+    # 404 di sini BUKAN soal izin -- gate role-nya lolos, yang gagal resolusi
+    # subjeknya. Tanpa catatan ini pembaca mudah salah menyimpulkan bahwa
+    # karyawan biasa memang tidak boleh membuka rekap dirinya sendiri.
+    if ((($kwPrivasiRaw['sendiri'].raw | ConvertFrom-Json).resCode) -eq 404) {
+        Add-Note "> **Catatan:** contoh di atas terekam **404**, bukan 200. Akun ``akuntest.karyawan`` punya user di Gateway tapi belum punya record di tabel ``karyawans``, sehingga subjeknya tak bisa diresolve. Gate role-nya sendiri LOLOS (bukan 403) -- karyawan biasa memang berhak atas endpoint ini. Jalankan ``seed-test-accounts.ps1`` agar contohnya terekam 200."
+        Write-Host "  [!!] rekap/pegawai/saya karyawan = 404 (akun belum punya record karyawan) - catatan ditambahkan" -ForegroundColor Yellow
+    }
     $rf = RawApi POST "refresh" -Token $kwToken
     Add-Sample POST "refresh" $rf "Tukar token valid dengan token baru 8 jam; token lama dicabut; device_name diwarisi."
     $kwToken = ($rf.raw | ConvertFrom-Json).data.token

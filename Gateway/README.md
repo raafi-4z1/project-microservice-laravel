@@ -242,6 +242,30 @@ melempar **500**.
 > `?role=`) — bukan `per_page` besar lalu menyaring di klien. Pola kedua diam-diam
 > gagal begitu jumlah baris melewati ukuran halaman.
 
+### Respons 500 tidak membocorkan detail internal
+
+Semua service membangun respons lewat `ApiResponser::response()`. Untuk kode
+**500**, pesan aslinya dicatat ke `storage/logs/laravel.log` dengan kode rujukan,
+dan klien hanya menerima kalimat umum:
+
+```json
+{ "resCode": 500, "resMsg": "Terjadi kesalahan di server. Sertakan kode A1B2C3D4 saat melaporkannya." }
+```
+
+Sebelumnya pesan exception diteruskan apa adanya. Contoh nyata yang pernah sampai
+ke klien saat `POST /karyawan` dengan email yang sudah terpakai: **statement SQL
+utuh, nama database, host + port, dan hash password bcrypt** dari baris INSERT
+yang gagal. Cukup dipicu oleh akun Admin biasa.
+
+Detailnya tidak hilang — cari kode rujukannya di log service yang bersangkutan:
+
+```bash
+grep A1B2C3D4 KaryawanService/storage/logs/laravel.log
+```
+
+Diuji di suite (Fase 14.10): respons 500 tidak boleh memuat `SQLSTATE`,
+`insert into`, `Database:`, `Connection:`, atau `$2y$`.
+
 ### Privasi BACA — direktori publik vs data pribadi
 
 Penanda Administrator Sekolah mengatur hak **tulis**; bagian ini mengatur hak

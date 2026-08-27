@@ -119,14 +119,43 @@ $sem = (Api GET "akademik/semester/aktif").data
 $tahun = $sem.tahunAjaran; $semester = $sem.semester
 Write-Host "Semester aktif: $tahun sem $semester`n"
 
-# ── 1-2. Admin & Karyawan (akun baru, tidak butuh record service) ──
-Ensure-Account "Akun Test Admin"    "akuntest.admin@example.com"    "Admin"    "AdminTest123"    | Out-Null
-Ensure-Account "Akun Test Karyawan" "akuntest.karyawan@example.com" "Karyawan" "KaryawanTest123" | Out-Null
+# ── 1-2. Admin & Karyawan biasa ──
+Ensure-Account "Akun Test Admin" "akuntest.admin@example.com" "Admin" "AdminTest123" | Out-Null
+
+# URUTAN PENTING: record karyawan dibuat DULU, baru passwordnya dipastikan.
+# `POST /karyawan` sekalian membuat akun user-nya; kalau akun itu sudah dibuat
+# lebih dulu lewat `register`, insert user-nya bentrok dan seluruh permintaan
+# gagal 500 — sementara baris `karyawans` terlanjur masuk (tidak ada transaksi
+# lintas-service). Pola ini sama dengan blok Administrator Sekolah di bawah.
+#
+# Karyawan biasa juga butuh record DOMAIN, bukan sekadar akun ber-role.
+# Satu-satunya hak yang tersisa untuknya adalah `rekap/pegawai/saya`, dan endpoint
+# itu meresolve subjek dari email token ke tabel `karyawans`. Tanpa record ini
+# hasilnya 404 — gate role-nya lolos, tapi tidak ada yang bisa diuji, dan capture
+# API pun merekam 404 seolah karyawan biasa memang tidak berhak.
+$kwBiasaEmail = "akuntest.karyawan@example.com"
+$adaKB = @((Api GET "karyawan/all`?per_page=100&search=$([uri]::EscapeDataString($kwBiasaEmail))").data.data)
+if (@($adaKB).Count -eq 0) {
+    $stampKB = Get-Date -Format "HHmmss"
+    $mkKB = Api POST "karyawan" @{
+        email = $kwBiasaEmail; nip = "8$stampKB"; namaLengkap = "Akun Test Karyawan Biasa"
+        jabatan = "Satpam"; isAdminSekolah = $false
+    }
+    if ($mkKB.resCode -eq 201) { Write-Host "  [BUAT    ] Record karyawan biasa : $kwBiasaEmail (karyawan id=$($mkKB.data.idKaryawan))" }
+    else { Write-Host "  [GAGAL   ] Record karyawan biasa : $($mkKB.resCode) $($mkKB.resMsg)" -ForegroundColor Yellow }
+} else {
+    # Pastikan penandanya TETAP mati — akun ini gunanya sebagai pembanding
+    Api POST "karyawan/update" @{ idKaryawan = $adaKB[0].idKaryawan; isAdminSekolah = $false } | Out-Null
+    Write-Host "  [ADA     ] Record karyawan biasa : $kwBiasaEmail (karyawan id=$($adaKB[0].idKaryawan))"
+}
+# Membuat karyawan otomatis membuat/mereset akun user-nya, jadi passwordnya
+# dipastikan ulang setelah blok di atas.
+Ensure-Account "Akun Test Karyawan" $kwBiasaEmail "Karyawan" "KaryawanTest123" | Out-Null
 
 # -- 2b. Administrator Sekolah: karyawan NYATA bertanda isAdminSekolah --
-# Beda dari "Akun Test Karyawan" di atas yang hanya punya role tanpa record
-# karyawan. Penanda ini yang membuka menu manajemen di app, jadi sesi Android
-# butuh akun sungguhan untuk mengujinya.
+# Bedanya dengan akun karyawan biasa di atas hanya pada penanda isAdminSekolah.
+# Penanda itu yang membuka menu manajemen di app, jadi sesi Android butuh
+# keduanya untuk membuktikan gating membaca penanda, bukan role.
 $adminSekEmail = "akuntest.adminsekolah@example.com"
 $adaTU = @((Api GET "karyawan/all`?per_page=100&search=$([uri]::EscapeDataString($adminSekEmail))").data.data)
 if (@($adaTU).Count -eq 0) {

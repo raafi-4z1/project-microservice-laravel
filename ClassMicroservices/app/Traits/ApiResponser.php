@@ -74,6 +74,15 @@ trait ApiResponser
                 # code...
                 break;
         }
+        
+        // Pesan exception mentah pernah sampai ke klien: SQL utuh, nama database,
+        // host + port, bahkan hash password bcrypt dari statement INSERT yang gagal.
+        // Untuk 500, detailnya dicatat ke log dan klien hanya menerima kode rujukan.
+        if ($code === Response::HTTP_INTERNAL_SERVER_ERROR) {
+            $ref = strtoupper(bin2hex(random_bytes(4)));
+            \Illuminate\Support\Facades\Log::error("[{$ref}] " . $msg);
+            $msg = "Terjadi kesalahan di server. Sertakan kode {$ref} saat melaporkannya.";
+        }
         $response = [
             "resCode" => $code,
             "resPhrase" => $resPhrase,

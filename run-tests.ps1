@@ -2196,6 +2196,23 @@ if ($asBiasa) {
     Chk "Karyawan biasa -> riwayat berpaginasi (harus tetap 403)" $r 403
 }
 
+# ── Respons 500 tidak boleh membocorkan detail internal ──
+# Pernah terjadi: pesan exception mentah diteruskan apa adanya, sehingga klien
+# menerima SQL utuh, nama database, host+port, bahkan hash password bcrypt dari
+# statement INSERT yang gagal. Dipicu di sini dengan email karyawan yang sudah
+# terpakai — pelanggaran unique constraint, tidak membuat data apa pun.
+$r = Api POST "karyawan" @{
+    email = "akuntest.karyawan@example.com"; nip = "8000001"
+    namaLengkap = "Pemicu Duplikat"; jabatan = "Satpam"
+}
+if ($r.resCode -eq 500) {
+    $bocor = @('SQLSTATE', 'insert into', 'Database:', 'Connection:', '$2y$') | Where-Object { "$($r.resMsg)" -like "*$_*" }
+    if (-not $bocor) { $script:PASS++; Write-Host "  [PASS] Respons 500 tidak memuat SQL/DB/hash — pesan: $($r.resMsg)" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] Respons 500 BOCOR detail internal ($($bocor -join ',')) — $($r.resMsg)" -ForegroundColor Red }
+} else {
+    Skip "Sanitasi respons 500" "pemicu tidak menghasilkan 500 (resCode=$($r.resCode)) — data uji mungkin berubah"
+}
+
 # ──────────────────────────────────────────────
 #  PHASE 15 — CROSS-SERVICE VALIDATION
 # ──────────────────────────────────────────────
