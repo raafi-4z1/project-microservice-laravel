@@ -594,8 +594,8 @@ Selalu jalankan `run-tests.ps1` sesudahnya. Kalau ada regresi,
 
 ### Testing Otomatis (PowerShell)
 
-Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**414 asersi**,
-terakhir 414 PASS / 0 FAIL / 1 SKIP) mencakup auth, CRUD semua service, akademik,
+Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**426 asersi**,
+terakhir 426 PASS / 0 FAIL / 1 SKIP) mencakup auth, CRUD semua service, akademik,
 **absensi** (kartu/QR, keluar, rekap, jendela PIN, wali kelas, autentikasi
 terminal), RBAC 5 akun (termasuk pasangan pembanding karyawan biasa vs
 Administrator Sekolah), **privasi baca** (penyaringan PII direktori + oracle

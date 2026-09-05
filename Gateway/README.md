@@ -283,6 +283,43 @@ satu-satunya penghalang terlalu rapuh.
 Validasi (`ValidationException`) sengaja dibiarkan ditangani Laravel supaya
 bentuk 422 beserta daftar error per field tidak berubah.
 
+### Email bisa dipakai ulang setelah dihapus (pemulihan)
+
+`users.email` dan `{tabel}.email` unik di level DB, sementara modelnya memakai soft
+delete — jadi baris yang "dihapus" **menahan emailnya selamanya**. Dulu itu berarti
+sebuah email tak pernah bisa dipakai ulang: siswa pindah lalu kembali, atau akun
+salah ketik terlanjur dihapus, emailnya mati.
+
+Sekarang baris lamanya **dipulihkan**, bukan ditolak:
+
+| Kondisi | Hasil |
+|---|---|
+| Email dipegang akun/record **aktif** | **422** |
+| Email dipegang akun/record **terhapus** | **201** + `dipulihkan: true` |
+| `nip`/`nik`/`nisn` dipegang record lain (termasuk terhapus) | **422** |
+
+**Baris yang SAMA yang dipulihkan**, bukan baris baru — id-nya tetap. Itu disengaja:
+tautan ke riwayat akademik (nilai, kelas, absensi) berkunci id, dan membuat baris
+baru akan memutusnya diam-diam.
+
+**Nomor identitas sengaja tidak ikut.** Kalau `nip`/`nisn` dipegang record lain,
+datanya memang orang berbeda — menimpanya diam-diam jauh lebih berbahaya daripada
+menolak.
+
+**Yang dilakukan saat memulihkan:**
+
+1. Baris di-`restore()`, lalu **ditimpa** data baru (nama, role, password, penanda).
+   Akun tidak hidup kembali dengan kredensial dan haknya yang dulu.
+2. **Token lama dicabut.** Tanpa ini, siapa pun yang masih memegang token sebelum
+   penghapusan langsung mendapat akses ke akun yang kini milik orang lain.
+3. **Dicatat ke audit log** dengan `action = restored`, berikut pelaku, role, dan
+   penanda `tokenDicabut`. Memulihkan akun adalah aksi istimewa — identitas lama
+   hidup kembali dan tertaut ke record domain yang sama; kalau suatu saat
+   dipertanyakan, inilah jejak yang menjawabnya.
+
+Gagal menulis audit **tidak** menggagalkan pemulihannya, tapi dicatat sebagai
+`Log::warning` agar tidak hilang tanpa jejak.
+
 ### Email/NIP/NISN ganda → 422, bukan 500 + data yatim
 
 `POST /guru|siswa|karyawan` menulis **dua** tempat: record domain di service, lalu
@@ -293,10 +330,9 @@ lain, `User::create()` gagal — record domainnya **terlanjur tersimpan tanpa ak
 login**, dan pemanggil hanya menerima 500. Percobaan ulang lalu gagal dengan
 alasan berbeda ("duplicate karyawans"), sehingga terlihat seperti buntu.
 
-Sekarang Gateway memeriksa `UserService::emailDipakai()` **sebelum** menulis apa
-pun dan membalas **422**. Pemeriksaannya memakai `withTrashed()`: `users` pakai
-soft delete sedangkan `users.email` unik di level DB, jadi akun yang "dihapus"
-masih memegang emailnya.
+Sekarang Gateway memeriksa `UserService::emailDipakaiAktif()` **sebelum** menulis
+apa pun dan membalas **422**. Yang menghalangi hanya akun **aktif** — email milik
+akun terhapus dipulihkan, bukan ditolak (lihat bagian di atas).
 
 Di sisi service, `email`/`nip`/`nik`/`nisn` kini divalidasi `unique:` juga —
 sebelumnya kolomnya unik di DB tapi tidak divalidasi, sehingga duplikatnya lolos

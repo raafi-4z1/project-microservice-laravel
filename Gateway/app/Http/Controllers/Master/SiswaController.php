@@ -104,9 +104,9 @@ class SiswaController extends Controller
             // Dicek SEBELUM record domain dibuat: kalau tidak, record-nya
             // terlanjur tersimpan lalu pembuatan akun gagal (lihat
             // UserService::emailDipakai).
-            if ($request->filled('email') && $this->userService->emailDipakai($request->email)) {
+            if ($request->filled('email') && $this->userService->emailDipakaiAktif($request->email)) {
                 return $this->response(
-                    'Email sudah terpakai akun lain. Kalau akun lama sudah dihapus, emailnya tetap tercatat — pakai email berbeda.',
+                    'Email sudah terpakai akun lain yang masih aktif. Pakai email berbeda.',
                     Response::HTTP_UNPROCESSABLE_ENTITY
                 );
             }

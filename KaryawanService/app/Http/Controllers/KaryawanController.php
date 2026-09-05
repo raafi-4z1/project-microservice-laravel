@@ -187,7 +187,7 @@ class KaryawanController extends Controller
                 // `email` & `nip` unik di level DB. Tanpa aturan unique di sini,
                 // duplikatnya lolos validasi lalu meledak sebagai 500 dari driver DB
                 // alih-alih 422 yang bisa ditampilkan ke pengguna.
-                'email'             => 'required|email|unique:karyawans,email',
+                'email'             => ['required', 'email', \Illuminate\Validation\Rule::unique('karyawans', 'email')->whereNull('deleted_at')],
                 'nip'               => 'required|string|max:20|unique:karyawans,nip',
                 'namaLengkap'       => 'required',
                 'jabatan'           => 'required',
@@ -245,12 +245,38 @@ class KaryawanController extends Controller
                 $data['foto'] = $path;
             }
 
-            $karyawan = Karyawan::create($data);
+            // Email yang dipegang baris TERHAPUS dipulihkan, bukan ditolak.
+            //
+            // `karyawans.email` unik di level DB dan model memakai soft delete, jadi
+            // baris yang "dihapus" tetap menahan emailnya selamanya. Sebelumnya itu
+            // membuat email tak bisa dipakai ulang sama sekali — masalah nyata di
+            // sekolah: siswa pindah lalu kembali, atau akun salah ketik terlanjur
+            // dihapus. Memulihkan baris lama sekaligus menjaga riwayat akademiknya
+            // (nilai, kelas, absensi) tetap tertaut, yang justru hilang kalau
+            // dibuatkan baris baru.
+            //
+            // `nip`/`nik`/`nisn` SENGAJA tetap unique penuh: kalau nomor itu dipegang
+            // baris lain — termasuk yang terhapus — datanya memang berbeda orang,
+            // dan menimpanya diam-diam jauh lebih berbahaya daripada menolak.
+            $dipulihkan = false;
+            $karyawan = Karyawan::onlyTrashed()->where('email', $request->email)->first();
+            if ($karyawan) {
+                $karyawan->restore();
+                $karyawan->update($data);
+                $dipulihkan = true;
+            } else {
+                $karyawan = Karyawan::create($data);
+            }
 
+            // `dipulihkan` diteruskan ke Gateway agar jejak auditnya jujur:
+            // memulihkan record lama berbeda dari membuat yang baru — riwayat
+            // akademiknya ikut hidup kembali, dan itu perlu terlihat di log.
             return $this->response(
-                "Data Karyawan berhasil disimpan.",
+                $dipulihkan
+                    ? "Data Karyawan dipulihkan dari record yang sebelumnya dihapus."
+                    : "Data Karyawan berhasil disimpan.",
                 Response::HTTP_CREATED,
-                ['idKaryawan' => $karyawan->id]
+                ['idKaryawan' => $karyawan->id, 'dipulihkan' => $dipulihkan]
             );
         } catch (Exception $e) {
             if (!empty($path) && Storage::disk('private')->exists($path)) {

@@ -2799,6 +2799,69 @@ if ($guruId) {
     }
 }
 
+
+# --- Pemulihan akun/record yang emailnya pernah dipakai ---
+# `users.email` dan `{tabel}.email` unik di level DB sementara modelnya soft-delete,
+# jadi baris yang "dihapus" menahan emailnya. Dulu itu berarti email tak pernah bisa
+# dipakai ulang. Sekarang baris lamanya DIPULIHKAN (bukan dibuat baru) supaya tautan
+# ke record domain & riwayat akademik tetap utuh.
+$pulihEmail = "pulih.suite_$TS@example.com"
+$r = Api POST "register" @{ name="Asli $TS"; email=$pulihEmail; password='Rahasia123'; confirm_password='Rahasia123'; role='Guru' }
+Chk "register akun untuk uji pemulihan (harus 201)" $r 201
+if ($script:LAST_CHK) {
+    $pulihUid = @((Api GET "users`?search=$([uri]::EscapeDataString($pulihEmail))&per_page=5").data.data)[0].id
+    Api DELETE "users/$pulihUid" | Out-Null
+
+    $r = Api POST "register" @{ name="Pemilik Baru $TS"; email=$pulihEmail; password='Rahasia456'; confirm_password='Rahasia456'; role='Siswa' }
+    Chk "register ulang email akun TERHAPUS (harus 201)" $r 201; if ($script:LAST_CHK) {
+        if ($r.data.dipulihkan -eq $true) { $script:PASS++; Write-Host "  [PASS] ditandai dipulihkan, bukan dibuat baru" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] tidak ditandai dipulihkan" -ForegroundColor Red }
+
+        $u2 = @((Api GET "users`?search=$([uri]::EscapeDataString($pulihEmail))&per_page=5").data.data)[0]
+        # Baris yang SAMA harus hidup kembali — kalau id berubah, tautan ke record
+        # domain (yang berkunci email) putus dan riwayatnya hilang.
+        if ("$($u2.id)" -eq "$pulihUid" -and $u2.role -eq 'Siswa') { $script:PASS++; Write-Host "  [PASS] baris sama dipulihkan (id $pulihUid) & data ditimpa" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] id=$($u2.id) (harusnya $pulihUid) role=$($u2.role)" -ForegroundColor Red }
+    }
+    # Kredensial lama HARUS mati: akun ini kini milik pendaftaran baru.
+    Chk "login pakai password LAMA (harus 400)" (Api POST "login" @{ email=$pulihEmail; password='Rahasia123'; device_name='pulih' }) 400
+    Chk "login pakai password BARU (harus 200)" (Api POST "login" @{ email=$pulihEmail; password='Rahasia456'; device_name='pulih' }) 200
+
+    $ux = @((Api GET "users`?search=$([uri]::EscapeDataString($pulihEmail))&per_page=5").data.data)[0]
+    if ($ux) { Api DELETE "users/$($ux.id)" | Out-Null }
+}
+
+# Record DOMAIN juga dipulihkan (bukan hanya akun)
+$pulihKar = "pulih.kar_$TS@example.com"
+$r = Api POST "karyawan" @{ email=$pulihKar; nip="71$TS"; namaLengkap="Kar $TS"; jabatan='Satpam' }
+Chk "buat karyawan untuk uji pemulihan (harus 201)" $r 201
+if ($script:LAST_CHK) {
+    $idKar = $r.data.idKaryawan
+    Api DELETE "karyawan/$idKar" | Out-Null
+    $r = Api POST "karyawan" @{ email=$pulihKar; nip="72$TS"; namaLengkap="Kar Baru $TS"; jabatan='Kebersihan' }
+    Chk "buat ulang karyawan email TERHAPUS (harus 201)" $r 201; if ($script:LAST_CHK) {
+        if ($r.data.dipulihkan -eq $true -and "$($r.data.idKaryawan)" -eq "$idKar") {
+            $script:PASS++; Write-Host "  [PASS] record domain dipulihkan dengan id sama ($idKar)" -ForegroundColor Green
+        } else { $script:FAIL++; Write-Host "  [FAIL] dipulihkan=$($r.data.dipulihkan) id=$($r.data.idKaryawan) (harusnya $idKar)" -ForegroundColor Red }
+        $script:CREATED['karyawan_as'] = @($script:CREATED['karyawan_as']) + $idKar
+    }
+    # NIP milik record LAIN tidak boleh ikut ditimpa diam-diam — datanya orang berbeda.
+    Chk "NIP milik record lain (harus tetap 422)" (Api POST "karyawan" @{ email="lain_$TS@example.com"; nip="72$TS"; namaLengkap='X'; jabatan='Satpam' }) 422
+}
+
+# Email milik akun yang MASIH AKTIF tetap ditolak
+Chk "register email akun aktif (harus 422)" (Api POST "register" @{ name='X'; email='akuntest.admin@example.com'; password='Rahasia123'; confirm_password='Rahasia123'; role='Guru' }) 422
+
+# Pemulihan wajib meninggalkan jejak audit — aksi istimewa tanpa jejak = tidak bisa
+# dipertanggungjawabkan saat ditanya "kenapa akun ini ada lagi?".
+$q = "echo App\Models\AuditLog::where('action','restored')->count();"
+$n = (& php Gateway/artisan tinker --execute=$q 2>$null | Select-Object -Last 1)
+if ("$n" -match '^\s*([0-9]+)\s*$' -and [int]$Matches[1] -gt 0) {
+    $script:PASS++; Write-Host "  [PASS] pemulihan tercatat di audit log ($($Matches[1]) baris 'restored')" -ForegroundColor Green
+} else {
+    $script:FAIL++; Write-Host "  [FAIL] pemulihan TIDAK tercatat (hasil: '$n')" -ForegroundColor Red
+}
+
 # --- Bersih-bersih acara + akun petugas ---
 foreach ($i in $acaraIds) { if ($i) { Api DELETE "akademik/acara/$i" | Out-Null } }
 foreach ($pola in @("petugas.acara_$TS", "esc.pa_$TS")) {

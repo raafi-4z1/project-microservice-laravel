@@ -204,7 +204,7 @@ class SiswaController extends Controller
             $validate = Validator::make($request->all(), [
                 // Unik di level DB — tanpa aturan unique di sini duplikatnya
                 // meledak jadi 500 dari driver, bukan 422 yang bisa ditampilkan.
-                'email'        => 'required|email|unique:siswas,email',
+                'email'        => ['required', 'email', \Illuminate\Validation\Rule::unique('siswas', 'email')->whereNull('deleted_at')],
                 'nisn'         => 'required|numeric|unique:siswas,nisn',
                 'namaLengkap'  => 'required',
                 'telephone'    => 'required|numeric',
@@ -291,12 +291,38 @@ class SiswaController extends Controller
                 $data['no_telp_wali'] = $request->noTelpWali;
             }
 
-            $siswa = Siswa::create($data);
+            // Email yang dipegang baris TERHAPUS dipulihkan, bukan ditolak.
+            //
+            // `siswas.email` unik di level DB dan model memakai soft delete, jadi
+            // baris yang "dihapus" tetap menahan emailnya selamanya. Sebelumnya itu
+            // membuat email tak bisa dipakai ulang sama sekali — masalah nyata di
+            // sekolah: siswa pindah lalu kembali, atau akun salah ketik terlanjur
+            // dihapus. Memulihkan baris lama sekaligus menjaga riwayat akademiknya
+            // (nilai, kelas, absensi) tetap tertaut, yang justru hilang kalau
+            // dibuatkan baris baru.
+            //
+            // `nip`/`nik`/`nisn` SENGAJA tetap unique penuh: kalau nomor itu dipegang
+            // baris lain — termasuk yang terhapus — datanya memang berbeda orang,
+            // dan menimpanya diam-diam jauh lebih berbahaya daripada menolak.
+            $dipulihkan = false;
+            $siswa = Siswa::onlyTrashed()->where('email', $request->email)->first();
+            if ($siswa) {
+                $siswa->restore();
+                $siswa->update($data);
+                $dipulihkan = true;
+            } else {
+                $siswa = Siswa::create($data);
+            }
 
+            // `dipulihkan` diteruskan ke Gateway agar jejak auditnya jujur:
+            // memulihkan record lama berbeda dari membuat yang baru — riwayat
+            // akademiknya ikut hidup kembali, dan itu perlu terlihat di log.
             return $this->response(
-                "Data Siswa berhasil disimpan.",
+                $dipulihkan
+                    ? "Data Siswa dipulihkan dari record yang sebelumnya dihapus."
+                    : "Data Siswa berhasil disimpan.",
                 Response::HTTP_CREATED,
-                ['idSiswa' => $siswa->id]
+                ['idSiswa' => $siswa->id, 'dipulihkan' => $dipulihkan]
             );
         } catch (Exception $e) {
             if (!empty($path) && Storage::disk('private')->exists($path)) {

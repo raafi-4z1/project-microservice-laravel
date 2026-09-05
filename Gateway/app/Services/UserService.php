@@ -15,17 +15,26 @@ class UserService
      * tapi akun ditandai wajib ganti password sebelum bisa mengakses fitur lain.
      */
     /**
-     * Apakah email sudah terpakai akun lain (termasuk yang sudah dihapus)?
+     * Apakah email sudah dipakai akun yang MASIH AKTIF?
      *
-     * `users.email` unik di level database dan model User memakai soft delete,
-     * jadi akun yang "dihapus" masih memegang emailnya. Tanpa pemeriksaan ini,
-     * POST /guru|siswa|karyawan menulis record domain LEBIH DULU, lalu gagal saat
-     * membuat akun user — record domainnya terlanjur tersimpan tanpa akun login
-     * (tidak ada transaksi lintas-service), dan pemanggil hanya menerima 500.
+     * Hanya akun aktif yang menghalangi. Akun yang sudah dihapus memang tetap
+     * menahan emailnya di level DB (`users.email` unik + soft delete), tapi
+     * penanganannya bukan menolak melainkan MEMULIHKAN — lihat create().
+     *
+     * Pemeriksaan ini tetap perlu dilakukan SEBELUM record domain ditulis:
+     * `POST /guru|siswa|karyawan` menulis record domain lebih dulu, dan tidak ada
+     * transaksi lintas-service. Kalau pembuatan akun baru gagal setelah itu,
+     * record domainnya terlanjur tersimpan tanpa akun login.
      */
-    public function emailDipakai(string $email): bool
+    public function emailDipakaiAktif(string $email): bool
     {
-        return User::withTrashed()->where('email', $email)->exists();
+        return User::where('email', $email)->exists();
+    }
+
+    /** Akun terhapus yang masih memegang email ini (bila ada). */
+    public function akunTerhapus(string $email): ?User
+    {
+        return User::onlyTrashed()->where('email', $email)->first();
     }
 
     public function create(string $name, string $email, string $role, bool $isAdminSekolah = false) {
@@ -45,10 +54,71 @@ class UserService
             $attributes['is_admin_sekolah'] = $isAdminSekolah && $role === 'Karyawan';
         }
 
+        // Email yang dipegang akun TERHAPUS dipulihkan, bukan ditolak.
+        //
+        // `users.email` unik di level DB dan User memakai soft delete, jadi akun
+        // yang "dihapus" menahan emailnya selamanya. Sebelumnya itu berarti sebuah
+        // email tak pernah bisa dipakai ulang — masalah nyata di sekolah (siswa
+        // pindah lalu kembali, akun salah ketik terlanjur dihapus).
+        //
+        // Yang dipulihkan adalah BARIS yang sama, sehingga tautan ke record domain
+        // (yang juga berkunci email) tetap utuh. Password dan penanda ditulis ulang
+        // dari data baru — akun lama tidak boleh "hidup kembali" dengan kredensial
+        // dan haknya yang dulu.
+        $terhapus = $this->akunTerhapus($email);
+
+        if ($terhapus) {
+            $terhapus->restore();
+            $terhapus->update($attributes);
+
+            // Token lama milik akun itu dicabut. Tanpa ini, siapa pun yang masih
+            // memegang token sebelum penghapusan langsung mendapat akses ke akun
+            // yang kini milik orang lain.
+            $terhapus->tokens()->where('revoked', false)->each(fn($t) => $t->revoke());
+
+            $this->catatPemulihan($terhapus, $role);
+            return;
+        }
+
         $user = User::create($attributes);
 
         if (!$user) {
             throw new Exception("Gagal membuat user.");
+        }
+    }
+
+    /**
+     * Catat pemulihan akun ke audit log.
+     *
+     * Memulihkan akun terhapus adalah aksi istimewa: identitas lama hidup kembali
+     * dan tertaut ke record domain yang sama. Kalau suatu saat dipertanyakan
+     * ("kenapa akun ini ada lagi?"), inilah jejak yang menjawabnya.
+     */
+    private function catatPemulihan(User $user, string $role): void
+    {
+        try {
+            $pelaku = Auth::user();
+
+            \App\Models\AuditLog::create([
+                'action'      => 'restored',
+                'resource'    => 'user',
+                'resource_id' => (string) $user->id,
+                'performed_by'=> $pelaku?->email,
+                'role'        => $pelaku?->role,
+                'ip_address'  => request()->ip(),
+                'payload'     => [
+                    'email'         => $user->email,
+                    'roleBaru'      => $role,
+                    'tokenDicabut'  => 'true',
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            // Gagal mencatat TIDAK boleh menggagalkan pemulihannya; tapi juga
+            // tidak boleh hilang tanpa jejak.
+            \Illuminate\Support\Facades\Log::warning(
+                'Gagal menulis audit pemulihan akun: ' . $e->getMessage(),
+                ['email' => $user->email]
+            );
         }
     }
 

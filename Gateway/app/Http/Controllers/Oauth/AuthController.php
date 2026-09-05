@@ -34,7 +34,10 @@ class AuthController extends Controller
 
             $validator = Validator::make($request->all(), [
                 'name'             => 'required',
-                'email'            => 'required|email|unique:users,email',
+                // `unique` bawaan ikut menghitung baris terhapus. Di sini yang
+                // menghalangi hanya akun AKTIF — email milik akun terhapus
+                // dipulihkan lewat UserService::create(), bukan ditolak.
+                'email'            => ['required', 'email', \Illuminate\Validation\Rule::unique('users', 'email')->whereNull('deleted_at')],
                 'password'         => ['required', \Illuminate\Validation\Rules\Password::min(8)->letters()->numbers()],
                 'confirm_password' => 'required|same:password',
                 'role'             => ['required', 'in:' . implode(',', $allowedRoles)],
@@ -60,28 +63,57 @@ class AuthController extends Controller
             $petugasAcara = $bolehSetPenanda
                 && filter_var($request->input('isPetugasAcara', false), FILTER_VALIDATE_BOOLEAN);
 
-            $user = User::create([
-                'name'             => $request->name,
-                'email'            => $request->email,
-                'password'         => $request->password,
-                'role'             => $request->role,
-                'is_petugas_acara' => $petugasAcara,
-            ]);
+            // Lewat model langsung (bukan UserService) karena register menentukan
+            // password sendiri, sementara UserService memakai email sebagai password
+            // awal. Jalur pemulihannya disalin di sini agar perilakunya sama.
+            $terhapus = User::onlyTrashed()->where('email', $request->email)->first();
+            $dipulihkan = false;
 
-            $this->auditLog('registered', 'user', $user->email, [
+            if ($terhapus) {
+                $terhapus->restore();
+                $terhapus->update([
+                    'name'             => $request->name,
+                    'password'         => $request->password,
+                    'role'             => $request->role,
+                    'is_petugas_acara' => $petugasAcara,
+                ]);
+                // Token sebelum penghapusan harus mati: akun ini kini milik
+                // pendaftaran yang baru, bukan pemilik lamanya.
+                $terhapus->tokens()->where('revoked', false)->each(fn($t) => $t->revoke());
+                $user = $terhapus;
+                $dipulihkan = true;
+            } else {
+                $user = User::create([
+                    'name'             => $request->name,
+                    'email'            => $request->email,
+                    'password'         => $request->password,
+                    'role'             => $request->role,
+                    'is_petugas_acara' => $petugasAcara,
+                ]);
+            }
+
+            // Aksinya dibedakan: memulihkan akun terhapus bukan hal yang sama
+            // dengan mendaftarkan yang baru — identitas lama hidup kembali.
+            $this->auditLog($dipulihkan ? 'restored' : 'registered', 'user', $user->email, [
                 'name'  => $user->name,
                 'email' => $user->email,
                 'role'  => $user->role,
+                'dipulihkan' => $dipulihkan ? 'true' : 'false',
                 // Pemberian hak istimewa harus terekam sejak awal, bukan hanya
                 // saat diubah.
                 'isPetugasAcara' => $petugasAcara ? 'true' : 'false',
             ]);
 
-            return $this->response("User registered.", Response::HTTP_CREATED, [
+            return $this->response(
+                $dipulihkan
+                    ? "Akun dengan email ini sebelumnya dihapus dan kini dipulihkan."
+                    : "User registered.",
+                Response::HTTP_CREATED, [
                 'user'           => $user->name,
                 'email'          => $user->email,
                 'role'           => $user->role,
                 'isPetugasAcara' => $petugasAcara,
+                'dipulihkan'     => $dipulihkan,
             ]);
         } catch (Exception $e) {
             return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
