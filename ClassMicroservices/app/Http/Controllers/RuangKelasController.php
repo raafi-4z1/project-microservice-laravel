@@ -318,4 +318,63 @@ class RuangKelasController extends Controller
         }
         return $result;
     }
+
+    /**
+     * GET /{prefix}/nama — daftar id + nama saja, TERMASUK yang sudah dihapus.
+     *
+     * Dua kebutuhan yang dijawab satu endpoint:
+     *
+     *  1. Resolusi nama historis. Endpoint riwayat hanya membalas id, dan klien
+     *     meresolusinya dari cache roster AKTIF. Entitas yang sudah lulus/pindah/
+     *     dihapus tak ada di sana, sehingga tampil sebagai "#<id>". Karena itu
+     *     endpoint ini memakai withTrashed() — justru yang non-aktif yang jadi
+     *     masalah, dan menyembunyikannya di sini akan mempertahankan bug-nya.
+     *
+     *  2. Cache nama sekolah besar. `/all` dibatasi per_page<=200; sekolah dengan
+     *     ribuan siswa akan terpotong dan sisanya tampil "#<id>". Endpoint ini
+     *     ringan (2 kolom, tanpa foto/PII) sehingga aman dimuat sekaligus.
+     *
+     * `?ids=1,2,3` menyaring ke id tertentu (dipakai Gateway saat memperkaya
+     * respons); tanpa `ids` mengembalikan seluruhnya.
+     *
+     * BUKAN pengganti `/all` untuk dropdown: daftar ini memuat entitas non-aktif.
+     */
+    public function nama(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'ids' => 'sometimes|string|max:4000',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $q = RuangKelas::withTrashed()->select('id', 'nama_kelas');
+
+            if ($request->filled('ids')) {
+                $ids = collect(explode(',', (string) $request->input('ids')))
+                    ->map(fn($v) => (int) trim($v))
+                    ->filter(fn($v) => $v > 0)
+                    ->unique()
+                    ->values();
+
+                // ids= yang dikirim tapi tak menyisakan angka valid harus balas
+                // kosong, bukan SELURUH tabel — kalau tidak, satu salah ketik di
+                // klien menarik seluruh data sekolah.
+                if ($ids->isEmpty()) {
+                    return $this->response('Daftar nama.', Response::HTTP_OK, []);
+                }
+                $q->whereIn('id', $ids->all());
+            }
+
+            $rows = $q->orderBy('nama_kelas')->get()->map(fn($r) => [
+                'idKelas'   => $r->id,
+                'namaKelas' => $r->nama_kelas,
+            ])->all();
+
+            return $this->response('Daftar nama.', Response::HTTP_OK, $rows);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
 }

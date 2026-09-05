@@ -2621,6 +2621,193 @@ if ($guruId) {
 #  pin/buka di 16). Versi pertama tes ini diletakkan di 14.10 dan gagal bukan
 #  karena auditnya hilang, melainkan karena aksinya belum dijalankan saat itu.
 # ──────────────────────────────────────────────
+#  PHASE 16.8 — FITUR BARU: ACARA, PETUGAS ACARA, /nama, MODE FOTO, NAMA RELASI
+# ──────────────────────────────────────────────
+Section "Phase 16.8: Acara, Petugas Acara, /nama, Mode Foto"
+
+# --- Acara: CRUD + bentuk kontrak ---
+$acaraIds = @()
+$r = Api GET "akademik/acara`?dari=2035-01-01&sampai=2035-01-31"
+Chk "GET acara rentang kosong (harus 200)" $r 200; if ($script:LAST_CHK) {
+    # Bulan tanpa acara itu keadaan normal — kalender tak boleh dianggap error.
+    if (($r.data -is [array]) -and @($r.data).Count -eq 0) { $script:PASS++; Write-Host "  [PASS] rentang kosong balas [] bukan 404" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] rentang kosong tidak balas array kosong" -ForegroundColor Red }
+}
+
+$r = Api POST "akademik/acara" @{ judul="Upacara $TS"; kategori='upacara'; tanggal_mulai='2035-01-06'; tanggal_selesai='2035-01-06'; seharian=$true; lokasi='Lapangan' }
+Chk "POST acara seharian (harus 201)" $r 201; if ($script:LAST_CHK) {
+    $acaraIds += $r.data.idAcara
+    $d = $r.data
+    $ok = ($d.tanggalMulai -eq '2035-01-06') -and ($d.seharian -eq $true) -and ($null -eq $d.jamMulai) -and ($d.kategori -eq 'upacara')
+    if ($ok) { $script:PASS++; Write-Host "  [PASS] bentuk camelCase sesuai kontrak app" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] bentuk tidak sesuai: $($d | ConvertTo-Json -Compress)" -ForegroundColor Red }
+}
+
+$r = Api POST "akademik/acara" @{ judul="Rapat $TS"; kategori='rapat'; tanggal_mulai='2035-01-10'; tanggal_selesai='2035-01-10'; seharian=$false; jam_mulai='13:00'; jam_selesai='15:00' }
+Chk "POST acara berjam (harus 201)" $r 201; if ($script:LAST_CHK) { $acaraIds += $r.data.idAcara }
+$r = Api POST "akademik/acara" @{ judul='X'; kategori='rapat'; tanggal_mulai='2035-01-11'; tanggal_selesai='2035-01-11'; seharian=$false }
+Chk "POST seharian=false tanpa jam (harus 422)" $r 422
+$r = Api POST "akademik/acara" @{ judul='X'; kategori='pesta'; tanggal_mulai='2035-01-12'; tanggal_selesai='2035-01-12' }
+Chk "POST kategori tak dikenal (harus 422)" $r 422
+
+# Acara multi-hari harus muncul di KEDUA bulan yang disinggungnya, bukan hanya
+# bulan yang memuatnya utuh — kalender bulanan bergantung pada ini.
+$r = Api POST "akademik/acara" @{ judul="Lintas Bulan $TS"; kategori='kegiatan'; tanggal_mulai='2035-01-28'; tanggal_selesai='2035-02-03' }
+Chk "POST acara lintas bulan (harus 201)" $r 201; if ($script:LAST_CHK) {
+    $idLintas = $r.data.idAcara; $acaraIds += $idLintas
+    $jan = Api GET "akademik/acara`?dari=2035-01-01&sampai=2035-01-31"
+    $feb = Api GET "akademik/acara`?dari=2035-02-01&sampai=2035-02-28"
+    $adaJan = @($jan.data | Where-Object { $_.idAcara -eq $idLintas }).Count -eq 1
+    $adaFeb = @($feb.data | Where-Object { $_.idAcara -eq $idLintas }).Count -eq 1
+    if ($adaJan -and $adaFeb) { $script:PASS++; Write-Host "  [PASS] acara lintas bulan muncul di kedua bulan" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] lintas bulan: Jan=$adaJan Feb=$adaFeb" -ForegroundColor Red }
+}
+
+# --- Anti-bentrok dengan periode ujian (inti permintaan) ---
+$per = Api POST "akademik/periode" @{ nama="Ujian Uji $TS"; tahun_ajaran=$tahun; semester=[int]$semester; jenis='ujian'; berlaku_dari='2035-06-01'; berlaku_sampai='2035-06-10'; kbm_normal=$false }
+if ($per.resCode -eq 201) {
+    $idPer = if ($per.data.idPeriode) { $per.data.idPeriode } else { $per.data.id }
+    $r = Api POST "akademik/acara" @{ judul='Study Tour'; kategori='kegiatan'; tanggal_mulai='2035-06-05'; tanggal_selesai='2035-06-07' }
+    Chk "acara DI DALAM pekan ujian (harus 422)" $r 422; if ($script:LAST_CHK) {
+        # Pesan buntu tak cukup: app harus bisa menampilkan periode mana yang menghalangi.
+        $adaDetail = (@($r.data.bentrok).Count -ge 1) -and ($r.data.bentrok[0].jenis -eq 'ujian')
+        if (("$($r.resMsg)" -match 'Ujian Uji') -and $adaDetail) { $script:PASS++; Write-Host "  [PASS] pesan + detail periode bentrok disertakan" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] detail bentrok kurang: $($r.resMsg)" -ForegroundColor Red }
+    }
+    $r = Api POST "akademik/acara" @{ judul='Sebelum Ujian'; kategori='kegiatan'; tanggal_mulai='2035-05-20'; tanggal_selesai='2035-05-31' }
+    Chk "acara berakhir sehari sebelum ujian (harus 201)" $r 201; if ($script:LAST_CHK) {
+        $idSblm = $r.data.idAcara; $acaraIds += $idSblm
+        $r = Api PATCH "akademik/acara/$idSblm" @{ tanggal_selesai='2035-06-02' }
+        Chk "PATCH menggeser acara masuk ke ujian (harus 422)" $r 422
+    }
+    if ($idPer) { Api DELETE "akademik/periode/$idPer" | Out-Null }
+} else { Skip "Anti-bentrok acara vs ujian" "gagal membuat periode ujian ($($per.resCode))" }
+
+# --- Gating acara ---
+if ($siswaTestToken) { Chk "Siswa BACA acara (harus 200)" (Api GET "akademik/acara`?dari=2035-01-01&sampai=2035-01-31" -Token $siswaTestToken) 200 }
+if ($kwTestToken)    { Chk "Karyawan biasa BACA acara (harus 200)" (Api GET "akademik/acara`?dari=2035-01-01&sampai=2035-01-31" -Token $kwTestToken) 200 }
+if ($siswaTestToken) { Chk "Siswa TULIS acara (harus 403)" (Api POST "akademik/acara" @{judul='X';kategori='rapat';tanggal_mulai='2035-03-01';tanggal_selesai='2035-03-01'} -Token $siswaTestToken) 403 }
+
+# --- Petugas Acara: hanya boleh acara ---
+$paEmail = "petugas.acara_$TS@example.com"; $paPw = "PetugasAcara123"
+$r = Api POST "register" @{ name="Petugas Acara $TS"; email=$paEmail; password=$paPw; confirm_password=$paPw; role='Karyawan'; isPetugasAcara=$true }
+Chk "register Petugas Acara (harus 201)" $r 201
+if ($script:LAST_CHK) {
+    $lg = Api POST "login" @{ email=$paEmail; password=$paPw; device_name='pa' }
+    $paTok = $lg.data.token
+    if ($lg.data.isPetugasAcara -eq $true) { $script:PASS++; Write-Host "  [PASS] penanda isPetugasAcara ada di respons login" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] login tanpa penanda isPetugasAcara" -ForegroundColor Red }
+
+    if ($lg.data.mustChangePassword -eq $true) {
+        Api POST "password" @{ current_password=$paPw; new_password='PetugasBaru456'; confirm_password='PetugasBaru456' } -Token $paTok | Out-Null
+        $paTok = (Api POST "login" @{ email=$paEmail; password='PetugasBaru456'; device_name='pa' }).data.token
+    }
+
+    if ($paTok) {
+        $r = Api POST "akademik/acara" @{ judul="Oleh Petugas $TS"; kategori='kegiatan'; tanggal_mulai='2035-04-05'; tanggal_selesai='2035-04-05' } -Token $paTok
+        Chk "Petugas Acara BOLEH buat acara (harus 201)" $r 201; if ($script:LAST_CHK) { $acaraIds += $r.data.idAcara }
+        Chk "Petugas Acara boleh baca periode (rujukan tanggal)" (Api GET "akademik/periode" -Token $paTok) 200
+
+        # Inti (0a): 403 di SEMUA endpoint lain. Termasuk rute yang sengaja tanpa
+        # check.role — itulah sebabnya ada middleware pembatas terpisah.
+        $bocor = @()
+        foreach ($ep in @('guru/all','siswa/all','karyawan/all','class/all','mapel/all','users',
+                          'akademik/jadwal/kelas/1','akademik/kelas/1/siswa','akademik/nilai/kelas/1')) {
+            $rr = Api GET $ep -Token $paTok
+            if ($rr.resCode -ne 403) { $bocor += "$ep=$($rr.resCode)" }
+        }
+        if ($bocor.Count -eq 0) { $script:PASS++; Write-Host "  [PASS] Petugas Acara 403 di 9 endpoint di luar acara" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] Petugas Acara masih bisa: $($bocor -join ', ')" -ForegroundColor Red }
+
+        Chk "Petugas Acara TULIS periode (harus 403)" (Api POST "akademik/periode" @{nama='X'} -Token $paTok) 403
+    }
+    # Penanda hanya boleh diberikan SuperAdmin/Admin
+    if ($asTU) {
+        $r = Api POST "register" @{ name='Esc'; email="esc.pa_$TS@example.com"; password='Rahasia123'; confirm_password='Rahasia123'; role='Karyawan'; isPetugasAcara=$true } -Token $asTU.tok
+        if ($r.resCode -eq 201) {
+            if ($r.data.isPetugasAcara -eq $false) { $script:PASS++; Write-Host "  [PASS] Adm. Sekolah tidak dapat mengangkat Petugas Acara" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL] Adm. Sekolah BERHASIL mengangkat Petugas Acara — eskalasi hak!" -ForegroundColor Red }
+        }
+    }
+}
+
+# --- /nama bulk: harus memuat entitas NON-AKTIF (inti masalah "#id") ---
+foreach ($m in @(@('siswa','idSiswa'), @('guru','idGuru'), @('karyawan','idKaryawan'), @('mapel','idPelajaran'), @('class','idKelas'))) {
+    $r = Api GET "$($m[0])/nama"
+    Chk "GET /$($m[0])/nama (harus 200)" $r 200; if ($script:LAST_CHK) {
+        $row = @($r.data)[0]
+        if ($row -and ($row.PSObject.Properties.Name -contains $m[1])) { $script:PASS++; Write-Host "  [PASS] /$($m[0])/nama memakai key $($m[1])" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] /$($m[0])/nama key tidak sesuai" -ForegroundColor Red }
+    }
+}
+$aktif = (Api GET "siswa/all`?per_page=1").data.total
+$semua = @((Api GET "siswa/nama").data).Count
+if ($semua -ge $aktif) { $script:PASS++; Write-Host "  [PASS] /siswa/nama ($semua) >= roster aktif ($aktif) — entitas non-aktif ikut" -ForegroundColor Green }
+else { $script:FAIL++; Write-Host "  [FAIL] /siswa/nama ($semua) < aktif ($aktif) — nama historis tak akan ter-resolve" -ForegroundColor Red }
+# ids= yang tak menyisakan angka valid harus balas kosong, bukan seluruh tabel
+$r = Api GET "siswa/nama`?ids=abc"
+if (@($r.data).Count -eq 0) { $script:PASS++; Write-Host "  [PASS] ids= tak valid balas kosong, bukan seluruh tabel" -ForegroundColor Green }
+else { $script:FAIL++; Write-Host "  [FAIL] ids=abc menarik $(@($r.data).Count) baris" -ForegroundColor Red }
+
+# --- Nama relasi ikut di endpoint ID-only ---
+foreach ($t in @(
+    @{ ep="akademik/kelas/$(NullOr $kelasId 1)/siswa`?tahun_ajaran=$tahun&semester=$semester"; f='namaLengkap' }
+    @{ ep="akademik/kelas/$(NullOr $kelasId 1)/siswa/riwayat"; f='namaLengkap' }
+    @{ ep="akademik/guru/$(NullOr $guruId 1)/mapel/riwayat";   f='namaGuru' }
+    @{ ep="akademik/mapel/$(NullOr $mapelId 1)/guru/riwayat";  f='namaMapel' }
+    @{ ep="akademik/jadwal/kelas/$(NullOr $kelasId 1)`?tahun_ajaran=$tahun&semester=$semester"; f='namaMapel' }
+)) {
+    $r = Api GET $t.ep
+    if ($r.resCode -ne 200) { Skip "nama relasi $($t.ep)" "resCode=$($r.resCode)"; continue }
+    $rows = if ($r.data -is [array]) { $r.data } else { $r.data.data }
+    $row = @($rows)[0]
+    if (-not $row) { Skip "nama relasi $($t.ep)" "tidak ada baris"; continue }
+    if ($row.PSObject.Properties.Name -contains $t.f) { $script:PASS++; Write-Host "  [PASS] $($t.ep) memuat $($t.f)" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] $($t.ep) TANPA $($t.f) — klien akan menampilkan #id" -ForegroundColor Red }
+}
+
+# --- Mode foto pada daftar ---
+$r = Api GET "siswa/all`?foto=1&per_page=5"
+Chk "GET siswa/all?foto=1 (harus 200)" $r 200; if ($script:LAST_CHK) {
+    $row = @($r.data.data)[0]
+    $punya = $row.PSObject.Properties.Name -contains 'foto'
+    $urlBukanBase64 = -not ("$($row.foto)" -like 'data:image*')
+    if ($punya -and $urlBukanBase64) { $script:PASS++; Write-Host "  [PASS] foto=1 balas URL, bukan Base64: $($row.foto)" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] foto=1 tidak sesuai (punyaField=$punya)" -ForegroundColor Red }
+}
+Chk "foto=1 per_page=26 (di atas batas 25, harus 422)" (Api GET "siswa/all`?foto=1&per_page=26") 422
+Chk "foto=1 per_page=25 (batas, harus 200)" (Api GET "siswa/all`?foto=1&per_page=25") 200
+$r = Api GET "siswa/all`?per_page=200"
+Chk "tanpa foto per_page=200 tetap boleh (mode cache)" $r 200; if ($script:LAST_CHK) {
+    $row = @($r.data.data)[0]
+    if (-not ($row.PSObject.Properties.Name -contains 'foto')) { $script:PASS++; Write-Host "  [PASS] mode default tetap tanpa foto (ringan)" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] mode default ikut membawa foto" -ForegroundColor Red }
+}
+
+# --- Email immutable: pesan jelas, bukan "tidak ada data" ---
+if ($guruId) {
+    $emailGuru = (Api GET "guru`?idGuru=$guruId").data.email
+    $r = Api POST "guru/update" @{ idGuru=$guruId; email=$emailGuru }
+    Chk "update dengan email saja (harus 400)" $r 400; if ($script:LAST_CHK) {
+        if ("$($r.resMsg)" -match 'Email tidak dapat diubah') { $script:PASS++; Write-Host "  [PASS] pesan email-spesifik, bukan 'tidak ada data'" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] pesan masih generik: $($r.resMsg)" -ForegroundColor Red }
+    }
+    $r = Api POST "guru/update" @{ idGuru=$guruId; email='beda@example.com'; agama='Islam' }
+    Chk "update email BEDA + field lain (harus 202, bukan 500)" $r 202; if ($script:LAST_CHK) {
+        if ("$($r.resMsg)" -match 'Email TIDAK ikut diubah') { $script:PASS++; Write-Host "  [PASS] pemanggil diberi tahu email diabaikan" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] email diabaikan diam-diam: $($r.resMsg)" -ForegroundColor Red }
+    }
+}
+
+# --- Bersih-bersih acara + akun petugas ---
+foreach ($i in $acaraIds) { if ($i) { Api DELETE "akademik/acara/$i" | Out-Null } }
+foreach ($pola in @("petugas.acara_$TS", "esc.pa_$TS")) {
+    $uu = Api GET "users`?search=$([uri]::EscapeDataString($pola))&per_page=10"
+    foreach ($x in @($uu.data.data)) { Api DELETE "users/$($x.id)" | Out-Null }
+}
+Info "acara & akun petugas uji dibersihkan"
+
+# ──────────────────────────────────────────────
 Section "Phase 16.9: Jejak Audit"
 
 # Tidak ada endpoint audit, jadi diperiksa langsung ke tabelnya. Dua aksi ini

@@ -456,6 +456,15 @@ $siswaToken = ($ls.raw | ConvertFrom-Json).data.token
 $lk = RawApi POST "login" @{ email = "akuntest.karyawan@example.com"; password = "KaryawanTest123"; device_name = "android" }
 $kwToken = ($lk.raw | ConvertFrom-Json).data.token
 
+# Login akun uji yang gagal TIDAK boleh lewat diam-diam. Seluruh contoh privasi
+# karyawan biasa bergantung pada token ini; kalau null, blok di bawah dilewati
+# dan dokumen keluar tampak "bersih" padahal kehilangan satu bagian penuh.
+# Pernah terjadi persis begitu.
+if (-not $kwToken) {
+    Add-Note "> **PERINGATAN capture: contoh privasi KARYAWAN BIASA tidak terekam.** Login ``akuntest.karyawan@example.com`` gagal, sehingga seluruh contoh 403 nilai/siswa + penyaringan PII untuk karyawan biasa TIDAK ada di dokumen ini. Jalankan ``seed-test-accounts.ps1`` lalu ulangi capture."
+    Write-Host "  [!!] Login karyawan biasa GAGAL - bagian privasi karyawan TIDAK terekam" -ForegroundColor Red
+}
+
 if ($siswaToken) {
     Add-Sample GET "guru`?idGuru=1" (RawApi GET "guru`?idGuru=1" -Token $siswaToken) "Detail guru DILIHAT NON-PENGELOLA (Guru, Siswa, karyawan biasa): field pribadi (nik, alamat, telephone, tanggalLahir, dll.) DISARING oleh Gateway -- field-nya TIDAK DIKIRIM, bukan dikirim kosong. Bandingkan dengan versi lengkap di bagian Guru. Buat semua field DTO detail nullable, kalau tidak parser akan melempar MissingFieldException dan layar jadi blank."
     # Harus siswa LAIN: record diri sendiri sengaja TIDAK disaring, jadi memakai
@@ -533,6 +542,41 @@ if ($guruToken) { RawApi POST "logout" -Token $guruToken | Out-Null }
 if ($siswaToken) { RawApi POST "logout" -Token $siswaToken | Out-Null }
 
 # ══════════════════ 15. CONTOH ERROR UMUM ══════════════════
+# ══════════════════ ACARA / KALENDER ══════════════════
+Add-Section "Acara (kalender bulanan)"
+$acaraTs = Get-Date -Format 'HHmmss'
+Add-Sample GET "akademik/acara`?dari=2035-01-01&sampai=2035-01-31" (RawApi GET "akademik/acara`?dari=2035-01-01&sampai=2035-01-31") "Rentang tanpa acara membalas ``data: []``, BUKAN 404 -- bulan kosong itu keadaan normal. Query memakai BERSINGGUNGAN, bukan termuat: acara 28 Jan-3 Feb muncul di query Januari MAUPUN Februari, jadi de-duplikasi pakai idAcara bila menggabungkan beberapa bulan."
+$mkAcara = RawApi POST "akademik/acara" @{ judul = "Upacara Contoh $acaraTs"; kategori = 'upacara'; tanggal_mulai = '2035-01-06'; tanggal_selesai = '2035-01-06'; seharian = $true; lokasi = 'Lapangan' }
+Add-Sample POST "akademik/acara" $mkAcara "Body snake_case, respons camelCase. ``seharian=true`` memaksa jamMulai/jamSelesai jadi null."
+$idAcaraContoh = ($mkAcara.raw | ConvertFrom-Json).data.idAcara
+if ($idAcaraContoh) {
+    Add-Sample PATCH "akademik/acara/$idAcaraContoh" (RawApi PATCH "akademik/acara/$idAcaraContoh" @{ judul = 'Upacara (revisi)' }) "PATCH parsial. Konsistensi tanggal/jam diperiksa terhadap nilai GABUNGAN (dikirim + tersimpan), bukan hanya yang dikirim."
+}
+Add-Sample POST "akademik/acara" (RawApi POST "akademik/acara" @{ judul = 'Tanpa jam'; kategori = 'rapat'; tanggal_mulai = '2035-01-11'; tanggal_selesai = '2035-01-11'; seharian = $false }) "422: ``seharian=false`` mewajibkan jam_mulai + jam_selesai."
+Add-Note @"
+> **Anti-bentrok acara vs pekan ujian.** ``POST``/``PATCH akademik/acara`` menolak **422**
+> bila rentangnya bersinggungan dengan periode ``jenis = ujian``. Detail periode yang
+> menghalangi ikut di ``data.bentrok`` (``idPeriode``, ``nama``, ``jenis``, ``berlakuDari``,
+> ``berlakuSampai``) supaya app bisa menandai rentang terlarang di date-picker, bukan
+> sekadar menampilkan pesan buntu. Tidak dicontohkan di sini karena butuh periode ujian
+> aktif di database.
+>
+> ``ramadan`` sengaja TIDAK dilindungi -- sebulan penuh, sekolah tetap berjalan, jadi
+> melindunginya akan memblokir seluruh agenda selama sebulan.
+"@
+if ($idAcaraContoh) { RawApi DELETE "akademik/acara/$idAcaraContoh" | Out-Null }
+
+# ══════════════════ /nama BULK + MODE FOTO ══════════════════
+Add-Section "Bulk nama & mode foto"
+Add-Sample GET "siswa/nama`?ids=1,2" (RawApi GET "siswa/nama`?ids=1,2") "id + nama saja, TERMASUK entitas yang sudah dihapus (withTrashed) -- inilah yang membuat nama historis di riwayat ter-resolve alih-alih tampil ``#<id>``. Tanpa ``ids`` mengembalikan SELURUHNYA tanpa batas halaman (ringan: 2 kolom, tanpa foto/PII), jadi cocok untuk cache nama sekolah besar. Tersedia juga di guru/karyawan/mapel/class. BUKAN pengganti /all untuk dropdown -- memuat entitas non-aktif."
+Add-Sample GET "siswa/all`?foto=1&per_page=3" (RawApi GET "siswa/all`?foto=1&per_page=3") "Mode berfoto: ``foto`` berupa URL ke endpoint BER-AUTENTIKASI, bukan Base64 dan bukan /storage (foto ada di disk private). Klien wajib mengirim header Authorization; tanpa itu 401. per_page 1-25 (default 5) di mode ini; tanpa ``foto=1`` batasnya 200 dan field foto tidak ada sama sekali."
+Add-Sample GET "siswa/all`?foto=1&per_page=26" (RawApi GET "siswa/all`?foto=1&per_page=26") "422: di mode foto per_page maksimum 25 (foto berat)."
+
+# ══════════════════ NAMA RELASI DI ENDPOINT ID-ONLY ══════════════════
+Add-Section "Nama relasi pada endpoint akademik"
+Add-Sample GET "akademik/kelas/1/siswa/riwayat" (RawApi GET "akademik/kelas/1/siswa/riwayat") "Riwayat kini menyertakan ``namaLengkap`` di samping ``siswaId``. Nama diambil dengan withTrashed sehingga siswa yang sudah lulus/pindah/dihapus IKUT ter-resolve -- sebelumnya tampil ``#<id>`` karena klien meresolusi dari roster aktif. Urutannya terbaru->terlama dari server. Bila service nama bermasalah, barisnya tetap dikembalikan TANPA field nama (bukan gagal), jadi tetap sediakan fallback #id."
+Add-Sample GET "akademik/jadwal/kelas/1`?$tq" (RawApi GET "akademik/jadwal/kelas/1`?$tq") "Jadwal menyertakan namaMapel/namaGuru/namaKelas. Berlaku juga di jadwal guru/siswa/pengampu dan varian /riwayat, serta di kelas/{id}/pengampu dan guru|mapel riwayat."
+
 Add-Section "Contoh Error Umum"
 Add-Sample GET "user" (RawApi GET "user" -NoAuth) "401 tanpa token."
 Add-Sample GET "user" (RawApi GET "user" -Token "token-tidak-valid") "401 token invalid/kedaluwarsa -> app harus hapus sesi lokal dan kembali ke Login."

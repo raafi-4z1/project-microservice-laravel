@@ -9,6 +9,12 @@ use App\Http\Controllers\GuruController;
 
 Route::prefix('guru')->group(function () {
     Route::get('all', [GuruController::class, 'index']);
+    // id + nama saja, TERMASUK yang sudah dihapus (resolusi nama historis
+    // + cache sekolah besar). Bukan pengganti /all untuk dropdown.
+    Route::get('nama', [GuruController::class, 'nama']);
+    // Berkas foto (bukan Base64). Disk private -> harus lewat endpoint
+    // ber-autentikasi, bukan URL publik.
+    Route::get('foto/{id}', [GuruController::class, 'foto']);
     Route::get('lookup', [GuruController::class, 'lookupByEmail']);
     Route::get('lookup-kartu', [GuruController::class, 'lookupByKartu']);
     Route::get('/', [GuruController::class, 'show']);

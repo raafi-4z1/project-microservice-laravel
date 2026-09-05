@@ -302,6 +302,64 @@ Di sisi service, `email`/`nip`/`nik`/`nisn` kini divalidasi `unique:` juga —
 sebelumnya kolomnya unik di DB tapi tidak divalidasi, sehingga duplikatnya lolos
 validasi lalu meledak sebagai 500 dari driver alih-alih 422 yang bisa ditampilkan.
 
+### Petugas Acara — peran yang dikurung
+
+Penanda `users.is_petugas_acara`, pola sama dengan Administrator Sekolah: role
+tetap, penanda menambah hak. Muncul sebagai `isPetugasAcara` di **login** dan
+**`GET /user`**. Hanya SuperAdmin/Admin yang boleh memberikannya lewat
+`POST /register` (Administrator Sekolah boleh mendaftarkan user, tapi penandanya
+diabaikan — anti-eskalasi).
+
+Bedanya dengan penanda lain: peran ini **menyempitkan**, bukan memperluas.
+
+**Kenapa `check.role` saja tidak cukup.** `check.role` hanya MEMBERI hak — ia tak
+pernah mencabut. Sebagian besar rute baca di sistem ini sengaja tanpa gate
+(direktori guru/kelas/mapel, jadwal, semester), jadi memberi seseorang penanda ini
+tidak otomatis menutup apa pun. Karena itu ada middleware terpisah
+`BatasiPetugasAcara` dengan **daftar-BOLEH yang ditolak secara default** — bukan
+daftar-larang, yang akan bocor tiap kali ada rute baru.
+
+Middleware itu dipasang di **grup route** (sesudah `auth:api`), bukan sebagai
+middleware global. Pernah dicoba global dan diam-diam tidak pernah aktif: global
+berjalan sebelum autentikasi, sehingga `$request->user()` masih null.
+
+Yang boleh: `akademik/acara*`; **baca saja** `akademik/periode`, `periode/aktif`,
+`semester/aktif` (agar ia bisa melihat periode yang memblokir acaranya); serta
+`/user`, `/password`, `/logout`, `/logout-all`, `/refresh`. Selain itu **403**.
+Akun yang juga Admin/SuperAdmin/Adm. Sekolah tidak ikut disempitkan.
+
+### `GET {modul}/nama` — bulk id + nama
+
+Tersedia di `siswa`, `guru`, `karyawan`, `mapel`, `class`. Dua kebutuhan, satu endpoint:
+
+1. **Resolusi nama historis.** Endpoint akademik hanya menyimpan id; klien
+   meresolusinya dari roster **aktif**, sehingga entitas yang sudah lulus/pindah/
+   dihapus tampil `#<id>`. Endpoint ini memakai **`withTrashed()`** — justru yang
+   non-aktif yang jadi masalah.
+2. **Cache sekolah besar.** `/all` dibatasi `per_page<=200`; sekolah ribuan siswa
+   akan terpotong. Endpoint ini ringan (2 kolom, tanpa foto/PII) jadi aman dimuat
+   sekaligus.
+
+`?ids=1,2,3` menyaring; `ids=` yang tak menyisakan angka valid balas **kosong**,
+bukan seluruh tabel. **Bukan pengganti `/all` untuk dropdown** — memuat non-aktif.
+
+### Mode foto pada daftar (`?foto=1`)
+
+`GET siswa|guru|karyawan/all` punya dua mode yang saling tarik:
+
+| Mode | Aktif bila | `foto` | `per_page` |
+|---|---|---|---|
+| B — ringkas (default) | tanpa param | tidak ada | 1–200 |
+| A — berfoto | `?foto=1` | **URL** | 1–25 (default 5) |
+
+URL-nya menunjuk `GET /api/{modul}/foto/{id}` — endpoint **ber-autentikasi**, bukan
+`/storage/...`. Foto ada di disk `private`; memindahkannya ke disk publik berarti
+foto setiap siswa bisa diambil siapa pun yang menebak URL. Klien mengirim header
+`Authorization` seperti biasa; responsnya `Cache-Control: private, max-age=86400`.
+
+Kolom `foto` sengaja **tidak** di-select lewat model saat menyusun daftar —
+accessor-nya mengubah path menjadi Base64, persis beban yang ingin dihindari.
+
 ### Privasi BACA — direktori publik vs data pribadi
 
 Penanda Administrator Sekolah mengatur hak **tulis**; bagian ini mengatur hak

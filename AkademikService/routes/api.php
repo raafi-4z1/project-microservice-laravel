@@ -10,6 +10,7 @@ use App\Http\Controllers\NilaiController;
 use App\Http\Controllers\PengaturanNilaiController;
 use App\Http\Controllers\AbsensiController;
 use App\Http\Controllers\WaliKelasController;
+use App\Http\Controllers\AcaraController;
 use App\Http\Controllers\PeriodeKhususController;
 use App\Http\Controllers\PengaturanAbsensiController;
 
@@ -39,6 +40,13 @@ Route::prefix('akademik')->group(function () {
     Route::post('periode',      [PeriodeKhususController::class, 'store']);
     Route::patch('periode/{id}',  [PeriodeKhususController::class, 'update']);
     Route::delete('periode/{id}', [PeriodeKhususController::class, 'destroy']);
+
+    // Acara / agenda sekolah untuk kalender bulanan. TERPISAH dari `periode`:
+    // periode mengubah aturan KBM, acara hanya agenda yang ditampilkan.
+    Route::get('acara',           [AcaraController::class, 'index']);
+    Route::post('acara',          [AcaraController::class, 'store']);
+    Route::patch('acara/{id}',    [AcaraController::class, 'update']);
+    Route::delete('acara/{id}',   [AcaraController::class, 'destroy']);
 
     // Wali Kelas
     Route::post('wali', [WaliKelasController::class, 'assign']);

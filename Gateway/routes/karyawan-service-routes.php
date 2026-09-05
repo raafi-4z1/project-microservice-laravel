@@ -3,8 +3,10 @@
 use App\Http\Controllers\Master\KaryawanController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.karyawan_prefix'))->group(function(){
+Route::middleware(['auth:api', 'force.pwd', 'batasi.acara'])->prefix(config('gateway.karyawan_prefix'))->group(function(){
     Route::get('all', [KaryawanController::class, 'index']);
+    Route::get('nama', [KaryawanController::class, 'nama']);
+    Route::get('foto/{id}', [KaryawanController::class, 'foto'])->middleware('check.role:SuperAdmin,Admin,Guru,Karyawan');
     // Detail berisi data pribadi (alamat, no_telp). Siswa diblokir (modul
     // Karyawan memang tidak ada di menu siswa); Guru dan karyawan biasa
     // menerima versi tersaring — field publik saja, lihat KaryawanController::show.

@@ -23,6 +23,11 @@ return Application::configure(basePath: dirname(__DIR__))
             // Dipasang per-group SETELAH auth:api (global tidak bekerja —
             // guard belum aktif saat middleware global berjalan)
             'force.pwd'  => \App\Http\Middleware\ForcePasswordChange::class,
+            // Kurung akun Petugas Acara ke urusan agenda. WAJIB dipasang di grup
+            // route (sesudah auth:api), BUKAN sebagai middleware global: global
+            // berjalan sebelum autentikasi, sehingga $request->user() masih null
+            // dan pembatasannya diam-diam tidak pernah aktif.
+            'batasi.acara' => \App\Http\Middleware\BatasiPetugasAcara::class,
             // Autentikasi terminal absensi (scan). Dipakai di route scan (#5).
             'auth.terminal' => \App\Http\Middleware\AuthenticateTerminal::class,
         ]);

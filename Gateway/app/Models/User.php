@@ -24,6 +24,7 @@ class User extends Authenticatable
         'email',
         'role',
         'is_admin_sekolah',
+        'is_petugas_acara',
         'password',
         'must_change_password',
     ];
@@ -34,7 +35,7 @@ class User extends Authenticatable
      * tanpa panggilan tambahan. Kolom mentahnya disembunyikan agar tidak muncul
      * dua kali dengan gaya penamaan berbeda.
      */
-    protected $appends = ['isAdminSekolah'];
+    protected $appends = ['isAdminSekolah', 'isPetugasAcara'];
 
     public function getIsAdminSekolahAttribute(): bool
     {
@@ -62,6 +63,33 @@ class User extends Authenticatable
     public function isAdminSekolah(): bool
     {
         return $this->getIsAdminSekolahAttribute();
+    }
+
+    /**
+     * Petugas Acara = akun yang diberi hak mengelola agenda sekolah.
+     *
+     * Jebakan yang sama dengan isAdminSekolah: select() parsial membuat accessor
+     * ini mengembalikan false untuk petugas yang sebenarnya — bukan "data hilang"
+     * melainkan "data salah". Untuk otorisasi arahnya aman, untuk respons ke
+     * klien menyesatkan, jadi dicatat ke log agar ketahuan.
+     */
+    public function getIsPetugasAcaraAttribute(): bool
+    {
+        if ($this->exists && !array_key_exists('is_petugas_acara', $this->attributes)) {
+            \Illuminate\Support\Facades\Log::warning(
+                'User::isPetugasAcara dibaca tanpa kolom is_petugas_acara — '
+                . 'tambahkan kolom itu ke select() agar nilainya tidak salah.',
+                ['user_id' => $this->attributes['id'] ?? null]
+            );
+            return false;
+        }
+
+        return (bool) ($this->attributes['is_petugas_acara'] ?? false);
+    }
+
+    public function isPetugasAcara(): bool
+    {
+        return $this->getIsPetugasAcaraAttribute();
     }
 
     /**
@@ -97,6 +125,7 @@ class User extends Authenticatable
         'password',
         'remember_token',
         'is_admin_sekolah', // diekspos sebagai `isAdminSekolah` (lihat $appends)
+        'is_petugas_acara', // diekspos sebagai `isPetugasAcara`
     ];
 
     /**

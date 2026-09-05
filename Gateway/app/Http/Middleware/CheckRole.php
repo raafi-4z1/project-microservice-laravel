@@ -24,6 +24,16 @@ class CheckRole
      */
     private const PSEUDO_ADMIN_SEKOLAH = 'AdminSekolah';
 
+    /**
+     * Pseudo-role "Petugas Acara" — pola sama, flag `users.is_petugas_acara`.
+     *
+     * PENTING: middleware ini hanya MEMBERI hak, tidak pernah mencabutnya. Jadi
+     * menyebut PetugasAcara di sini TIDAK cukup untuk memenuhi "petugas acara
+     * 403 di semua endpoint lain" — banyak rute baca sengaja tanpa `check.role`.
+     * Pembatasannya ada di middleware terpisah: BatasiPetugasAcara.
+     */
+    private const PSEUDO_PETUGAS_ACARA = 'PetugasAcara';
+
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
         $user = $request->user();
@@ -34,6 +44,10 @@ class CheckRole
             }
 
             if (in_array(self::PSEUDO_ADMIN_SEKOLAH, $roles, true) && $user->isAdminSekolah()) {
+                return $next($request);
+            }
+
+            if (in_array(self::PSEUDO_PETUGAS_ACARA, $roles, true) && $user->isPetugasAcara()) {
                 return $next($request);
             }
         }

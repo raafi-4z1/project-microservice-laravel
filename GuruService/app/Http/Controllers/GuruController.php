@@ -26,7 +26,9 @@ class GuruController extends Controller
                 // Batas atas 200 seragam di seluruh endpoint berpaginasi. Tanpa batas,
                 // satu request `per_page=100000` memaksa query tak terbatas —
                 // tidak terasa selagi data kecil, mahal begitu data bertambah.
+                // Batas per_page berbeda antara dua mode; lihat komentar di bawah.
                 'per_page' => 'sometimes|numeric|min:1|max:200',
+                'foto'     => 'sometimes|in:0,1',
                 'search'   => 'sometimes|string|max:100',
             ]);
 
@@ -39,7 +41,22 @@ class GuruController extends Controller
             }
 
             $columns  = ['id', 'nama_lengkap', 'nip', 'email', 'jabatan', 'status_kepegawaian'];
-            $perPage  = $request->input('per_page', 5);
+            // DUA MODE yang saling tarik:
+            //  - foto=1  (daftar-UI): tiap baris membawa foto -> halaman KECIL
+            //            (maks 25, default 5) supaya tak membebani server.
+            //  - tanpa foto (cache nama): halaman BESAR (maks 200) supaya klien
+            //            bisa memuat banyak nama sekaligus.
+            // Untuk memuat SELURUH nama sekolah besar, pakai endpoint /nama.
+            $modeFoto = (string) $request->input('foto', '0') === '1';
+            $maksPerPage = $modeFoto ? 25 : 200;
+            $perPage = (int) $request->input('per_page', $modeFoto ? 5 : 5);
+            if ($perPage < 1) { $perPage = 1; }
+            if ($perPage > $maksPerPage) {
+                return $this->response(
+                    "per_page maksimum {$maksPerPage}" . ($modeFoto ? ' saat foto=1 (foto berat).' : '.'),
+                    Response::HTTP_UNPROCESSABLE_ENTITY
+                );
+            }
 
             $query = Guru::select($columns);
 
@@ -95,6 +112,25 @@ class GuruController extends Controller
 
             $pageArr          = $paginator->toArray();
             $pageArr['data']  = collect($pageArr['data'])->map(fn($item) => $this->toApiArray($item))->all();
+            // Mode foto: tandai baris mana yang PUNYA foto. Kolom `foto` sengaja
+            // TIDAK di-select lewat model — accessor-nya mengubah path jadi Base64,
+            // persis beban yang ingin dihindari di daftar. DB::table melewati
+            // accessor sehingga yang terbaca tetap path mentah.
+            //
+            // Yang dikirim hanya penanda boolean, bukan path: tata letak
+            // penyimpanan bukan urusan klien, dan Gateway-lah yang menyusun URL-nya.
+            if ($modeFoto) {
+                $ids = array_column($pageArr['data'], 'idGuru');
+                $punya = empty($ids)
+                    ? collect()
+                    : \Illuminate\Support\Facades\DB::table('gurus')->whereIn('id', $ids)->pluck('foto', 'id');
+
+                $pageArr['data'] = array_map(function ($row) use ($punya) {
+                    $row['punyaFoto'] = !empty($punya[$row['idGuru'] ?? null] ?? null);
+                    return $row;
+                }, $pageArr['data']);
+            }
+
             $pageArr['links'] = $links;
 
             unset(
@@ -371,13 +407,37 @@ class GuruController extends Controller
             }
 
             if (empty($updateData)) {
-                return $this->response("Tidak ada data yang diperbarui.", Response::HTTP_BAD_REQUEST);
+                // `email` sengaja TIDAK bisa diubah lewat endpoint ini: ia kunci
+                // penghubung antara akun login (Gateway `users`) dan record domain.
+                // Seluruh endpoint layan-diri meresolusi lewat email (`/lookup?email=`,
+                // dipakai `rekap/pegawai/saya`, `siswa/saya`, scoping guru), dan tidak
+                // ada transaksi lintas-service — mengubahnya di satu sisi saja akan
+                // memutus tautan itu tanpa ada yang gagal.
+                //
+                // Dulu pesannya generik "Tidak ada data yang diperbarui", sehingga
+                // pemanggil yang memang bermaksud mengganti email mengira request-nya
+                // yang salah bentuk, bukan bahwa field-nya memang immutable.
+                return $this->response(
+                    $request->filled('email')
+                        ? "Email tidak dapat diubah di sini. Tidak ada data lain yang diperbarui."
+                        : "Tidak ada data yang diperbarui.",
+                    Response::HTTP_BAD_REQUEST
+                );
             }
 
             $guru->update($updateData);
 
+            // Jangan balas "berhasil diupdate" polos saat pemanggil mengirim email
+            // BERBEDA — field lain memang tersimpan, tapi emailnya diam-diam
+            // diabaikan dan pemanggil berhak tahu.
+            $pesanSukses = "Guru dengan id:{$request->idGuru} berhasil diupdate.";
+            if ($request->filled('email')
+                && strcasecmp(trim((string) $request->email), (string) $guru->email) !== 0) {
+                $pesanSukses .= " Email TIDAK ikut diubah — email adalah kunci penghubung ke akun login.";
+            }
+
             return $this->response(
-                "Guru dengan id:{$request->idGuru} berhasil diupdate.",
+                $pesanSukses,
                 Response::HTTP_ACCEPTED,
                 $this->toApiArray($guru->fresh()->toArray())
             );
@@ -640,5 +700,99 @@ class GuruController extends Controller
         } while (Storage::disk('private')->exists("{$directory}/{$filename}"));
 
         return $filename;
+    }
+
+    /**
+     * GET /{prefix}/nama — daftar id + nama saja, TERMASUK yang sudah dihapus.
+     *
+     * Dua kebutuhan yang dijawab satu endpoint:
+     *
+     *  1. Resolusi nama historis. Endpoint riwayat hanya membalas id, dan klien
+     *     meresolusinya dari cache roster AKTIF. Entitas yang sudah lulus/pindah/
+     *     dihapus tak ada di sana, sehingga tampil sebagai "#<id>". Karena itu
+     *     endpoint ini memakai withTrashed() — justru yang non-aktif yang jadi
+     *     masalah, dan menyembunyikannya di sini akan mempertahankan bug-nya.
+     *
+     *  2. Cache nama sekolah besar. `/all` dibatasi per_page<=200; sekolah dengan
+     *     ribuan siswa akan terpotong dan sisanya tampil "#<id>". Endpoint ini
+     *     ringan (2 kolom, tanpa foto/PII) sehingga aman dimuat sekaligus.
+     *
+     * `?ids=1,2,3` menyaring ke id tertentu (dipakai Gateway saat memperkaya
+     * respons); tanpa `ids` mengembalikan seluruhnya.
+     *
+     * BUKAN pengganti `/all` untuk dropdown: daftar ini memuat entitas non-aktif.
+     */
+    public function nama(Request $request)
+    {
+        try {
+            $validate = Validator::make($request->all(), [
+                'ids' => 'sometimes|string|max:4000',
+            ]);
+            if ($validate->fails()) {
+                return $this->response($validate->errors()->first(), Response::HTTP_UNPROCESSABLE_ENTITY, $validate->errors());
+            }
+
+            $q = Guru::withTrashed()->select('id', 'nama_lengkap');
+
+            if ($request->filled('ids')) {
+                $ids = collect(explode(',', (string) $request->input('ids')))
+                    ->map(fn($v) => (int) trim($v))
+                    ->filter(fn($v) => $v > 0)
+                    ->unique()
+                    ->values();
+
+                // ids= yang dikirim tapi tak menyisakan angka valid harus balas
+                // kosong, bukan SELURUH tabel — kalau tidak, satu salah ketik di
+                // klien menarik seluruh data sekolah.
+                if ($ids->isEmpty()) {
+                    return $this->response('Daftar nama.', Response::HTTP_OK, []);
+                }
+                $q->whereIn('id', $ids->all());
+            }
+
+            $rows = $q->orderBy('nama_lengkap')->get()->map(fn($r) => [
+                'idGuru'   => $r->id,
+                'namaLengkap' => $r->nama_lengkap,
+            ])->all();
+
+            return $this->response('Daftar nama.', Response::HTTP_OK, $rows);
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * GET /{prefix}/foto/{id} — kirim berkas foto apa adanya (bukan Base64).
+     *
+     * Brief menyarankan URL gaya `/storage/...`, tapi foto disimpan di disk
+     * `private` dan TIDAK dilayani langsung web server — disengaja: memindahkannya
+     * ke disk publik membuat foto setiap siswa bisa diambil siapa saja yang
+     * menebak URL-nya. Karena itu URL-nya menunjuk ke endpoint ini, yang tetap
+     * melewati autentikasi + gating role Gateway seperti endpoint lain.
+     *
+     * Klien (Coil/OkHttp) cukup mengirim header Authorization seperti biasa.
+     */
+    public function foto(Request $request, $id)
+    {
+        try {
+            $row = Guru::withTrashed()->find($id);
+            if (!$row) {
+                return $this->response('Data tidak ditemukan.', Response::HTTP_NOT_FOUND);
+            }
+
+            // getRawOriginal: lewati accessor yang mengubah path menjadi Base64.
+            $path = $row->getRawOriginal('foto');
+            if (!$path || !Storage::disk('private')->exists($path)) {
+                return $this->response('Foto tidak tersedia.', Response::HTTP_NOT_FOUND);
+            }
+
+            return response(Storage::disk('private')->get($path), 200)
+                ->header('Content-Type', Storage::disk('private')->mimeType($path) ?: 'image/webp')
+                // Foto jarang berubah dan berat; biarkan klien menyimpannya.
+                // `private` supaya proxy bersama tidak ikut menyimpan.
+                ->header('Cache-Control', 'private, max-age=86400');
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }

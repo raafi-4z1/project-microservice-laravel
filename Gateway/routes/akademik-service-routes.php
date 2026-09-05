@@ -3,7 +3,7 @@
 use App\Http\Controllers\Akademik\AkademikController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.akademik_prefix'))->group(function () {
+Route::middleware(['auth:api', 'force.pwd', 'batasi.acara'])->prefix(config('gateway.akademik_prefix'))->group(function () {
 
     // Pembagian Kelas — Write: SuperAdmin, Admin, Administrator Sekolah | Read: semua role
     Route::post('kelas/assign', [AkademikController::class, 'assignSiswa'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
@@ -29,6 +29,13 @@ Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.akademik_pr
     Route::post('periode', [AkademikController::class, 'storePeriode'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
     Route::patch('periode/{id}', [AkademikController::class, 'updatePeriode'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
     Route::delete('periode/{id}', [AkademikController::class, 'destroyPeriode'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
+
+    // Acara / agenda sekolah (kalender bulanan) — Read: SEMUA role (info sekolah
+    // tanpa PII) | Write: pengelola + Petugas Acara.
+    Route::get('acara', [AkademikController::class, 'getAcara']);
+    Route::post('acara', [AkademikController::class, 'storeAcara'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah,PetugasAcara');
+    Route::patch('acara/{id}', [AkademikController::class, 'updateAcara'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah,PetugasAcara');
+    Route::delete('acara/{id}', [AkademikController::class, 'destroyAcara'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah,PetugasAcara');
 
     // Wali Kelas — Write: SuperAdmin, Admin, Administrator Sekolah | Read: semua role
     Route::post('wali', [AkademikController::class, 'assignWali'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');

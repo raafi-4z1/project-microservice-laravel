@@ -44,7 +44,7 @@ class SiswaController extends Controller
 
         // Whitelist parameter DULU, baru tambahkan flag — supaya klien tidak bisa
         // menitipkan `search_publik` sendiri untuk membuka kembali pencarian NISN.
-        $params = $request->only(['page', 'per_page', 'search']);
+        $params = $request->only(['page', 'per_page', 'search', 'foto']);
         if (!$bolehPii) {
             // Membuang kolom nisn dari respons saja tidak cukup: selama NISN masih
             // bisa dipakai sebagai kata kunci, jumlah baris yang cocok membocorkan
@@ -52,7 +52,9 @@ class SiswaController extends Controller
             $params['search_publik'] = '1';
         }
 
-        $response = $this->performRequest($request->method(), "{$this->reqUrl}/all", $params);
+        $response = $this->petakanUrlFoto(
+            $this->performRequest($request->method(), "{$this->reqUrl}/all", $params)
+        );
 
         // Siswa boleh melihat direktori teman satu sekolah, tapi versi publik.
         // Sebelumnya daftar ini dibalas apa adanya — termasuk NISN dan tanggal
@@ -230,5 +232,54 @@ class SiswaController extends Controller
             ? $response->getContent()
             : $response;
         return json_decode($raw, true) ?? [];
+    }
+
+    /**
+     * GET /{prefix}/nama — id + nama saja, termasuk entitas yang sudah dihapus.
+     *
+     * Dipakai klien sebagai cache resolusi id->nama. Sengaja TIDAK disaring per
+     * role seperti detail: isinya hanya id + nama, tanpa PII sama sekali. Gating
+     * aksesnya tetap sama dengan `/all` masing-masing modul (lihat route).
+     */
+    public function nama(Request $request)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/nama", $request->only(['ids']));
+    }
+
+    /**
+     * Ubah penanda `punyaFoto` dari service menjadi URL foto yang bisa dipanggil klien.
+     *
+     * URL-nya menunjuk endpoint ber-autentikasi, BUKAN `/storage/...`: foto ada di
+     * disk private dan memindahkannya ke publik akan membuat foto setiap orang bisa
+     * diambil siapa pun yang menebak URL. Klien (Coil/OkHttp) mengirim header
+     * Authorization seperti permintaan lain.
+     */
+    private function petakanUrlFoto($response)
+    {
+        $decode = $this->decode($response);
+        if (($decode['resCode'] ?? null) !== \Illuminate\Http\Response::HTTP_OK
+            || !is_array($decode['data']['data'] ?? null)) {
+            return $response;
+        }
+
+        $decode['data']['data'] = array_map(function ($row) {
+            if (!is_array($row) || !array_key_exists('punyaFoto', $row)) {
+                return $row;
+            }
+            $id = $row['idSiswa'] ?? null;
+            $row['foto'] = ($row['punyaFoto'] && $id)
+                ? '/api/' . $this->reqUrl . '/foto/' . $id
+                : null;
+            unset($row['punyaFoto']);
+            return $row;
+        }, $decode['data']['data']);
+
+        return $this->response($decode['resMsg'] ?? 'OK', \Illuminate\Http\Response::HTTP_OK, $decode['data']);
+    }
+
+    /** GET /{prefix}/foto/{id} — teruskan berkas foto apa adanya. */
+    public function foto(Request $request, $id)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/foto/{$id}");
     }
 }

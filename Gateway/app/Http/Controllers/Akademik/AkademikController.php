@@ -8,12 +8,13 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Validator;
 use App\Traits\ApiResponser;
 use App\Traits\LogsAudit;
+use App\Traits\SertakanNamaRelasi;
 use App\Http\Controllers\Controller;
 use App\Traits\ConsumeMicroserviceService;
 
 class AkademikController extends Controller
 {
-    use ConsumeMicroserviceService, ApiResponser, LogsAudit;
+    use ConsumeMicroserviceService, ApiResponser, LogsAudit, SertakanNamaRelasi;
 
     private $baseUri, $secret, $reqUrl;
 
@@ -161,13 +162,19 @@ class AkademikController extends Controller
     // GET /akademik/kelas/{kelas_id}/siswa — semua role
     public function getSiswaByKelas(Request $request, $kelasId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/kelas/{$kelasId}/siswa", $request->only(['tahun_ajaran', 'semester']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/kelas/{$kelasId}/siswa", $request->only(['tahun_ajaran', 'semester'])),
+            ['siswaId' => 'namaLengkap']
+        );
     }
 
     // GET /akademik/siswa/{siswa_id}/kelas — semua role
     public function getKelasBySiswa(Request $request, $siswaId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/siswa/{$siswaId}/kelas", $request->only(['tahun_ajaran', 'semester']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/siswa/{$siswaId}/kelas", $request->only(['tahun_ajaran', 'semester'])),
+            ['kelasId' => 'namaKelas']
+        );
     }
 
     // POST /akademik/pengampu — SuperAdmin, Admin
@@ -241,19 +248,28 @@ class AkademikController extends Controller
     // GET /akademik/kelas/{kelas_id}/pengampu — semua role
     public function getPengampuByKelas(Request $request, $kelasId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/kelas/{$kelasId}/pengampu", $request->only(['tahun_ajaran', 'semester']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/kelas/{$kelasId}/pengampu", $request->only(['tahun_ajaran', 'semester'])),
+            ['guruId' => 'namaGuru', 'mapelId' => 'namaMapel', 'kelasId' => 'namaKelas']
+        );
     }
 
     // GET /akademik/guru/{guru_id}/mapel — semua role
     public function getMapelByGuru(Request $request, $guruId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/guru/{$guruId}/mapel", $request->only(['tahun_ajaran', 'semester']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/guru/{$guruId}/mapel", $request->only(['tahun_ajaran', 'semester'])),
+            ['guruId' => 'namaGuru', 'mapelId' => 'namaMapel', 'kelasId' => 'namaKelas']
+        );
     }
 
     // GET /akademik/mapel/{mapel_id}/guru — semua role
     public function getGuruByMapel(Request $request, $mapelId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/mapel/{$mapelId}/guru", $request->only(['kelas_id', 'tahun_ajaran', 'semester']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/mapel/{$mapelId}/guru", $request->only(['kelas_id', 'tahun_ajaran', 'semester'])),
+            ['guruId' => 'namaGuru', 'mapelId' => 'namaMapel', 'kelasId' => 'namaKelas']
+        );
     }
 
     // GET /akademik/siswa/{siswa_id}/kelas/riwayat — SuperAdmin, Admin, Administrator Sekolah
@@ -263,13 +279,19 @@ class AkademikController extends Controller
     // balasannya envelope paginasi yang sama dengan GET /guru/all.
     public function getRiwayatSiswa(Request $request, $siswaId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/siswa/{$siswaId}/kelas/riwayat", $request->only(['tahun_ajaran', 'semester', 'page', 'per_page']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/siswa/{$siswaId}/kelas/riwayat", $request->only(['tahun_ajaran', 'semester', 'page', 'per_page'])),
+            ['kelasId' => 'namaKelas']
+        );
     }
 
     // GET /akademik/kelas/{kelas_id}/siswa/riwayat — SuperAdmin, Admin
     public function getRiwayatKelas(Request $request, $kelasId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/kelas/{$kelasId}/siswa/riwayat", $request->only(['tahun_ajaran', 'semester', 'page', 'per_page']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/kelas/{$kelasId}/siswa/riwayat", $request->only(['tahun_ajaran', 'semester', 'page', 'per_page'])),
+            ['siswaId' => 'namaLengkap']
+        );
     }
 
     // PATCH /akademik/pengampu/{id} — SuperAdmin, Admin
@@ -304,13 +326,19 @@ class AkademikController extends Controller
     // GET /akademik/guru/{guru_id}/mapel/riwayat — SuperAdmin, Admin
     public function getRiwayatGuru(Request $request, $guruId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/guru/{$guruId}/mapel/riwayat", $request->only(['tahun_ajaran', 'semester', 'page', 'per_page']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/guru/{$guruId}/mapel/riwayat", $request->only(['tahun_ajaran', 'semester', 'page', 'per_page'])),
+            ['guruId' => 'namaGuru', 'mapelId' => 'namaMapel', 'kelasId' => 'namaKelas']
+        );
     }
 
     // GET /akademik/mapel/{mapel_id}/guru/riwayat — SuperAdmin, Admin
     public function getRiwayatMapel(Request $request, $mapelId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/mapel/{$mapelId}/guru/riwayat", $request->only(['kelas_id', 'tahun_ajaran', 'semester', 'page', 'per_page']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/mapel/{$mapelId}/guru/riwayat", $request->only(['kelas_id', 'tahun_ajaran', 'semester', 'page', 'per_page'])),
+            ['guruId' => 'namaGuru', 'mapelId' => 'namaMapel', 'kelasId' => 'namaKelas']
+        );
     }
 
     // GET /akademik/semester/aktif — semua role
@@ -460,43 +488,64 @@ class AkademikController extends Controller
     // GET /akademik/jadwal/pengampu/{id} — semua role
     public function getJadwalByPengampu(Request $request, $pengampuId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/pengampu/{$pengampuId}", $request->only(['tanggal']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/jadwal/pengampu/{$pengampuId}", $request->only(['tanggal'])),
+            ['guruId' => 'namaGuru', 'mapelId' => 'namaMapel', 'kelasId' => 'namaKelas']
+        );
     }
 
     // GET /akademik/jadwal/kelas/{id} — semua role
     public function getJadwalByKelas(Request $request, $kelasId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/jadwal/kelas/{$kelasId}", $request->only(['tahun_ajaran', 'semester', 'tanggal'])),
+            ['guruId' => 'namaGuru', 'mapelId' => 'namaMapel', 'kelasId' => 'namaKelas']
+        );
     }
 
     // GET /akademik/jadwal/guru/{id} — semua role
     public function getJadwalByGuru(Request $request, $guruId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}", $request->only(['tahun_ajaran', 'semester', 'tanggal'])),
+            ['guruId' => 'namaGuru', 'mapelId' => 'namaMapel', 'kelasId' => 'namaKelas']
+        );
     }
 
     // GET /akademik/jadwal/siswa/{id} — semua role
     public function getJadwalBySiswa(Request $request, $siswaId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/siswa/{$siswaId}", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/jadwal/siswa/{$siswaId}", $request->only(['tahun_ajaran', 'semester', 'tanggal'])),
+            ['guruId' => 'namaGuru', 'mapelId' => 'namaMapel', 'kelasId' => 'namaKelas']
+        );
     }
 
     // GET /akademik/jadwal/pengampu/{id}/riwayat — SuperAdmin, Admin
     public function getRiwayatJadwalByPengampu(Request $request, $pengampuId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/pengampu/{$pengampuId}/riwayat", $request->only(['tanggal']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/jadwal/pengampu/{$pengampuId}/riwayat", $request->only(['tanggal'])),
+            ['guruId' => 'namaGuru', 'mapelId' => 'namaMapel', 'kelasId' => 'namaKelas']
+        );
     }
 
     // GET /akademik/jadwal/kelas/{id}/riwayat — SuperAdmin, Admin
     public function getRiwayatJadwalByKelas(Request $request, $kelasId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/kelas/{$kelasId}/riwayat", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/jadwal/kelas/{$kelasId}/riwayat", $request->only(['tahun_ajaran', 'semester', 'tanggal'])),
+            ['guruId' => 'namaGuru', 'mapelId' => 'namaMapel', 'kelasId' => 'namaKelas']
+        );
     }
 
     // GET /akademik/jadwal/guru/{id}/riwayat — SuperAdmin, Admin
     public function getRiwayatJadwalByGuru(Request $request, $guruId)
     {
-        return $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}/riwayat", $request->only(['tahun_ajaran', 'semester', 'tanggal']));
+        return $this->sertakanNamaRelasi(
+            $this->performRequest('GET', "{$this->reqUrl}/jadwal/guru/{$guruId}/riwayat", $request->only(['tahun_ajaran', 'semester', 'tanggal'])),
+            ['guruId' => 'namaGuru', 'mapelId' => 'namaMapel', 'kelasId' => 'namaKelas']
+        );
     }
 
     // ─── Pengaturan Bobot Nilai ─────────────────────────────────────────────────
@@ -1400,6 +1449,77 @@ class AkademikController extends Controller
         }, $decode['data']['siswa']);
 
         return $this->response($decode['resMsg'] ?? 'Ok', Response::HTTP_OK, $decode['data']);
+    }
+
+    // ── Acara / agenda sekolah (kalender bulanan) ─────────────────────────────
+    // Baca terbuka untuk SEMUA role: agenda sekolah itu info publik tanpa PII.
+    // Tulis dibatasi di route (pengelola + petugas acara).
+
+    // GET /akademik/acara?dari=&sampai= — semua role
+    public function getAcara(Request $request)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/acara", $request->only(['dari', 'sampai', 'kategori']));
+    }
+
+    // POST /akademik/acara — pengelola + Petugas Acara
+    public function storeAcara(Request $request)
+    {
+        try {
+            $response = $this->performRequest('POST', "{$this->reqUrl}/acara", $request->all());
+            $decode   = $this->decode($response);
+
+            if (($decode['resCode'] ?? null) === Response::HTTP_CREATED) {
+                $this->auditLog('created', 'acara', $decode['data']['idAcara'] ?? null, [
+                    'judul'    => (string) $request->input('judul'),
+                    'kategori' => (string) $request->input('kategori'),
+                    'mulai'    => (string) $request->input('tanggal_mulai'),
+                    'selesai'  => (string) $request->input('tanggal_selesai'),
+                ]);
+            }
+
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // PATCH /akademik/acara/{id} — pengelola + Petugas Acara
+    public function updateAcara(Request $request, $id)
+    {
+        try {
+            $response = $this->performRequest('PATCH', "{$this->reqUrl}/acara/{$id}", $request->all());
+            $decode   = $this->decode($response);
+
+            if (($decode['resCode'] ?? null) === Response::HTTP_OK) {
+                $this->auditLog('updated', 'acara', $id, array_filter([
+                    'judul'    => $request->input('judul'),
+                    'kategori' => $request->input('kategori'),
+                    'mulai'    => $request->input('tanggal_mulai'),
+                    'selesai'  => $request->input('tanggal_selesai'),
+                ], fn($v) => $v !== null));
+            }
+
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // DELETE /akademik/acara/{id} — pengelola + Petugas Acara
+    public function destroyAcara(Request $request, $id)
+    {
+        try {
+            $response = $this->performRequest('DELETE', "{$this->reqUrl}/acara/{$id}");
+            $decode   = $this->decode($response);
+
+            if (($decode['resCode'] ?? null) === Response::HTTP_ACCEPTED) {
+                $this->auditLog('deleted', 'acara', $id);
+            }
+
+            return $response;
+        } catch (Exception $e) {
+            return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     // ─── Helper: resolve identitas dari email user yang login ───────────────────

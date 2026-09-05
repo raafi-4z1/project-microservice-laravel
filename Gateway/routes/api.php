@@ -9,7 +9,7 @@ use App\Http\Controllers\UserManagementController;
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
 // Register & manajemen user — hanya SuperAdmin dan Admin
-Route::middleware(['auth:api', 'force.pwd', 'check.role:SuperAdmin,Admin,AdminSekolah'])->group(function () {
+Route::middleware(['auth:api', 'force.pwd', 'batasi.acara', 'check.role:SuperAdmin,Admin,AdminSekolah'])->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
 
     Route::get('/users', [UserManagementController::class, 'index']);
@@ -18,7 +18,7 @@ Route::middleware(['auth:api', 'force.pwd', 'check.role:SuperAdmin,Admin,AdminSe
 });
 
 // force.pwd membolehkan /user, /logout, /logout-all, /password meski flag aktif
-Route::middleware(['auth:api', 'force.pwd'])->group(function () {
+Route::middleware(['auth:api', 'force.pwd', 'batasi.acara'])->group(function () {
     Route::get('/user', [UserController::class, 'index']);
     Route::post('/logout', [AuthController::class, 'logout']);
     // Cabut semua sesi aktif di semua device sekaligus
@@ -31,6 +31,6 @@ Route::middleware(['auth:api', 'force.pwd'])->group(function () {
 });
 
 // Reset password user lain — hanya SuperAdmin dan Admin
-Route::middleware(['auth:api', 'force.pwd', 'check.role:SuperAdmin,Admin,AdminSekolah'])->group(function () {
+Route::middleware(['auth:api', 'force.pwd', 'batasi.acara', 'check.role:SuperAdmin,Admin,AdminSekolah'])->group(function () {
     Route::post('/users/{id}/password', [UserManagementController::class, 'resetPassword']);
 });

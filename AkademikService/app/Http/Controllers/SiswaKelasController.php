@@ -240,7 +240,15 @@ class SiswaKelasController extends Controller
                 $query->where('semester', $request->semester);
             }
 
-            $records = $this->hasilRiwayat($request, $query->orderBy('created_at'), fn($r) => $this->toApiArray($r));
+            $records = $this->hasilRiwayat(
+                $request,
+                // Terbaru -> terlama. Klien sudah menyortir sendiri (app commit 2ef8580),
+                // tapi menyortir di sini membuatnya benar juga saat BERPAGINASI: dengan
+                // paginasi klien hanya memegang satu halaman, jadi sortir sisi-klien
+                // hanya mengurutkan halaman itu, bukan keseluruhan.
+                $query->orderByDesc('tahun_ajaran')->orderByDesc('semester')->orderByDesc('id'),
+                fn($r) => $this->toApiArray($r)
+            );
 
             return $this->response("Riwayat lengkap kelas siswa id:{$siswaId}.", Response::HTTP_OK, $records);
         } catch (Exception $e) {
@@ -269,7 +277,15 @@ class SiswaKelasController extends Controller
                 $query->where('semester', $request->semester);
             }
 
-            $records = $this->hasilRiwayat($request, $query->orderBy('created_at'), fn($r) => $this->toApiArray($r));
+            $records = $this->hasilRiwayat(
+                $request,
+                // Terbaru -> terlama. Klien sudah menyortir sendiri (app commit 2ef8580),
+                // tapi menyortir di sini membuatnya benar juga saat BERPAGINASI: dengan
+                // paginasi klien hanya memegang satu halaman, jadi sortir sisi-klien
+                // hanya mengurutkan halaman itu, bukan keseluruhan.
+                $query->orderByDesc('tahun_ajaran')->orderByDesc('semester')->orderByDesc('id'),
+                fn($r) => $this->toApiArray($r)
+            );
 
             return $this->response("Riwayat lengkap siswa di kelas id:{$kelasId}.", Response::HTTP_OK, $records);
         } catch (Exception $e) {

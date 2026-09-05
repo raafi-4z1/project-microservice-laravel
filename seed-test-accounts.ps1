@@ -18,7 +18,7 @@ if (-not $env:TEST_ADMIN_PASSWORD) {
     exit 1
 }
 
-$BaseUrl = "https://gateway.test/api"
+$BaseUrl = "https://192.168.12.173/api"
 
 try {
     Add-Type @"
@@ -136,6 +136,22 @@ Ensure-Account "Akun Test Admin" "akuntest.admin@example.com" "Admin" "AdminTest
 $kwBiasaEmail = "akuntest.karyawan@example.com"
 $adaKB = @((Api GET "karyawan/all`?per_page=100&search=$([uri]::EscapeDataString($kwBiasaEmail))").data.data)
 if (@($adaKB).Count -eq 0) {
+    # Kalau akun user-nya SUDAH ADA tapi record karyawannya belum, `POST /karyawan`
+    # akan ditolak 422 oleh guard email — dan itu memang benar. JANGAN coba
+    # menghapus akunnya lebih dulu: `users` memakai soft delete sedangkan
+    # `users.email` unik di level DB, jadi akun yang dihapus TETAP memegang
+    # emailnya. Menghapus hanya mengubah "akun ada tanpa record" (yang masih bisa
+    # login) menjadi "email terkunci selamanya" (yang tidak bisa dipulihkan lewat
+    # API sama sekali). Sudah pernah dicoba dan justru merusak akun uji.
+    #
+    # Jadi: laporkan apa adanya, biarkan akunnya tetap bisa dipakai.
+    $uLama = @((Api GET "users`?search=$([uri]::EscapeDataString($kwBiasaEmail))&per_page=5").data.data |
+               Where-Object { $_.email -eq $kwBiasaEmail })
+    if ($uLama.Count -gt 0) {
+        Write-Host "  [CATATAN ] $kwBiasaEmail punya akun tapi TANPA record karyawan." -ForegroundColor Yellow
+        Write-Host "             Akibatnya rekap/pegawai/saya balas 404 (bukan 403 - gate role lolos)." -ForegroundColor Yellow
+        Write-Host "             Tidak bisa diperbaiki lewat API: soft delete menahan emailnya." -ForegroundColor Yellow
+    }
     $stampKB = Get-Date -Format "HHmmss"
     $mkKB = Api POST "karyawan" @{
         email = $kwBiasaEmail; nip = "8$stampKB"; namaLengkap = "Akun Test Karyawan Biasa"

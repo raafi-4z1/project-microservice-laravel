@@ -9,6 +9,9 @@ use App\Http\Controllers\MapelController;
 
 Route::prefix('mapel')->group(function () {
     Route::get('all', [MapelController::class, 'index']);
+    // id + nama saja, TERMASUK yang sudah dihapus (resolusi nama historis
+    // + cache sekolah besar). Bukan pengganti /all untuk dropdown.
+    Route::get('nama', [MapelController::class, 'nama']);
     Route::get('/', [MapelController::class, 'show']);
     Route::post('/', [MapelController::class, 'store']);
     Route::post('update', [MapelController::class, 'update']);

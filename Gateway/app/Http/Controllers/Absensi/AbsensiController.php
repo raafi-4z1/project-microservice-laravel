@@ -90,11 +90,14 @@ class AbsensiController extends Controller
             return $this->response("Kartu tidak aktif ({$status}).", Response::HTTP_FORBIDDEN, ['kartuStatus' => $status]);
         }
 
-        return $this->performRequest('POST', "{$this->reqUrl}/absensi/scan-siswa", [
-            'siswa_id'    => $lookup['data']['idSiswa'],
-            'terminal_id' => $terminal?->id,
-            'metode'      => 'scan',
-        ]);
+        return $this->sertakanNama(
+            $this->performRequest('POST', "{$this->reqUrl}/absensi/scan-siswa", [
+                'siswa_id'    => $lookup['data']['idSiswa'],
+                'terminal_id' => $terminal?->id,
+                'metode'      => 'scan',
+            ]),
+            $lookup['data']['namaLengkap'] ?? null
+        );
     }
 
     private function scanPegawai(string $uid, string $tipe, $terminal)
@@ -115,12 +118,49 @@ class AbsensiController extends Controller
             return $this->response("Kartu tidak aktif ({$status}).", Response::HTTP_FORBIDDEN, ['kartuStatus' => $status]);
         }
 
-        return $this->performRequest('POST', "{$this->reqUrl}/absensi/scan-pegawai", [
-            'subjek_tipe' => $tipe,
-            'subjek_id'   => $lookup['data'][$idKey],
-            'terminal_id' => $terminal?->id,
-            'metode'      => 'scan',
-        ]);
+        return $this->sertakanNama(
+            $this->performRequest('POST', "{$this->reqUrl}/absensi/scan-pegawai", [
+                'subjek_tipe' => $tipe,
+                'subjek_id'   => $lookup['data'][$idKey],
+                'terminal_id' => $terminal?->id,
+                'metode'      => 'scan',
+            ]),
+            $lookup['data']['namaLengkap'] ?? null
+        );
+    }
+
+    /**
+     * Sisipkan nama pemilik kartu/PIN ke respons absensi Mode Terminal.
+     *
+     * Kiosk terminal memakai X-Terminal-Token, BUKAN sesi user: ia tidak punya
+     * cache master data dan TIDAK BISA meresolusi id->nama sendiri seperti app
+     * biasa. Tanpa ini layar sukses menampilkan "Guru #4" pada setiap scan.
+     *
+     * Namanya sudah ada di tangan — `lookup-kartu` dan `pin/verify` sama-sama
+     * membalas `namaLengkap` — jadi ini murni meneruskan, tanpa panggilan
+     * service tambahan.
+     *
+     * `nama` dan `namaLengkap` diisi dua-duanya karena klien memakai salah satu.
+     */
+    private function sertakanNama($response, ?string $nama)
+    {
+        if ($nama === null || trim($nama) === '') {
+            return $response;
+        }
+
+        $decode = $this->decode($response);
+        if (!is_array($decode['data'] ?? null)) {
+            return $response;
+        }
+
+        $decode['data']['nama']        = $nama;
+        $decode['data']['namaLengkap'] = $nama;
+
+        return $this->response(
+            $decode['resMsg'] ?? 'OK',
+            $decode['resCode'] ?? Response::HTTP_OK,
+            $decode['data']
+        );
     }
 
     // ── Jendela PIN (lupa kartu) ──────────────────────────────────────────────
@@ -253,13 +293,16 @@ class AbsensiController extends Controller
 
             $window->update(['terpakai_at' => Carbon::now()]);
 
-            return $this->performRequest('POST', "{$this->reqUrl}/absensi/scan-pegawai", [
-                'subjek_tipe'   => $tipe,
-                'subjek_id'     => $subjekId,
-                'terminal_id'   => $terminal?->id,
-                'pin_window_id' => $window->id,
-                'metode'        => 'pin',
-            ]);
+            return $this->sertakanNama(
+                $this->performRequest('POST', "{$this->reqUrl}/absensi/scan-pegawai", [
+                    'subjek_tipe'   => $tipe,
+                    'subjek_id'     => $subjekId,
+                    'terminal_id'   => $terminal?->id,
+                    'pin_window_id' => $window->id,
+                    'metode'        => 'pin',
+                ]),
+                $verify['data']['namaLengkap'] ?? null
+            );
         } catch (Exception $e) {
             return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }

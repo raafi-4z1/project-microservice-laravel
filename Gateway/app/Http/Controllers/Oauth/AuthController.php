@@ -38,6 +38,7 @@ class AuthController extends Controller
                 'password'         => ['required', \Illuminate\Validation\Rules\Password::min(8)->letters()->numbers()],
                 'confirm_password' => 'required|same:password',
                 'role'             => ['required', 'in:' . implode(',', $allowedRoles)],
+                'isPetugasAcara'   => 'sometimes|boolean',
             ], [
                 'role.in' => "Role tidak valid. {$requester->role} hanya boleh membuat: " . implode(', ', $allowedRoles) . '.',
             ]);
@@ -50,23 +51,37 @@ class AuthController extends Controller
                 );
             }
 
+            // Penanda Petugas Acara hanya boleh diberikan SuperAdmin/Admin —
+            // alasan yang sama dengan isAdminSekolah: kalau pemegang penanda bisa
+            // memberikannya sendiri, ia bisa mencetak akun baru sesuka hati.
+            // Administrator Sekolah boleh mendaftarkan user, tapi TIDAK boleh
+            // menyalakan penanda ini.
+            $bolehSetPenanda = in_array($requester->role, ['SuperAdmin', 'Admin'], true);
+            $petugasAcara = $bolehSetPenanda
+                && filter_var($request->input('isPetugasAcara', false), FILTER_VALIDATE_BOOLEAN);
+
             $user = User::create([
-                'name'     => $request->name,
-                'email'    => $request->email,
-                'password' => $request->password,
-                'role'     => $request->role,
+                'name'             => $request->name,
+                'email'            => $request->email,
+                'password'         => $request->password,
+                'role'             => $request->role,
+                'is_petugas_acara' => $petugasAcara,
             ]);
 
             $this->auditLog('registered', 'user', $user->email, [
                 'name'  => $user->name,
                 'email' => $user->email,
                 'role'  => $user->role,
+                // Pemberian hak istimewa harus terekam sejak awal, bukan hanya
+                // saat diubah.
+                'isPetugasAcara' => $petugasAcara ? 'true' : 'false',
             ]);
 
             return $this->response("User registered.", Response::HTTP_CREATED, [
-                'user'  => $user->name,
-                'email' => $user->email,
-                'role'  => $user->role,
+                'user'           => $user->name,
+                'email'          => $user->email,
+                'role'           => $user->role,
+                'isPetugasAcara' => $petugasAcara,
             ]);
         } catch (Exception $e) {
             return $this->response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
@@ -108,6 +123,10 @@ class AuthController extends Controller
                     // tulis operasional setara Admin — klien memakai ini untuk
                     // memutuskan menampilkan menu manajemen akademik.
                     'isAdminSekolah' => $user->isAdminSekolah(),
+                    // Petugas Acara: akun yang HANYA boleh mengelola agenda.
+                    // Ikut di sini karena klien menentukan menu dari hasil login,
+                    // bukan dari panggilan tambahan — sama seperti penanda di atas.
+                    'isPetugasAcara' => $user->isPetugasAcara(),
                     // true = akun masih memakai password default; client wajib
                     // mengarahkan ke layar ganti password sebelum fitur lain
                     'mustChangePassword' => (bool) ($user->must_change_password ?? false),

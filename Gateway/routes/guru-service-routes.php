@@ -3,8 +3,10 @@
 use App\Http\Controllers\Master\GuruController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth:api', 'force.pwd'])->prefix(config('gateway.guru_prefix'))->group(function(){
+Route::middleware(['auth:api', 'force.pwd', 'batasi.acara'])->prefix(config('gateway.guru_prefix'))->group(function(){
     Route::get('all', [GuruController::class, 'index']);
+    Route::get('nama', [GuruController::class, 'nama']);
+    Route::get('foto/{id}', [GuruController::class, 'foto']);
     Route::get('/', [GuruController::class, 'show']);
     Route::post('/', [GuruController::class, 'store'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');
     Route::post('update', [GuruController::class, 'update'])->middleware('check.role:SuperAdmin,Admin,AdminSekolah');

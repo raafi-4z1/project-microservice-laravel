@@ -114,6 +114,35 @@ Rentang tanggal yang mengubah aturan akademik **sementara**, lalu **otomatis kem
 | PATCH | `/akademik/periode/{id}` | SuperAdmin, Admin | Ubah periode |
 | DELETE | `/akademik/periode/{id}` | SuperAdmin, Admin | Hapus (soft delete) |
 
+### Acara / agenda sekolah
+
+Terpisah dari `periode` — **sengaja**. Keduanya punya rentang tanggal, tapi:
+
+| | `periode_khusus` | `acara` |
+|---|---|---|
+| Makna | mengubah **aturan KBM** (jam dipendekkan, KBM berhenti, auto-alpa dilewati) | hanya **agenda** yang ditampilkan di kalender |
+| Konsekuensi | absensi & jadwal ikut berubah | tidak ada |
+
+Menggabungkannya akan memaksa setiap agenda sepele (rapat, upacara) ikut
+memengaruhi mesin absensi.
+
+| Method | Endpoint | Role | Keterangan |
+|---|---|---|---|
+| GET | `/akademik/acara?dari=&sampai=` | Semua | Acara yang **bersinggungan** rentang (bukan yang termuat). Kosong -> `[]`, bukan 404 |
+| POST | `/akademik/acara` | SuperAdmin, Admin, Adm. Sekolah, **Petugas Acara** | |
+| PATCH | `/akademik/acara/{id}` | idem | Parsial; konsistensi diperiksa thd nilai gabungan |
+| DELETE | `/akademik/acara/{id}` | idem | Soft delete |
+
+Kategori: `libur`, `ujian`, `kegiatan`, `rapat`, `upacara`, `lainnya`.
+
+**Anti-bentrok:** `POST`/`PATCH` menolak **422** bila rentangnya bersinggungan
+dengan periode `jenis = ujian`, dengan detail periode di `data.bentrok` supaya
+klien bisa menampilkannya. `ramadan` sengaja **tidak** dilindungi — ia sebulan
+penuh dan sekolah tetap berjalan, jadi melindunginya akan memblokir seluruh agenda
+selama sebulan (pesantren kilat, buka bersama). `libur`/`khusus` juga tidak: acara
+memang wajar berbarengan dengan libur.
+
+
 **Field:** `nama`, `tahun_ajaran`, `semester`, `jenis` (`ramadan`\|`ujian`\|`libur`\|`khusus`), `berlaku_dari`, `berlaku_sampai` (sama = 1 hari), `kbm_normal` (opsional), `keterangan`.
 **Response:** `idPeriode`, `nama`, `tahunAjaran`, `semester`, `jenis`, `berlakuDari`, `berlakuSampai`, `kbmNormal`, `keterangan`.
 

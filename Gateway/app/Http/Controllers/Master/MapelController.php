@@ -93,4 +93,16 @@ class MapelController extends Controller
             : $response;
         return json_decode($raw, true) ?? [];
     }
+
+    /**
+     * GET /{prefix}/nama — id + nama saja, termasuk entitas yang sudah dihapus.
+     *
+     * Dipakai klien sebagai cache resolusi id->nama. Sengaja TIDAK disaring per
+     * role seperti detail: isinya hanya id + nama, tanpa PII sama sekali. Gating
+     * aksesnya tetap sama dengan `/all` masing-masing modul (lihat route).
+     */
+    public function nama(Request $request)
+    {
+        return $this->performRequest('GET', "{$this->reqUrl}/nama", $request->only(['ids']));
+    }
 }
