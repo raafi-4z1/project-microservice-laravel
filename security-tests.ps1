@@ -6,7 +6,7 @@
 #
 #  Usage (dari PC penguji):
 #    $env:TEST_BASE_URL       = "https://gateway.test/api"   # via hosts entry ke IP backend
-#    $env:TEST_BACKEND_HOST   = "192.168.12.168"             # IP backend (untuk probe Host-spoof)
+#    $env:TEST_BACKEND_HOST   = "192.168.12.173"             # IP backend (untuk probe Host-spoof)
 #    $env:TEST_ADMIN_PASSWORD = "PasswordSuperAdmin"
 #    powershell -ExecutionPolicy Bypass -File security-tests.ps1
 #
@@ -15,6 +15,9 @@
 #  TEST_BACKEND_HOST  : opsional; jika di-set, menguji apakah service internal
 #                       (akademikservice.test dst.) bisa dijangkau langsung via
 #                       Host-header spoofing ke IP backend. Kosongkan untuk skip.
+#                       WAJIB IP backend yang BENAR dan menyala: IP salah membuat
+#                       semua probe "koneksi ditolak" -- terbaca aman padahal tidak
+#                       ada yang diuji. Skrip kini memeriksa dulu host-nya hidup.
 #  TEST_ADMIN_PASSWORD: opsional; jika di-set, mengaktifkan uji auth/RBAC/throttle.
 #
 #  Kode keluar: 0 jika tidak ada FAIL, 1 jika ada temuan FAIL.
@@ -127,6 +130,23 @@ else { Warn "HTTP polos melayani API (status $($rh.status)) -- idealnya redirect
 # ══════════════════ B. EKSPOSUR SERVICE INTERNAL ══════════════════
 Sec "B. Eksposur Service Internal (batas HMAC)"
 if ($BackendHost) {
+    # Prasyarat: pastikan IP-nya memang backend yang hidup. Tanpa ini, IP yang
+    # salah ketik atau host yang mati membuat kelima probe di bawah gagal
+    # koneksi -- dan gagal koneksi dilaporkan sebagai PASS "tidak terekspos".
+    # Hasilnya lima PASS terkuat dari pengujian yang tidak menguji apa pun.
+    # Host gateway.test dipakai sebagai pembanding karena vhost itu pasti ada.
+    $hidup = $false
+    foreach ($sc in @("https","http")) {
+        $probe = Http GET "${sc}://${BackendHost}/api/user" @{ Host = "gateway.test" } -NoFollow
+        if ($probe.ok) { $hidup = $true; break }
+    }
+}
+if ($BackendHost -and -not $hidup) {
+    Warn "TEST_BACKEND_HOST=$BackendHost tidak menjawab sama sekali -- probe service internal DILEWATI"
+    Info "IP salah atau host mati. Jangan dibaca sebagai 'tidak terekspos': belum ada yang diuji."
+    Info "Cek IP backend saat ini (DHCP sering berganti), lalu jalankan ulang."
+}
+if ($BackendHost -and $hidup) {
     $internal = @("akademikservice.test","guruservice.test","siswaservice.test","mapelservice.test","classmicroservices.test")
     foreach ($svc in $internal) {
         # Diskriminator TANPA rate-limit: GET /api/user (spoof Host ke service internal).
@@ -153,7 +173,7 @@ if ($BackendHost) {
         }
         if (-not $reached) { Pass "$svc TIDAK terjangkau langsung dari LAN (koneksi ditolak) -- ideal" }
     }
-} else {
+} elseif (-not $BackendHost) {
     Skip "Probe service internal (set TEST_BACKEND_HOST=<IP backend> untuk mengaktifkan)"
 }
 
