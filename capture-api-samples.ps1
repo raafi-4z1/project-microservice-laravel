@@ -51,20 +51,39 @@ function RawApi {
         $bodyJson = ($Body | ConvertTo-Json -Depth 6)
         $params['Body'] = $bodyJson
     }
-    try {
-        $r = Invoke-WebRequest @params
-        return @{ code = [int]$r.StatusCode; raw = $r.Content; body = $bodyJson }
-    } catch {
-        $er = $_.Exception.Response
-        if ($er) {
-            try {
-                $code = [int]$er.StatusCode
-                $rd = [System.IO.StreamReader]::new($er.GetResponseStream())
-                $tx = $rd.ReadToEnd(); $rd.Close(); $er.Close()
-                return @{ code = $code; raw = $tx; body = $bodyJson }
-            } catch {}
+    # Sejak throttle API menyala (240/menit per user), skrip ini -- 169 permintaan
+    # nyaris beruntun -- bisa kena 429 di tengah jalan. Tanpa penanganan, badan 429
+    # akan tercatat sebagai "contoh respons" endpoint yang sedang di-capture, dan
+    # dokumentasinya jadi salah tanpa ada yang gagal. Tunggu sesuai Retry-After lalu
+    # ulangi; kalau tetap 429, kembalikan apa adanya supaya terlihat, bukan disamarkan.
+    $percobaan = 0
+    while ($true) {
+        $percobaan++
+        try {
+            $r = Invoke-WebRequest @params
+            return @{ code = [int]$r.StatusCode; raw = $r.Content; body = $bodyJson }
+        } catch {
+            $er = $_.Exception.Response
+            if ($er) {
+                try {
+                    $code = [int]$er.StatusCode
+                    $rd = [System.IO.StreamReader]::new($er.GetResponseStream())
+                    $tx = $rd.ReadToEnd(); $rd.Close()
+                    if ($code -eq 429 -and $percobaan -le 2) {
+                        $tunggu = 0
+                        try { $tunggu = [int]$er.Headers['Retry-After'] } catch {}
+                        if ($tunggu -lt 1) { $tunggu = 61 }
+                        $er.Close()
+                        Write-Host "  [429] $Path -- tunggu ${tunggu}s lalu ulangi" -ForegroundColor Yellow
+                        Start-Sleep -Seconds ($tunggu + 1)
+                        continue
+                    }
+                    $er.Close()
+                    return @{ code = $code; raw = $tx; body = $bodyJson }
+                } catch {}
+            }
+            return @{ code = 0; raw = ('{"error":"' + $_.Exception.Message + '"}'); body = $bodyJson }
         }
-        return @{ code = 0; raw = ('{"error":"' + $_.Exception.Message + '"}'); body = $bodyJson }
     }
 }
 
@@ -509,7 +528,7 @@ if ($kwToken) {
     # subjeknya. Tanpa catatan ini pembaca mudah salah menyimpulkan bahwa
     # karyawan biasa memang tidak boleh membuka rekap dirinya sendiri.
     if ((($kwPrivasiRaw['sendiri'].raw | ConvertFrom-Json).resCode) -eq 404) {
-        Add-Note "> **Catatan:** contoh di atas terekam **404**, bukan 200. Akun ``akuntest.karyawan`` punya user di Gateway tapi belum punya record di tabel ``karyawans``, sehingga subjeknya tak bisa diresolve. Gate role-nya sendiri LOLOS (bukan 403) -- karyawan biasa memang berhak atas endpoint ini. Jalankan ``seed-test-accounts.ps1`` agar contohnya terekam 200."
+        Add-Note "> **Catatan:** contoh di atas terekam **404**, bukan 200. Akun ``akuntest.karyawan`` punya user di Gateway tapi belum punya record di tabel ``karyawans``, sehingga subjeknya tak bisa diresolve. Gate role-nya sendiri LOLOS (bukan 403) -- karyawan biasa memang berhak atas endpoint ini. **Menjalankan ``seed-test-accounts.ps1`` TIDAK memperbaikinya**: skrip itu sudah mencoba ``POST /karyawan``, tapi ditolak 422 karena emailnya dipegang akun yang masih aktif (guard anti data-yatim). Pemulihan yang ada hanya menangani record **terhapus**, bukan \"akun aktif tanpa record domain\". Untuk mendapat contoh 200: pakai email lain untuk akun uji karyawan, atau buat record karyawannya langsung di DB."
         Write-Host "  [!!] rekap/pegawai/saya karyawan = 404 (akun belum punya record karyawan) - catatan ditambahkan" -ForegroundColor Yellow
     }
     $rf = RawApi POST "refresh" -Token $kwToken
