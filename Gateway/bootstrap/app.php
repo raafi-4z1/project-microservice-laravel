@@ -32,17 +32,41 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth.terminal' => \App\Http\Middleware\AuthenticateTerminal::class,
         ]);
         $middleware->append(\App\Http\Middleware\CollectForwardedIps::class);
+
+        // WAJIB. Sejak Laravel 11 grup `api` bawaan TIDAK lagi memuat throttle:
+        // ia hanya disisipkan kalau apiLimiter diset, dan itu hanya terjadi lewat
+        // panggilan ini. Tanpa baris ini, RateLimiter::for('api') di
+        // RouteServiceProvider terdefinisi tapi tidak pernah dipakai — konfigurasi
+        // yang terbaca aktif padahal seluruh API tak berbatas (terbukti: 75
+        // permintaan beruntun, 0 respons 429). Hanya login/refresh/password yang
+        // terlindungi, karena ketiganya memasang throttle sendiri di route.
+        $middleware->throttleApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // 🚦 Rate limit
         $exceptions->render(function (ThrottleRequestsException $e, Request $request) {
+            // Header dari exception WAJIB diteruskan. Membangun respons baru
+            // tanpa menyalinnya membuang `Retry-After` dan `X-RateLimit-Reset`,
+            // sehingga klien tidak tahu harus menunggu berapa lama dan biasanya
+            // langsung mencoba lagi — memperpanjang penguncian yang sedang
+            // dialaminya sendiri.
+            $headers = $e->getHeaders();
+            $tunggu  = (int) ($headers['Retry-After'] ?? 60);
+
+            // Dulu pesannya menyebut "percobaan login" karena hanya /login yang
+            // dibatasi. Sejak throttle API menyala, 429 bisa muncul di endpoint
+            // mana pun — menyalahkan login di situ menyesatkan.
+            $pesan = $request->is('api/login', 'api/refresh', 'api/password', 'oauth/token')
+                ? "Terlalu banyak percobaan. Coba lagi dalam {$tunggu} detik."
+                : "Terlalu banyak permintaan. Coba lagi dalam {$tunggu} detik.";
+
             return response()->json([
                 'resCode'   => 429,
                 'resPhrase' => 'Too Many Requests',
                 'resStatus' => 'fail',
-                'resMsg'    => 'Terlalu banyak percobaan login. Coba lagi dalam 1 menit.',
-                'data'      => []
-            ], 429);
+                'resMsg'    => $pesan,
+                'data'      => ['retryAfter' => $tunggu],
+            ], 429, $headers);
         });
 
         // 📦 Not Found

@@ -91,7 +91,35 @@ class RouteServiceProvider extends ServiceProvider
     protected function configureRateLimiting()
     {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by(optional($request->user())->id ?: $request->ip());
+            // `$request->user()` memakai guard DEFAULT (`web`, berbasis sesi)
+            // yang pada request API selalu null — kuncinya akan jatuh ke IP, dan
+            // seluruh sekolah di balik satu NAT berbagi satu ember. Satu kelas
+            // membuka app bersamaan sudah cukup untuk mengunci semuanya. Maka
+            // guard `api` disebut eksplisit. Terverifikasi memang terpisah per
+            // user: menembak akun A 22x menyisakan 216, akun B di IP yang sama
+            // tetap 239.
+            $user = $request->user('api');
+
+            // Longgar dengan sengaja. Satu layar daftar berfoto = 1 permintaan
+            // daftar + 25 permintaan foto (foto disajikan satu-per-request dari
+            // disk private), jadi batas 60/menit akan memutus pemakaian normal.
+            // Nilai ini tetap memotong pengerukan massal: menguras direktori
+            // lewat `/foto/{id}` jadi berjam-jam, bukan sedetik.
+            if ($user) {
+                return Limit::perMinute(240)->by('u:' . $user->id);
+            }
+
+            // Cabang ini hanya tercapai di route TANPA `auth` (mis. /login, yang
+            // sudah punya throttle:5,1 sendiri). Di route terproteksi ia tidak
+            // pernah jalan: Laravel mengurutkan middleware lewat
+            // $middlewarePriority, dan di sana AuthenticatesRequests berada DI
+            // ATAS ThrottleRequests — `auth:api` menolak duluan, throttle tak
+            // pernah dicapai. Terbukti lewat probe: 7 permintaan tanpa token ke
+            // /api/user tidak memanggil limiter ini sama sekali. Jadi banjir
+            // token palsu TIDAK terbatasi di sini; yang dihasilkan hanya 401
+            // murah, dan tebak-kredensial tetap terkunci di /login.
+            // Per-IP sengaja longgar: satu IP sekolah = ratusan perangkat.
+            return Limit::perMinute(300)->by('ip:' . $request->ip());
         });
     }
 }

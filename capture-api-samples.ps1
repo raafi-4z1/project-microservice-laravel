@@ -625,9 +625,15 @@ Add-Note @"
 [void]$MD.AppendLine(@"
 ### ``POST /login`` -- 429 rate limit (contoh terdokumentasi, tidak di-capture ulang agar tidak mengunci akun)
 
+Sejak throttle API menyala, **429 bisa muncul di endpoint mana pun**, tidak hanya
+login: 240/menit per user (login/refresh/password tetap 5/menit per IP). Respons
+membawa header ``Retry-After``, ``X-RateLimit-Limit``, ``X-RateLimit-Remaining``,
+dan ``X-RateLimit-Reset``; ``data.retryAfter`` mengulang detik tunggunya supaya
+klien tidak perlu membaca header.
+
 Response (HTTP 429):
 ``````json
-{"resCode":429,"resPhrase":"Too Many Requests","resStatus":"fail","resMsg":"Terlalu banyak percobaan login. Coba lagi dalam 1 menit.","data":[]}
+{"resCode":429,"resPhrase":"Too Many Requests","resStatus":"fail","resMsg":"Terlalu banyak percobaan. Coba lagi dalam 43 detik.","data":{"retryAfter":43}}
 ``````
 "@)
 

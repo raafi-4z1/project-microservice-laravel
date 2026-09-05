@@ -508,6 +508,37 @@ php artisan tinker
 >>> echo base64_encode(random_bytes(32));
 ```
 
+## Rate Limit
+
+| Cakupan | Batas | Kunci |
+|---|---|---|
+| `POST /login`, `/refresh`, `/password` | **5/menit** | per IP |
+| Seluruh endpoint lain (sudah login) | **240/menit** | per **user** |
+| Route tanpa `auth` | 300/menit | per IP |
+
+Melewati batas membalas **429**; header `X-RateLimit-Limit` dan
+`X-RateLimit-Remaining` ada di setiap respons, jadi klien bisa mengerem sendiri
+sebelum ditolak.
+
+**240/menit sengaja longgar.** Satu layar daftar berfoto = 1 permintaan daftar +
+25 permintaan foto (foto disajikan satu-per-request dari disk `private`), jadi
+batas 60/menit akan memutus pemakaian normal. Angka ini tetap memotong pengerukan
+massal: menguras direktori lewat `/foto/{id}` jadi berjam-jam, bukan sedetik.
+
+**Kuncinya per user, bukan per IP** — di sekolah ratusan perangkat berbagi satu IP
+publik, jadi ember per-IP membuat satu kelas bisa saling mengunci.
+
+> **Jangan hapus `$middleware->throttleApi()` di `Gateway/bootstrap/app.php`.**
+> Sejak Laravel 11 grup `api` bawaan TIDAK memuat throttle kecuali baris itu
+> dipanggil. Tanpanya `RateLimiter::for('api')` tetap terbaca rapi di
+> `RouteServiceProvider` tapi tak pernah dipakai — dan API berjalan tanpa batas
+> sama sekali. Fase 18 di `run-tests.ps1` menjaga ini.
+
+Request **tanpa token ke route terproteksi tidak ikut dibatasi**: Laravel
+mengurutkan middleware lewat `$middlewarePriority`, dan di sana autentikasi berada
+di atas throttle, jadi `auth:api` menolak lebih dulu. Yang dihasilkan hanya 401
+murah, dan percobaan menebak kredensial tetap terkunci di `/login`.
+
 ---
 
 ## Testing dengan Postman
@@ -594,8 +625,8 @@ Selalu jalankan `run-tests.ps1` sesudahnya. Kalau ada regresi,
 
 ### Testing Otomatis (PowerShell)
 
-Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**432 asersi**,
-terakhir 432 PASS / 0 FAIL / 0 SKIP — tanpa SKIP bila `TEST_TERMINAL_ID/TOKEN` diset) mencakup auth, CRUD semua service, akademik,
+Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**436 asersi**,
+terakhir 436 PASS / 0 FAIL / 0 SKIP — tanpa SKIP bila `TEST_TERMINAL_ID/TOKEN` diset) mencakup auth, CRUD semua service, akademik,
 **absensi** (kartu/QR, keluar, rekap, jendela PIN, wali kelas, autentikasi
 terminal), RBAC 5 akun (termasuk pasangan pembanding karyawan biasa vs
 Administrator Sekolah), **privasi baca** (penyaringan PII direktori + oracle

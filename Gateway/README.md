@@ -513,6 +513,30 @@ password saat login pertama**:
   dicurigai dipakai orang lain
 - Endpoint `/login`, `/refresh`, `/password`, dan `/oauth/token` dibatasi **5 percobaan per menit**
 
+### Rate limit seluruh API
+
+| Cakupan | Batas | Kunci |
+|---|---|---|
+| `/login`, `/refresh`, `/password`, `/oauth/token` | 5/menit | per IP |
+| **Semua endpoint lain (sudah login)** | **240/menit** | per **user** |
+| Route tanpa `auth` | 300/menit | per IP |
+
+429 membawa `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
+`X-RateLimit-Reset`, dan `data.retryAfter`.
+
+Batasnya **per user** karena ratusan perangkat sekolah berbagi satu IP publik —
+ember per-IP membuat satu kelas bisa saling mengunci. Angka 240 dipilih agar layar
+daftar berfoto (1 permintaan daftar + 25 permintaan foto) tidak terputus.
+
+> **`$middleware->throttleApi()` di `bootstrap/app.php` wajib ada.** Sejak Laravel
+> 11 grup `api` bawaan tidak memuat throttle kecuali baris itu dipanggil; tanpanya
+> `RateLimiter::for('api')` terdefinisi tapi tak pernah dipakai dan API berjalan
+> tanpa batas. Dijaga Fase 18 di `run-tests.ps1`.
+
+Request **tanpa token ke route terproteksi tidak terbatasi**: `$middlewarePriority`
+Laravel menempatkan autentikasi di atas throttle, jadi `auth:api` menolak lebih
+dulu. Hasilnya hanya 401 murah.
+
 ---
 
 ## Terminal Absensi

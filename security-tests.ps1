@@ -268,6 +268,18 @@ if ($AdminPass) {
         if ($r.status -eq 422) { Pass "Password lemah ditolak saat register (422)" }
         else { Warn "Password lemah -> $($r.status)" }
 
+        # Throttle API menyeluruh benar-benar terpasang? Ini pernah MATI total:
+        # RateLimiter::for('api') terdefinisi tapi tidak pernah dipakai, karena
+        # sejak Laravel 11 grup `api` hanya menyisipkan throttle kalau
+        # $middleware->throttleApi() dipanggil. Gejalanya tak terlihat dari luar --
+        # tidak ada error, cuma tak ada batas. Header ini bukti termurahnya, dan
+        # tidak memakan jatah login seperti bagian G.
+        $r = Http GET "$BaseUrl/user" $auth
+        $lim = $null
+        if ($r.headers) { try { $lim = $r.headers['X-RateLimit-Limit'] } catch {} }
+        if ($lim) { Pass "Throttle API terpasang di endpoint ber-token (X-RateLimit-Limit=$lim)" }
+        else { Fail "TIDAK ada header rate limit pada endpoint ber-token -- API tak berbatas (cek `$middleware->throttleApi() di bootstrap/app.php)" }
+
         # Token lifecycle: logout lalu pakai token yang sama -> 401
         Http POST "$BaseUrl/logout" $auth | Out-Null
         $r = Http GET "$BaseUrl/user" $auth

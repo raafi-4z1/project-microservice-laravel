@@ -4259,7 +4259,7 @@ Response (HTTP 422):
 
 Response (HTTP 429):
 ```json
-{"resCode":429,"resPhrase":"Too Many Requests","resStatus":"fail","resMsg":"Terlalu banyak percobaan login. Coba lagi dalam 1 menit.","data":[]}
+{"resCode":429,"resPhrase":"Too Many Requests","resStatus":"fail","resMsg":"Terlalu banyak percobaan. Coba lagi dalam 43 detik.","data":{"retryAfter":43}}
 ```
 
 ### Wajib ganti password saat login pertama (akun auto-created)

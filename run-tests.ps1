@@ -2659,7 +2659,11 @@ Section "Phase 16.8: Acara, Petugas Acara, /nama, Mode Foto"
 
 # --- Acara: CRUD + bentuk kontrak ---
 $acaraIds = @()
-$r = Api GET "akademik/acara`?dari=2035-01-01&sampai=2035-01-31"
+# Tahun 2039 sengaja: suite ini hanya pernah menulis acara di 2035, jadi
+# rentang ini tak bisa tercemar sisa run sebelumnya yang mati sebelum
+# cleanup. Sebelumnya memakai Jan 2035 dan sempat FAIL palsu karena 3 acara
+# tertinggal dari run yang terputus.
+$r = Api GET "akademik/acara`?dari=2039-01-01&sampai=2039-01-31"
 Chk "GET acara rentang kosong (harus 200)" $r 200; if ($script:LAST_CHK) {
     # Bulan tanpa acara itu keadaan normal — kalender tak boleh dianggap error.
     if (($r.data -is [array]) -and @($r.data).Count -eq 0) { $script:PASS++; Write-Host "  [PASS] rentang kosong balas [] bukan 404" -ForegroundColor Green }
@@ -2992,6 +2996,53 @@ if ($CFG.SkipCleanup) {
     Write-Host "  Cleanup selesai." -ForegroundColor DarkGray
 }
 
+
+# ──────────────────────────────────────────────
+#  Fase 18 — Rate limit API benar-benar terpasang
+# ──────────────────────────────────────────────
+# Pernah terjadi: RateLimiter::for('api') terdefinisi rapi di RouteServiceProvider
+# tapi TIDAK pernah dipakai. Sejak Laravel 11 grup `api` bawaan hanya menyisipkan
+# throttle kalau apiLimiter diset, dan itu cuma terjadi lewat $middleware->
+# throttleApi(). Tanpa baris itu seluruh API tak berbatas — 75 permintaan
+# beruntun, nol 429 — padahal konfigurasinya terbaca aktif. Header di bawah
+# adalah bukti paling murah bahwa middleware-nya benar-benar jalan.
+Write-Host ""
+Write-Host "== Fase 18: Rate limit API ==" -ForegroundColor Cyan
+
+function RateHead($path, $tok) {
+    $h = @{ Accept = 'application/json' }
+    if ($tok) { $h['Authorization'] = "Bearer $tok" }
+    try {
+        $r = Invoke-WebRequest -Uri "$($CFG.BaseUrl)/$path" -Headers $h -UseBasicParsing -TimeoutSec $CFG.Timeout
+        return @{ lim = $r.Headers['X-RateLimit-Limit']; rem = $r.Headers['X-RateLimit-Remaining'] }
+    } catch {
+        $e = $_.Exception.Response
+        if ($e) { return @{ lim = $e.Headers['X-RateLimit-Limit']; rem = $e.Headers['X-RateLimit-Remaining'] } }
+        return @{ lim = $null; rem = $null }
+    }
+}
+
+$rl1 = RateHead "user" $script:TOKEN
+if ($rl1.lim) { $script:PASS++; Write-Host "  [PASS] throttle API terpasang (X-RateLimit-Limit=$($rl1.lim))" -ForegroundColor Green }
+else { $script:FAIL++; Write-Host "  [FAIL] TIDAK ada header rate limit — throttleApi() hilang, API tak berbatas" -ForegroundColor Red }
+
+# 240 = cabang per-user. Kalau 300, kuncinya jatuh ke IP: seluruh sekolah di
+# balik satu NAT berbagi satu ember dan bisa saling mengunci.
+if ("$($rl1.lim)" -eq "240") { $script:PASS++; Write-Host "  [PASS] batas per-user (240/menit), bukan cadangan per-IP" -ForegroundColor Green }
+else { $script:FAIL++; Write-Host "  [FAIL] batas=$($rl1.lim), harusnya 240 — kunci limiter tidak per-user" -ForegroundColor Red }
+
+# Ember dihitung lintas endpoint, bukan per-route
+$rl2 = RateHead "siswa/nama" $script:TOKEN
+if ([int]$rl2.rem -lt [int]$rl1.rem) { $script:PASS++; Write-Host "  [PASS] ember dihitung lintas endpoint ($($rl1.rem) -> $($rl2.rem))" -ForegroundColor Green }
+else { $script:FAIL++; Write-Host "  [FAIL] sisa kuota tidak turun ($($rl1.rem) -> $($rl2.rem))" -ForegroundColor Red }
+
+# Ember TIDAK boleh dibagi antar user — ini yang menentukan aman/tidaknya di
+# jaringan sekolah ber-NAT, tempat ratusan perangkat memakai satu IP publik.
+if ($guruTok) {
+    $rlG = RateHead "user" $guruTok
+    if ([int]$rlG.rem -gt [int]$rl2.rem) { $script:PASS++; Write-Host "  [PASS] ember terpisah per user (guru $($rlG.rem) vs admin $($rl2.rem))" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] ember tampak dibagi antar user (guru $($rlG.rem), admin $($rl2.rem))" -ForegroundColor Red }
+}
 # ──────────────────────────────────────────────
 #  SUMMARY
 # ──────────────────────────────────────────────
