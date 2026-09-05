@@ -737,6 +737,11 @@ Checklist lain:
 - [ ] Kalau nanti ada frontend web: batasi CORS (`config/cors.php`) ke domain
       sekolah saja — default Laravel mengizinkan semua origin (aman untuk API
       Bearer, tapi sebaiknya diperketat)
+- [ ] **Sembunyikan header versi server.** `security-tests.ps1` menandai
+      `X-Powered-By`/`Server` yang membocorkan versi PHP dan Apache — itu memberi
+      penyerang daftar exploit yang cocok tanpa perlu menebak. Di `php.ini` set
+      `expose_php = Off`; di konfigurasi Apache set `ServerTokens Prod` dan
+      `ServerSignature Off`, lalu restart keduanya.
 
 ---
 
