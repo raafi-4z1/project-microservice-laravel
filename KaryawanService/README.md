@@ -34,6 +34,8 @@ Base URL: `https://gateway.test/api`
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
 | GET | `/karyawan/all` | Semua | List karyawan (paginated, `?search=` nama/NIP/email/jabatan) |
+| GET | `/karyawan/nama` | Semua | **id + nama saja, TERMASUK yang sudah dihapus** (`withTrashed`). Tanpa batas halaman — ringan (2 kolom, tanpa foto/PII). `?ids=1,2,3` menyaring; `ids=` yang tak menyisakan angka valid balas kosong, bukan seluruh tabel. Dipakai klien sebagai cache resolusi id→nama; entitas non-aktif ikut agar nama historis di riwayat tak tampil `#<id>`. **Bukan pengganti `/all` untuk dropdown** |
+| GET | `/karyawan/foto/{{id}}` | sama dengan detail | **Berkas gambar** (image/webp), bukan Base64 dan bukan URL publik. Foto disimpan di disk `private`; memindahkannya ke disk publik berarti foto siapa pun bisa diambil yang menebak URL. `Cache-Control: private, max-age=86400`. Tanpa header Authorization → **401** |
 | GET | `/karyawan?idKaryawan={id}` | SuperAdmin, Admin, Karyawan, Guru | Detail karyawan. Untuk **non-pengelola** (Guru, karyawan biasa) field pribadi (alamat, `noTelp`, dll.) disaring — hanya SuperAdmin/Admin/**Administrator Sekolah** yang menerima profil lengkap. Role Siswa **403** |
 | POST | `/karyawan` | SuperAdmin, Admin | Tambah karyawan (foto opsional). `email` & `nip` wajib unik — duplikat dibalas **422**, dan Gateway menolak lebih dulu bila email sudah dipakai akun user lain |
 | POST | `/karyawan/update` | SuperAdmin, Admin | Update (kirim `idKaryawan` + field berubah) |
@@ -41,6 +43,10 @@ Base URL: `https://gateway.test/api`
 | POST | `/karyawan/kartu/terbitkan` | SuperAdmin, Admin | Terbitkan/ganti kartu absensi (UID prefix `KAR-`) |
 | POST | `/karyawan/kartu/blokir` | SuperAdmin, Admin | Blokir kartu (`status`: `hilang`/`blokir`) |
 
+
+**Mode foto pada `/karyawan/all`.** Tanpa param: tidak ada field `foto`, `per_page` 1–200 (mode cache nama). Dengan `?foto=1`: tiap baris membawa `foto` berupa **URL** ke `/karyawan/foto/{{id}}`, dan `per_page` dibatasi 1–**25** (default 5) karena foto berat. Di luar batas → **422** dengan pesan yang menyebut batasnya, bukan dipaksa diam-diam.
+
+**Email bisa dipakai ulang.** `karyawans.email` unik di level DB sementara modelnya soft-delete, jadi baris yang "dihapus" menahan emailnya. `POST /karyawan` kini **memulihkan** baris itu alih-alih menolak: respons `201` + `dipulihkan: true`, dan **`id` yang dikembalikan adalah id LAMA** — disengaja, supaya tautan ke riwayat akademik tetap utuh. Data lama ditimpa data baru. Email milik record **aktif** tetap **422**; `nip` milik record lain (termasuk terhapus) juga tetap **422** — nomor itu milik orang berbeda, menimpanya diam-diam lebih berbahaya daripada menolak.
 **Internal (dipanggil Gateway, tidak diekspos ke klien):**
 
 | Method | Endpoint | Keterangan |

@@ -548,7 +548,7 @@ Untuk detail endpoint per service, lihat README masing-masing service:
 - [GuruService/README.md](GuruService/README.md) — Guru + kartu/PIN
 - [SiswaService/README.md](SiswaService/README.md) — Siswa + kartu
 - [KaryawanService/README.md](KaryawanService/README.md) — Karyawan + kartu/PIN
-- [AkademikService/README.md](AkademikService/README.md) — Semester, Kelas, Pengampu, Jam, Jadwal, Nilai, Raport, Absensi (harian/pelajaran/keluar/rekap)
+- [AkademikService/README.md](AkademikService/README.md) — Semester, Kelas, Pengampu, Jam, Jadwal, **Acara/kalender**, Nilai, Raport, Absensi (harian/pelajaran/keluar/rekap)
 
 ### Audit dependensi (jalankan sebelum tiap deploy)
 

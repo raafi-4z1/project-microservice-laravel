@@ -34,6 +34,8 @@ Base URL: `https://gateway.test/api`
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
 | GET | `/guru/all` | Semua | List seluruh guru (tanpa foto). Query: `page`, `per_page`, `search` (cari di nama/NIP/email/jabatan) |
+| GET | `/guru/nama` | Semua | **id + nama saja, TERMASUK yang sudah dihapus** (`withTrashed`). Tanpa batas halaman — ringan (2 kolom, tanpa foto/PII). `?ids=1,2,3` menyaring; `ids=` yang tak menyisakan angka valid balas kosong, bukan seluruh tabel. Dipakai klien sebagai cache resolusi id→nama; entitas non-aktif ikut agar nama historis di riwayat tak tampil `#<id>`. **Bukan pengganti `/all` untuk dropdown** |
+| GET | `/guru/foto/{{id}}` | sama dengan detail | **Berkas gambar** (image/webp), bukan Base64 dan bukan URL publik. Foto disimpan di disk `private`; memindahkannya ke disk publik berarti foto siapa pun bisa diambil yang menebak URL. `Cache-Control: private, max-age=86400`. Tanpa header Authorization → **401** |
 | GET | `/guru` | Semua | Detail guru by `idGuru` (query param, termasuk foto). Untuk semua **non-pengelola** (Guru, Siswa, **karyawan biasa**) field pribadi (NIK, alamat, telepon, tanggal lahir, dll.) disaring — hanya SuperAdmin/Admin/**Administrator Sekolah** yang menerima profil lengkap |
 | POST | `/guru` | SuperAdmin, Admin | Tambah guru baru + foto (multipart/form-data). `email`, `nik`, `nip` wajib unik — duplikat dibalas **422**, dan Gateway menolak lebih dulu bila email sudah dipakai akun user lain |
 | POST | `/guru/update` | SuperAdmin, Admin | Update data guru + foto opsional |
@@ -94,6 +96,10 @@ Base URL: `https://gateway.test/api`
 
 ## Response Fields
 
+
+**Mode foto pada `/guru/all`.** Tanpa param: tidak ada field `foto`, `per_page` 1–200 (mode cache nama). Dengan `?foto=1`: tiap baris membawa `foto` berupa **URL** ke `/guru/foto/{{id}}`, dan `per_page` dibatasi 1–**25** (default 5) karena foto berat. Di luar batas → **422** dengan pesan yang menyebut batasnya, bukan dipaksa diam-diam.
+
+**Email bisa dipakai ulang.** `gurus.email` unik di level DB sementara modelnya soft-delete, jadi baris yang "dihapus" menahan emailnya. `POST /guru` kini **memulihkan** baris itu alih-alih menolak: respons `201` + `dipulihkan: true`, dan **`id` yang dikembalikan adalah id LAMA** — disengaja, supaya tautan ke riwayat akademik tetap utuh. Data lama ditimpa data baru. Email milik record **aktif** tetap **422**; ``nik`/`nip`` milik record lain (termasuk terhapus) juga tetap **422** — nomor itu milik orang berbeda, menimpanya diam-diam lebih berbahaya daripada menolak.
 **List (`GET /guru/all`):**
 
 | Field | Keterangan |

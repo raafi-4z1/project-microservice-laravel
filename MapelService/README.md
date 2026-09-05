@@ -32,6 +32,7 @@ Base URL: `https://gateway.test/api`
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
 | GET | `/mapel/all` | Semua | List seluruh mata pelajaran. Query: `page`, `per_page`, `search` (cari di kode/nama pelajaran) |
+| GET | `/mapel/nama` | Semua | **id + nama saja, TERMASUK yang sudah dihapus** (`withTrashed`). Tanpa batas halaman — ringan (2 kolom, tanpa foto/PII). `?ids=1,2,3` menyaring; `ids=` yang tak menyisakan angka valid balas kosong, bukan seluruh tabel. Dipakai klien sebagai cache resolusi id→nama; entitas non-aktif ikut agar nama historis di riwayat tak tampil `#<id>`. **Bukan pengganti `/all` untuk dropdown** |
 | GET | `/mapel` | Semua | Detail mapel by `idPelajaran` (query param) |
 | POST | `/mapel` | SuperAdmin, Admin | Tambah mata pelajaran baru |
 | POST | `/mapel/update` | SuperAdmin, Admin | Update data mata pelajaran |

@@ -32,6 +32,7 @@ Base URL: `https://gateway.test/api`
 | Method | Endpoint | Role | Keterangan |
 |--------|----------|------|------------|
 | GET | `/class/all` | Semua | List kelas **aktif** (yang sudah dihapus tidak muncul). Query: `page`, `per_page`, `search` (cari di nama kelas/jurusan), `tingkat` (1/2/3), `jurusan` (MIPA/IPS) — dua filter terakhir dipakai laporan se-angkatan |
+| GET | `/class/nama` | Semua | **id + nama saja, TERMASUK yang sudah dihapus** (`withTrashed`). Tanpa batas halaman — ringan (2 kolom, tanpa foto/PII). `?ids=1,2,3` menyaring; `ids=` yang tak menyisakan angka valid balas kosong, bukan seluruh tabel. Dipakai klien sebagai cache resolusi id→nama; entitas non-aktif ikut agar nama historis di riwayat tak tampil `#<id>`. **Bukan pengganti `/all` untuk dropdown** |
 | GET | `/class` | Semua | Detail kelas by `idKelas` (query param) |
 | POST | `/class` | SuperAdmin, Admin | Tambah kelas baru |
 | POST | `/class/update` | SuperAdmin, Admin | Update data kelas |
