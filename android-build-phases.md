@@ -47,6 +47,15 @@ menggunakan Claude Code (model: Claude Opus 4.8, reasoning effort `xhigh`).
    absensi siswa, dan direktori siswa. Helper kedua di samping `boleh`:
    `bolehLihatNilai = boleh || role == "Guru"` dan
    `bolehLihatSiswa = boleh || role in ("Guru","Siswa")`.
+11. **`MasterDataCache` ambil dari `{modul}/nama`, BUKAN `/all`.** `/all` dibatasi
+   `per_page<=200`; sekolah >200 entitas akan terpotong dan sisanya tampil `#id`.
+   `/nama` tanpa batas halaman dan **memuat entitas yang sudah dihapus**, sehingga
+   nama historis di riwayat ikut ter-resolve. `/all` tetap dipakai untuk dropdown
+   (hanya yang aktif) dan daftar-UI berfoto (`?foto=1`, `per_page` 5–25).
+12. **Akun Petugas Acara TIDAK boleh di-warm-up cache.** Ia 403 di hampir semua
+   endpoint; warm-up akan memuntahkan serentetan 403 yang terlihat seperti error
+   jaringan. Deteksi `isPetugasAcara` saat login, lewati warm-up, buka Kalender.
+
 
 ---
 
@@ -581,6 +590,41 @@ sama; lat/lng hanya untuk mode demo; izin CAMERA/LOCATION diminta di alur ini sa
 
 **Jebakan umum:** memakai `index + 1` sebagai nomor peringkat (menghapus makna
 seri), dan men-`sort` ulang daftar di klien.
+
+---
+
+## Fase 6F — Kalender Acara + Petugas Acara
+
+**Effort:** `high` - satu modul CRUD + kalender bulanan + peran baru
+
+**Prompt:**
+> Baca ulang docs/android-app-prompt.md (modul Acara + bagian Role) dan
+> docs/api-sample-responses.md (bagian Acara). Implement: (1) **KalenderScreen**
+> bulanan — muat `GET akademik/acara?dari=&sampai=` per bulan yang ditampilkan,
+> warna per kategori (libur|ujian|kegiatan|rapat|upacara|lainnya), tap tanggal
+> menampilkan daftar acara hari itu. **Acara BERSINGGUNGAN rentang**, jadi acara
+> lintas bulan muncul di dua query — de-duplikasi pakai `idAcara`. Rentang kosong
+> membalas `[]`, bukan 404: tampilkan empty state, bukan error;
+> (2) **Kelola Acara** (form tambah/edit/hapus) untuk `boleh || isPetugasAcara`:
+> toggle "seharian" yang menyembunyikan/menampilkan pemilih jam (jam WAJIB bila
+> tidak seharian), validasi tanggal_selesai >= tanggal_mulai di klien sebelum kirim;
+> (3) **Tangani 422 anti-bentrok**: server menolak acara yang bersinggungan dengan
+> periode ujian. Tampilkan `resMsg` DAN pakai `data.bentrok[]` untuk menandai
+> rentang terlarang di date-picker — tanpa itu user tahu "tidak boleh" tapi tidak
+> tahu kapan boleh; (4) **Peran Petugas Acara**: gating menu pakai
+> `isPetugasAcara` dari login/`GET /user`; akun ini 403 di hampir semua endpoint,
+> jadi LEWATI warm-up MasterDataCache dan arahkan langsung ke Kalender.
+> Verifikasi terhadap backend sungguhan dengan akun Admin DAN akun Petugas Acara.
+
+**Gate:**
+- Kalender menampilkan acara bulan berjalan; pindah bulan memuat ulang
+- Acara lintas bulan tidak dobel (de-duplikasi `idAcara`)
+- Acara di atas pekan ujian ditolak dengan pesan + rentang terlarang terlihat
+- Login akun Petugas Acara: hanya menu Acara, **tidak ada 403 yang tampil sebagai
+  error jaringan**, dan tidak ada badai request master data saat start
+
+**Jebakan:** `periode` dan `acara` mirip tapi BEDA — periode mengubah aturan KBM,
+acara hanya agenda; jangan disatukan. Body snake_case, respons camelCase.
 
 ---
 

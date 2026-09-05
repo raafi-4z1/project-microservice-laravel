@@ -216,6 +216,13 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
   menandai orang sebagai Administrator Sekolah, dan mengubah semester aktif.
   Konsekuensi UI: menu **Akademik** yang sekarang admin-only harus ditampilkan
   juga ketika `isAdminSekolah == true`.
+- **Petugas Acara** (`isPetugasAcara: true`, role tetap mis. `Karyawan`): HANYA
+  boleh mengelola agenda. **403 di hampir semua endpoint** — yang boleh cuma
+  `akademik/acara*`, BACA `akademik/periode`/`periode/aktif`/`semester/aktif`, dan
+  profil/sesi sendiri (`/user`, `/password`, `/logout`, `/refresh`).
+  Gating menu: `boleh = role in ("SuperAdmin","Admin") || isAdminSekolah || isPetugasAcara`.
+  **Konsekuensi yang mudah terlewat:** jangan warm-up `MasterDataCache` untuk akun
+  ini — ia akan menerima serentetan 403. Layar awalnya langsung Kalender.
 - **Absensi (lintas role):** SuperAdmin/Admin mengelola kartu, wali kelas,
   jendela PIN, dan pendaftaran terminal; **Guru** menandai absensi siswa saat
   jam pelajarannya dan — sebagai **wali kelas** — menyetujui izin keluar siswa
@@ -319,6 +326,27 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
 
 ### 5. Akademik (prefix `/akademik`)
 
+- **`dipulihkan` (boolean) di respons CREATE** (`POST /register|guru|siswa|karyawan`):
+  email milik akun/record yang sudah **dihapus** akan **dipulihkan**, bukan ditolak.
+  Kalau `true`, `id` yang dikembalikan adalah **id LAMA** dan riwayat akademiknya
+  ikut hidup kembali — tampilkan konfirmasi berbeda, jangan diam saja. Email milik
+  akun **aktif** tetap 422; `nip`/`nisn` milik record lain juga tetap 422.
+- **`GET {modul}/nama`** (siswa, guru, karyawan, mapel, class) — hanya id + nama,
+  **tanpa batas halaman**, dan **termasuk entitas yang sudah dihapus**. Inilah
+  sumber yang benar untuk `MasterDataCache`: `/all` dibatasi `per_page<=200`
+  sehingga sekolah besar terpotong dan sisanya tampil `#id`. `?ids=1,2,3` menyaring.
+  **Bukan pengganti `/all` untuk dropdown** — memuat entitas non-aktif.
+- **Mode foto pada daftar**: `GET siswa|guru|karyawan/all?foto=1` menyertakan `foto`
+  berupa **URL** (`/api/siswa/foto/1`), bukan Base64. `per_page` 1–**25** (default 5)
+  di mode ini; tanpa `foto=1` batasnya 200 dan field `foto` tidak ada.
+  URL-nya endpoint **ber-autentikasi** — kirim header `Authorization` (Coil:
+  `httpHeaders`), tanpa itu **401**. Foto ada di disk private, jadi tidak ada URL publik.
+- **Nama relasi sudah disertakan** di `akademik/kelas/{id}/siswa`, `siswa/{id}/kelas`,
+  `guru/{id}/mapel`, `mapel/{id}/guru`, `kelas/{id}/pengampu`, seluruh `jadwal/*`,
+  dan semua varian `/riwayat`: `namaLengkap`/`namaGuru`/`namaMapel`/`namaKelas`.
+  Diambil dengan `withTrashed` sehingga entitas non-aktif ikut ter-resolve. Untuk
+  layar-layar itu, **berhenti** me-resolve dari cache. Bila service nama bermasalah
+  barisnya tetap datang TANPA field nama — sediakan fallback `#id`.
 - **Paginasi (berlaku di SEMUA endpoint berpaginasi)**: `per_page` maksimum
   **200**, minimum 1, harus numerik. Di luar itu **422** — bukan diam-diam
   dipaksa ke batas. Berlaku di `/users`, `/siswa/all`, `/guru/all`,
@@ -355,6 +383,21 @@ Sembunyikan menu & tombol aksi yang tidak sesuai role.
   `berlakuDari`, `berlakuSampai`, `kbmNormal`, `keterangan`.
   **`kbmNormal:false`** (ujian/libur) → endpoint absensi pelajaran mengembalikan
   `data: []` + pesan periode; tampilkan sebagai empty state, bukan error.
+- **Acara / agenda sekolah** (kalender bulanan) — TERPISAH dari periode: periode
+  mengubah aturan KBM, acara hanya agenda yang ditampilkan.
+  `GET /akademik/acara?dari=&sampai=` (**semua role**, read-only),
+  `POST|PATCH|DELETE /akademik/acara[/{id}]` (pengelola + **Petugas Acara**).
+  Respons: `idAcara`, `judul`, `kategori` (libur|ujian|kegiatan|rapat|upacara|lainnya),
+  `tanggalMulai`, `tanggalSelesai`, `seharian`, `jamMulai`, `jamSelesai`, `lokasi`,
+  `keterangan`. Body snake_case, PATCH parsial.
+  - **Query BERSINGGUNGAN, bukan termuat**: acara 28 Jan–3 Feb muncul di query
+    Januari DAN Februari. De-duplikasi pakai `idAcara` bila menggabungkan bulan.
+  - Rentang kosong → `data: []`, **bukan 404**.
+  - `seharian=true` memaksa jam jadi `null`; `seharian=false` mewajibkan jam.
+  - **Anti-bentrok**: 422 bila bersinggungan dengan periode `jenis=ujian`; detail
+    periode penghalang ada di `data.bentrok` — pakai untuk menandai rentang
+    terlarang di date-picker, jangan hanya menampilkan pesan.
+
 - **Pengaturan absensi**: `GET /akademik/pengaturan-absensi/efektif?tanggal=`
   (semua role — aturan yang benar-benar berlaku; `sumber` =
   `periode|default_semester|default_sistem`, isi `pengaturan{jamMasukSekolah,

@@ -55,7 +55,7 @@
                 "register"
               ]
             },
-            "description": "Daftarkan akun baru. **Wajib login terlebih dahulu** (SuperAdmin atau Admin).\n\n**Field:**\n- `name` (wajib) – nama lengkap\n- `email` (wajib) – email unik\n- `password` (wajib) – minimal 8 karakter, harus mengandung huruf dan angka\n- `confirm_password` (wajib) – harus sama dengan `password`\n- `role` (wajib) – role yang akan dibuat\n\n**Role yang diizinkan:**\n- SuperAdmin → dapat membuat: `Admin`, `Guru`, `Siswa`, `Karyawan`\n- Admin → hanya dapat membuat: `Guru`, `Siswa`, `Karyawan`\n\n**Catatan:** Role `SuperAdmin` tidak dapat dibuat melalui API. Akun SuperAdmin hanya dibuat saat setup pertama via `php artisan db:seed`."
+            "description": "Daftarkan akun baru. **Wajib login terlebih dahulu** (SuperAdmin atau Admin).\n\n**Field:**\n- `name` (wajib) – nama lengkap\n- `email` (wajib) – email unik\n- `password` (wajib) – minimal 8 karakter, harus mengandung huruf dan angka\n- `confirm_password` (wajib) – harus sama dengan `password`\n- `role` (wajib) – role yang akan dibuat\n\n**Role yang diizinkan:**\n- SuperAdmin → dapat membuat: `Admin`, `Guru`, `Siswa`, `Karyawan`\n- Admin → hanya dapat membuat: `Guru`, `Siswa`, `Karyawan`\n\n**Catatan:** Role `SuperAdmin` tidak dapat dibuat melalui API. Akun SuperAdmin hanya dibuat saat setup pertama via `php artisan db:seed`.\n\n**`isPetugasAcara` (opsional, boolean)** — hanya **SuperAdmin/Admin** yang boleh menyalakannya; Administrator Sekolah boleh mendaftarkan user tapi penandanya diabaikan (anti-eskalasi). Akun bertanda ini **403 di hampir semua endpoint** kecuali `akademik/acara*`, baca `periode`/`semester/aktif`, dan profil/sesi sendiri.\n\n**Email milik akun yang sudah DIHAPUS akan DIPULIHKAN, bukan ditolak** — respons memuat `dipulihkan: true` dan `id` yang dikembalikan adalah **id lama**. Data lama ditimpa data baru dan token lamanya dicabut. Email milik akun **aktif** tetap **422**."
           },
           "response": []
         },
@@ -1048,7 +1048,7 @@
                 "guru"
               ]
             },
-            "description": "Tambah data guru baru dengan upload foto.\n\nFoto akan dikonversi otomatis ke format WebP dan disimpan di storage private.\n\n**Catatan NIK/NIP:** Maksimal 16 digit.\n\n**Dimensi foto: 360×480 s/d 6000×6000 px.** Di luar itu **422** `The foto field has invalid image dimensions`. Batas atas mencegah *decompression bomb* — PNG warna solid 20000×20000 px terkompresi jadi ratusan KB (lolos batas 2 MB) tapi butuh ~1,6 GB saat server men-decode-nya.\n\n⚠️ **Klien wajib memperkecil sebelum unggah.** Foto HP kelas atas melebihi 6000 px walau sudah di-crop 3:4 (iPhone 48 MP = 8064×6048 → crop ±4536×6048). Perkecil sisi terpanjang ke ±1600 px setelah crop.\n\n**Email / NIP / NIK / NISN wajib unik** — duplikat dibalas **422** dengan pesan yang bisa ditampilkan, bukan 500. Untuk email, Gateway menolak lebih dulu sebelum menulis apa pun: akun yang sudah **dihapus** tetap memegang emailnya, jadi pakai email lain."
+            "description": "Tambah data guru baru dengan upload foto.\n\nFoto akan dikonversi otomatis ke format WebP dan disimpan di storage private.\n\n**Catatan NIK/NIP:** Maksimal 16 digit.\n\n**Dimensi foto: 360×480 s/d 6000×6000 px.** Di luar itu **422** `The foto field has invalid image dimensions`. Batas atas mencegah *decompression bomb* — PNG warna solid 20000×20000 px terkompresi jadi ratusan KB (lolos batas 2 MB) tapi butuh ~1,6 GB saat server men-decode-nya.\n\n⚠️ **Klien wajib memperkecil sebelum unggah.** Foto HP kelas atas melebihi 6000 px walau sudah di-crop 3:4 (iPhone 48 MP = 8064×6048 → crop ±4536×6048). Perkecil sisi terpanjang ke ±1600 px setelah crop.\n\n**Email / NIP / NIK / NISN wajib unik** — duplikat dibalas **422** dengan pesan yang bisa ditampilkan, bukan 500. Untuk email, Gateway menolak lebih dulu sebelum menulis apa pun: akun yang sudah **dihapus** tetap memegang emailnya, jadi pakai email lain.\n\n**Email milik record yang sudah DIHAPUS akan DIPULIHKAN, bukan ditolak.** Respons memuat `dipulihkan: true` dan `id` yang dikembalikan adalah **id lama** — disengaja, supaya tautan ke riwayat akademik (nilai, kelas, absensi) tetap utuh. Data lama ditimpa data baru.\n\nEmail milik record **aktif** tetap **422**. `nip`/`nik`/`nisn` milik record lain (termasuk yang terhapus) juga tetap **422** — nomor itu milik orang berbeda, menimpanya diam-diam lebih berbahaya daripada menolak."
           },
           "response": []
         },
@@ -1501,7 +1501,7 @@
                 "siswa"
               ]
             },
-            "description": "Tambah data siswa baru dengan upload foto.\n\nSetelah berhasil, akun login (email + password default) untuk siswa otomatis dibuat di Gateway.\n\n**Dimensi foto: 360×480 s/d 6000×6000 px.** Di luar itu **422** `The foto field has invalid image dimensions`. Batas atas mencegah *decompression bomb* — PNG warna solid 20000×20000 px terkompresi jadi ratusan KB (lolos batas 2 MB) tapi butuh ~1,6 GB saat server men-decode-nya.\n\n⚠️ **Klien wajib memperkecil sebelum unggah.** Foto HP kelas atas melebihi 6000 px walau sudah di-crop 3:4 (iPhone 48 MP = 8064×6048 → crop ±4536×6048). Perkecil sisi terpanjang ke ±1600 px setelah crop.\n\n**Email / NIP / NIK / NISN wajib unik** — duplikat dibalas **422** dengan pesan yang bisa ditampilkan, bukan 500. Untuk email, Gateway menolak lebih dulu sebelum menulis apa pun: akun yang sudah **dihapus** tetap memegang emailnya, jadi pakai email lain."
+            "description": "Tambah data siswa baru dengan upload foto.\n\nSetelah berhasil, akun login (email + password default) untuk siswa otomatis dibuat di Gateway.\n\n**Dimensi foto: 360×480 s/d 6000×6000 px.** Di luar itu **422** `The foto field has invalid image dimensions`. Batas atas mencegah *decompression bomb* — PNG warna solid 20000×20000 px terkompresi jadi ratusan KB (lolos batas 2 MB) tapi butuh ~1,6 GB saat server men-decode-nya.\n\n⚠️ **Klien wajib memperkecil sebelum unggah.** Foto HP kelas atas melebihi 6000 px walau sudah di-crop 3:4 (iPhone 48 MP = 8064×6048 → crop ±4536×6048). Perkecil sisi terpanjang ke ±1600 px setelah crop.\n\n**Email / NIP / NIK / NISN wajib unik** — duplikat dibalas **422** dengan pesan yang bisa ditampilkan, bukan 500. Untuk email, Gateway menolak lebih dulu sebelum menulis apa pun: akun yang sudah **dihapus** tetap memegang emailnya, jadi pakai email lain.\n\n**Email milik record yang sudah DIHAPUS akan DIPULIHKAN, bukan ditolak.** Respons memuat `dipulihkan: true` dan `id` yang dikembalikan adalah **id lama** — disengaja, supaya tautan ke riwayat akademik (nilai, kelas, absensi) tetap utuh. Data lama ditimpa data baru.\n\nEmail milik record **aktif** tetap **422**. `nip`/`nik`/`nisn` milik record lain (termasuk yang terhapus) juga tetap **422** — nomor itu milik orang berbeda, menimpanya diam-diam lebih berbahaya daripada menolak."
           },
           "response": []
         },
@@ -1893,7 +1893,7 @@
                 "karyawan"
               ]
             },
-            "description": "Tambah karyawan. **SuperAdmin/Admin.** Foto opsional (JPEG/PNG, maks 2MB, min 360x480).\n\n**`isAdminSekolah`** — `true` menandai karyawan ini sebagai **Administrator Sekolah** (staf Tata Usaha) yang berhak manajemen akademik + data induk + kartu + pembuatan akun Guru/Siswa/Karyawan.\n\nHanya **SuperAdmin/Admin** yang boleh mengirim field ini — dari pemanggil lain Gateway membuangnya (anti eskalasi hak). Mencabut penanda otomatis mencabut seluruh token aktif akun tersebut.\n\nPenanda ikut di respons **login** dan **GET /user** sebagai `isAdminSekolah`.\n\n**Dimensi foto: 360×480 s/d 6000×6000 px.** Di luar itu **422** `The foto field has invalid image dimensions`. Batas atas mencegah *decompression bomb* — PNG warna solid 20000×20000 px terkompresi jadi ratusan KB (lolos batas 2 MB) tapi butuh ~1,6 GB saat server men-decode-nya.\n\n⚠️ **Klien wajib memperkecil sebelum unggah.** Foto HP kelas atas melebihi 6000 px walau sudah di-crop 3:4 (iPhone 48 MP = 8064×6048 → crop ±4536×6048). Perkecil sisi terpanjang ke ±1600 px setelah crop.\n\n**Email / NIP / NIK / NISN wajib unik** — duplikat dibalas **422** dengan pesan yang bisa ditampilkan, bukan 500. Untuk email, Gateway menolak lebih dulu sebelum menulis apa pun: akun yang sudah **dihapus** tetap memegang emailnya, jadi pakai email lain."
+            "description": "Tambah karyawan. **SuperAdmin/Admin.** Foto opsional (JPEG/PNG, maks 2MB, min 360x480).\n\n**`isAdminSekolah`** — `true` menandai karyawan ini sebagai **Administrator Sekolah** (staf Tata Usaha) yang berhak manajemen akademik + data induk + kartu + pembuatan akun Guru/Siswa/Karyawan.\n\nHanya **SuperAdmin/Admin** yang boleh mengirim field ini — dari pemanggil lain Gateway membuangnya (anti eskalasi hak). Mencabut penanda otomatis mencabut seluruh token aktif akun tersebut.\n\nPenanda ikut di respons **login** dan **GET /user** sebagai `isAdminSekolah`.\n\n**Dimensi foto: 360×480 s/d 6000×6000 px.** Di luar itu **422** `The foto field has invalid image dimensions`. Batas atas mencegah *decompression bomb* — PNG warna solid 20000×20000 px terkompresi jadi ratusan KB (lolos batas 2 MB) tapi butuh ~1,6 GB saat server men-decode-nya.\n\n⚠️ **Klien wajib memperkecil sebelum unggah.** Foto HP kelas atas melebihi 6000 px walau sudah di-crop 3:4 (iPhone 48 MP = 8064×6048 → crop ±4536×6048). Perkecil sisi terpanjang ke ±1600 px setelah crop.\n\n**Email / NIP / NIK / NISN wajib unik** — duplikat dibalas **422** dengan pesan yang bisa ditampilkan, bukan 500. Untuk email, Gateway menolak lebih dulu sebelum menulis apa pun: akun yang sudah **dihapus** tetap memegang emailnya, jadi pakai email lain.\n\n**Email milik record yang sudah DIHAPUS akan DIPULIHKAN, bukan ditolak.** Respons memuat `dipulihkan: true` dan `id` yang dikembalikan adalah **id lama** — disengaja, supaya tautan ke riwayat akademik (nilai, kelas, absensi) tetap utuh. Data lama ditimpa data baru.\n\nEmail milik record **aktif** tetap **422**. `nip`/`nik`/`nisn` milik record lain (termasuk yang terhapus) juga tetap **422** — nomor itu milik orang berbeda, menimpanya diam-diam lebih berbahaya daripada menolak."
           },
           "response": []
         },
@@ -1975,6 +1975,239 @@
               ]
             },
             "description": "Hapus karyawan (soft delete) + hapus akun user terkait. **SuperAdmin/Admin.**"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "--- BULK NAMA & FOTO ---",
+      "item": [
+        {
+          "name": "GET siswa/nama (bulk)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/siswa/nama?",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "siswa",
+                "nama"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "1,2,3",
+                  "description": "Opsional. Saring ke id tertentu; tanpa ini mengembalikan SELURUHNYA",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Hanya `idSiswa` + `namaLengkap` — ringan, tanpa foto/PII, **tanpa batas halaman**.\n\n**Termasuk entitas yang sudah DIHAPUS** (`withTrashed`). Itu disengaja: endpoint akademik hanya menyimpan id, dan klien meresolusinya dari roster **aktif** — sehingga entitas yang sudah lulus/pindah/dihapus tampil sebagai `#<id>`. Endpoint ini yang menyelesaikannya.\n\nJuga menyelesaikan sekolah besar: `/all` dibatasi `per_page<=200`, jadi cache nama akan terpotong; endpoint ini tidak.\n\n`ids=` yang tak menyisakan angka valid membalas **kosong**, bukan seluruh tabel.\n\n**Akses:** SuperAdmin, Admin, Adm. Sekolah, Guru, Siswa (karyawan biasa 403 — sama dengan /all)\n\n⚠️ **Bukan pengganti `/all` untuk dropdown** — daftar ini memuat entitas non-aktif."
+          },
+          "response": []
+        },
+        {
+          "name": "GET guru/nama (bulk)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/guru/nama?",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "guru",
+                "nama"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "1,2,3",
+                  "description": "Opsional. Saring ke id tertentu; tanpa ini mengembalikan SELURUHNYA",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Hanya `idGuru` + `namaLengkap` — ringan, tanpa foto/PII, **tanpa batas halaman**.\n\n**Termasuk entitas yang sudah DIHAPUS** (`withTrashed`). Itu disengaja: endpoint akademik hanya menyimpan id, dan klien meresolusinya dari roster **aktif** — sehingga entitas yang sudah lulus/pindah/dihapus tampil sebagai `#<id>`. Endpoint ini yang menyelesaikannya.\n\nJuga menyelesaikan sekolah besar: `/all` dibatasi `per_page<=200`, jadi cache nama akan terpotong; endpoint ini tidak.\n\n`ids=` yang tak menyisakan angka valid membalas **kosong**, bukan seluruh tabel.\n\n**Akses:** semua role login\n\n⚠️ **Bukan pengganti `/all` untuk dropdown** — daftar ini memuat entitas non-aktif."
+          },
+          "response": []
+        },
+        {
+          "name": "GET karyawan/nama (bulk)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/karyawan/nama?",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "karyawan",
+                "nama"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "1,2,3",
+                  "description": "Opsional. Saring ke id tertentu; tanpa ini mengembalikan SELURUHNYA",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Hanya `idKaryawan` + `namaLengkap` — ringan, tanpa foto/PII, **tanpa batas halaman**.\n\n**Termasuk entitas yang sudah DIHAPUS** (`withTrashed`). Itu disengaja: endpoint akademik hanya menyimpan id, dan klien meresolusinya dari roster **aktif** — sehingga entitas yang sudah lulus/pindah/dihapus tampil sebagai `#<id>`. Endpoint ini yang menyelesaikannya.\n\nJuga menyelesaikan sekolah besar: `/all` dibatasi `per_page<=200`, jadi cache nama akan terpotong; endpoint ini tidak.\n\n`ids=` yang tak menyisakan angka valid membalas **kosong**, bukan seluruh tabel.\n\n**Akses:** semua role login\n\n⚠️ **Bukan pengganti `/all` untuk dropdown** — daftar ini memuat entitas non-aktif."
+          },
+          "response": []
+        },
+        {
+          "name": "GET mapel/nama (bulk)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/mapel/nama?",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "mapel",
+                "nama"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "1,2,3",
+                  "description": "Opsional. Saring ke id tertentu; tanpa ini mengembalikan SELURUHNYA",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Hanya `idPelajaran` + `namaPelajaran` — ringan, tanpa foto/PII, **tanpa batas halaman**.\n\n**Termasuk entitas yang sudah DIHAPUS** (`withTrashed`). Itu disengaja: endpoint akademik hanya menyimpan id, dan klien meresolusinya dari roster **aktif** — sehingga entitas yang sudah lulus/pindah/dihapus tampil sebagai `#<id>`. Endpoint ini yang menyelesaikannya.\n\nJuga menyelesaikan sekolah besar: `/all` dibatasi `per_page<=200`, jadi cache nama akan terpotong; endpoint ini tidak.\n\n`ids=` yang tak menyisakan angka valid membalas **kosong**, bukan seluruh tabel.\n\n**Akses:** semua role login\n\n⚠️ **Bukan pengganti `/all` untuk dropdown** — daftar ini memuat entitas non-aktif."
+          },
+          "response": []
+        },
+        {
+          "name": "GET class/nama (bulk)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/class/nama?",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "class",
+                "nama"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "1,2,3",
+                  "description": "Opsional. Saring ke id tertentu; tanpa ini mengembalikan SELURUHNYA",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Hanya `idKelas` + `namaKelas` — ringan, tanpa foto/PII, **tanpa batas halaman**.\n\n**Termasuk entitas yang sudah DIHAPUS** (`withTrashed`). Itu disengaja: endpoint akademik hanya menyimpan id, dan klien meresolusinya dari roster **aktif** — sehingga entitas yang sudah lulus/pindah/dihapus tampil sebagai `#<id>`. Endpoint ini yang menyelesaikannya.\n\nJuga menyelesaikan sekolah besar: `/all` dibatasi `per_page<=200`, jadi cache nama akan terpotong; endpoint ini tidak.\n\n`ids=` yang tak menyisakan angka valid membalas **kosong**, bukan seluruh tabel.\n\n**Akses:** semua role login\n\n⚠️ **Bukan pengganti `/all` untuk dropdown** — daftar ini memuat entitas non-aktif."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Siswa (mode foto)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/siswa/all?foto=1&per_page=5",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "siswa",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "foto",
+                  "value": "1",
+                  "description": "Aktifkan mode berfoto"
+                },
+                {
+                  "key": "per_page",
+                  "value": "5",
+                  "description": "Mode foto: 1-25 (default 5)"
+                }
+              ]
+            },
+            "description": "Dua mode yang saling tarik:\n\n| Mode | Cara | `foto` | `per_page` |\n|---|---|---|---|\n| B — ringkas (default) | tanpa param | tidak ada | 1–**200** |\n| A — berfoto | `?foto=1` | **URL** | 1–**25** (default 5) |\n\nDi luar batas -> **422** dengan pesan yang menyebut batasnya, bukan dipaksa diam-diam.\n\n`foto` berupa **URL** (`/api/siswa/foto/1`), **bukan Base64** dan **bukan `/storage/...`**: foto disimpan di disk `private`, dan memindahkannya ke disk publik berarti foto setiap siswa bisa diambil siapa pun yang menebak URL.\n\nPakai Mode A untuk daftar-UI, Mode B / `/nama` untuk cache nama. Jangan menurunkan `per_page` global — itu memotong cache."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Foto (berkas)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/siswa/foto/1",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "siswa",
+                "foto",
+                "1"
+              ]
+            },
+            "description": "Mengirim **berkas gambar** (image/webp), bukan JSON. Endpoint **ber-autentikasi** — tanpa header Authorization membalas **401**.\n\nGating sama dengan detail modulnya. Respons membawa `Cache-Control: private, max-age=86400`, jadi klien boleh menyimpannya sehari.\n\nDi Coil/OkHttp: kirim header Authorization seperti request lain.\n\nTersedia juga di `guru/foto/{id}` dan `karyawan/foto/{id}`. Ganti `1` dengan id."
           },
           "response": []
         }
@@ -4150,6 +4383,198 @@
                   ]
                 },
                 "description": "Unduh laporan peringkat se-angkatan sebagai berkas.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah.\n\n| Format | Hasil |\n|---|---|\n| `csv` | `text/csv; charset=UTF-8`, ber-BOM dan pemisah `;` agar rapi di Excel locale Indonesia |\n| `pdf` | `application/pdf` siap cetak (A4 portrait) |\n\nBerkas dikirim sebagai `Content-Disposition: attachment` dengan nama otomatis, mis. `peringkat-angkatan-XII-MIPA-2024-2025-sem2.pdf`.\n\nAngkanya identik dengan `GET .../ranking/angkatan` karena ekspor memanggil ulang perhitungan yang sama, bukan menyalin logikanya.\n\nDi Postman, klik **Save Response → Save to a file** untuk menyimpan hasilnya."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "--- ACARA (kalender) ---",
+          "item": [
+            {
+              "name": "GET Acara (rentang)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/acara?dari=2026-08-01&sampai=2026-08-31",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "acara"
+                  ],
+                  "query": [
+                    {
+                      "key": "dari",
+                      "value": "2026-08-01",
+                      "description": "Wajib. YYYY-MM-DD"
+                    },
+                    {
+                      "key": "sampai",
+                      "value": "2026-08-31",
+                      "description": "Wajib. YYYY-MM-DD, harus >= dari"
+                    },
+                    {
+                      "key": "kategori",
+                      "value": "libur",
+                      "description": "Opsional: libur|ujian|kegiatan|rapat|upacara|lainnya",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Agenda sekolah untuk kalender bulanan. **Akses baca: SEMUA role** (info sekolah, tanpa PII).\n\n**Query memakai BERSINGGUNGAN, bukan termuat.** Acara 28 Jan-3 Feb muncul di query Januari MAUPUN Februari — kalender bulanan bergantung pada ini. Kalau klien menggabungkan beberapa bulan, de-duplikasi berdasarkan `idAcara`.\n\nRentang tanpa acara membalas `data: []`, **bukan 404** — bulan kosong itu keadaan normal.\n\nTerpisah dari `periode`: periode mengubah **aturan KBM**, acara hanya **agenda**."
+              },
+              "response": []
+            },
+            {
+              "name": "POST Acara (seharian)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/acara",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "acara"
+                  ]
+                },
+                "description": "Body **snake_case**, respons **camelCase**.\n\n**Akses tulis:** SuperAdmin, Admin, Administrator Sekolah, **Petugas Acara**.\n\n`seharian=true` memaksa `jamMulai`/`jamSelesai` jadi `null`. Kategori di luar enum -> 422.\n\n⚠️ **Anti-bentrok:** ditolak **422** bila rentangnya bersinggungan dengan periode `jenis = ujian`. Detail periode yang menghalangi ikut di `data.bentrok` (`idPeriode`, `nama`, `jenis`, `berlakuDari`, `berlakuSampai`) supaya klien bisa menandai rentang terlarang di date-picker, bukan sekadar menampilkan pesan buntu.\n\n`ramadan` sengaja TIDAK dilindungi — sebulan penuh, sekolah tetap berjalan; melindunginya akan memblokir seluruh agenda selama sebulan.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"judul\": \"Upacara Bendera\",\n  \"kategori\": \"upacara\",\n  \"tanggal_mulai\": \"2026-08-17\",\n  \"tanggal_selesai\": \"2026-08-17\",\n  \"seharian\": true,\n  \"lokasi\": \"Lapangan\",\n  \"keterangan\": \"HUT RI\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "POST Acara (berjam)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/acara",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "acara"
+                  ]
+                },
+                "description": "`seharian=false` **mewajibkan** `jam_mulai` + `jam_selesai` (format HH:MM), kalau tidak 422.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"judul\": \"Rapat Guru\",\n  \"kategori\": \"rapat\",\n  \"tanggal_mulai\": \"2026-08-20\",\n  \"tanggal_selesai\": \"2026-08-20\",\n  \"seharian\": false,\n  \"jam_mulai\": \"13:00\",\n  \"jam_selesai\": \"15:00\",\n  \"lokasi\": \"Aula\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "PATCH Acara",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/acara/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "acara",
+                    "1"
+                  ]
+                },
+                "description": "Parsial — kirim hanya field yang berubah.\n\n**Konsistensi diperiksa terhadap nilai GABUNGAN** (yang dikirim + yang tersimpan): mengirim `tanggal_mulai` saja yang melewati `tanggal_selesai` lama -> 422. Mengubah `seharian` menjadi `true` membersihkan jam yang tersimpan.\n\nGanti `1` dengan idAcara.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"judul\": \"Rapat Guru (revisi)\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "DELETE Acara",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseURL}}/akademik/acara/1",
+                  "host": [
+                    "{{baseURL}}"
+                  ],
+                  "path": [
+                    "akademik",
+                    "acara",
+                    "1"
+                  ]
+                },
+                "description": "Soft delete. Ganti `1` dengan idAcara. Tidak ada -> 404."
               },
               "response": []
             }

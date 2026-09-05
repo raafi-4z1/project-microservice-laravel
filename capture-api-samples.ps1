@@ -577,6 +577,23 @@ Add-Section "Nama relasi pada endpoint akademik"
 Add-Sample GET "akademik/kelas/1/siswa/riwayat" (RawApi GET "akademik/kelas/1/siswa/riwayat") "Riwayat kini menyertakan ``namaLengkap`` di samping ``siswaId``. Nama diambil dengan withTrashed sehingga siswa yang sudah lulus/pindah/dihapus IKUT ter-resolve -- sebelumnya tampil ``#<id>`` karena klien meresolusi dari roster aktif. Urutannya terbaru->terlama dari server. Bila service nama bermasalah, barisnya tetap dikembalikan TANPA field nama (bukan gagal), jadi tetap sediakan fallback #id."
 Add-Sample GET "akademik/jadwal/kelas/1`?$tq" (RawApi GET "akademik/jadwal/kelas/1`?$tq") "Jadwal menyertakan namaMapel/namaGuru/namaKelas. Berlaku juga di jadwal guru/siswa/pengampu dan varian /riwayat, serta di kelas/{id}/pengampu dan guru|mapel riwayat."
 
+Add-Note @"
+> **Email bisa dipakai ulang setelah dihapus.** ``users.email`` dan ``{tabel}.email``
+> unik di level DB sementara modelnya soft-delete, jadi baris yang "dihapus" menahan
+> emailnya. Sekarang baris lamanya **DIPULIHKAN**, bukan ditolak:
+>
+> | Kondisi | Hasil |
+> |---|---|
+> | email dipegang akun/record **aktif** | **422** |
+> | email dipegang akun/record **terhapus** | **201** + ``dipulihkan: true`` |
+> | ``nip``/``nik``/``nisn`` dipegang record lain | **422** |
+>
+> ``id`` yang dikembalikan adalah **id LAMA** -- disengaja, supaya tautan ke riwayat
+> akademik tetap utuh. Data lama ditimpa data baru, token lama dicabut, dan setiap
+> pemulihan dicatat ke audit log (``action = restored``). Tidak dicontohkan di sini
+> karena butuh siklus buat-hapus-buat.
+"@
+
 Add-Section "Contoh Error Umum"
 Add-Sample GET "user" (RawApi GET "user" -NoAuth) "401 tanpa token."
 Add-Sample GET "user" (RawApi GET "user" -Token "token-tidak-valid") "401 token invalid/kedaluwarsa -> app harus hapus sesi lokal dan kembali ke Login."
