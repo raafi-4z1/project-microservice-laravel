@@ -539,6 +539,15 @@ mengurutkan middleware lewat `$middlewarePriority`, dan di sana autentikasi bera
 di atas throttle, jadi `auth:api` menolak lebih dulu. Yang dihasilkan hanya 401
 murah, dan percobaan menebak kredensial tetap terkunci di `/login`.
 
+**Penghitungnya disimpan di cache** (`CACHE_STORE=database`, tabel `cache` di DB
+yang sama dengan data aplikasi — bukan dependensi baru). Dua konsekuensi praktis:
+
+- `php artisan cache:clear` **mengosongkan seluruh kuota** — semua user kembali ke
+  240 penuh. Itu langkah deploy yang normal, bukan tanda ada yang rusak.
+- Barisnya **tidak menumpuk**: satu pasang baris per ember (per user / per
+  IP+route) yang dipakai ulang tiap jendela, bukan baris baru tiap permintaan.
+  Sekolah 500 user berhenti di sekitar 1.000 baris. Tidak perlu prune terjadwal.
+
 ---
 
 ## Testing dengan Postman
