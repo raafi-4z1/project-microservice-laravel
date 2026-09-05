@@ -755,11 +755,19 @@ Gateway. Kalau dilewat, Laravel tetap memakai `vendor/` dan
 
 ```bash
 composer install          # vendor/ tidak ikut git; dependensi baru tidak ada tanpa ini
+php artisan migrate --force   # WAJIB duluan — lihat catatan di bawah
 php artisan config:clear
 php artisan route:clear
 php artisan cache:clear
-php artisan migrate --force
 ```
+
+> **`migrate` harus SEBELUM `cache:clear`.** `CACHE_STORE=database`, jadi
+> `cache:clear` menghapus baris dari tabel `cache` — dan tabel itu dibuat oleh
+> migrasi. Di KaryawanService dan AkademikService tabelnya belum pernah ada
+> (migrasinya dulu cuma dipasang di Gateway), sehingga urutan lama membuat
+> `cache:clear` gagal dengan `SQLSTATE[42S02]: Table ... doesn't exist` sebelum
+> `migrate` sempat membuatnya. Migrasi `2026_09_05_000001_create_cache_table`
+> kini ada di keenam service dan aman diulang (`hasTable` dijaga).
 
 **Gejala kalau `composer install` dilewat:** `GET /api/kartu/qr` membalas
 **501** `"Package QR belum terpasang"` — package `simplesoftwareio/simple-qrcode`
