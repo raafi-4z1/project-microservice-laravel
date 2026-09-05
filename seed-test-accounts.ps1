@@ -189,6 +189,30 @@ if (@($adaTU).Count -eq 0) {
 }
 Ensure-Account "Akun Test Administrator Sekolah" $adminSekEmail "Karyawan" "AdminSekolahTest123" | Out-Null
 
+# -- 2c. Petugas Acara: akun yang HANYA boleh mengelola agenda --
+# Sesi app butuh akun ini untuk menguji gating menu Kalender DAN untuk membuktikan
+# bahwa akun tersebut 403 di mana-mana selain acara. Tanpa akun seeded, perilaku
+# paling mudah salah di app (warm-up cache yang memuntahkan 403) tak bisa diuji.
+#
+# Penandanya hanya bisa dinyalakan SuperAdmin/Admin, dan seed berjalan sebagai
+# SuperAdmin — jadi dikirim langsung lewat register.
+$petugasEmail = "akuntest.petugasacara@example.com"
+$petugasPw    = "PetugasAcaraTest123"
+$adaPA = @((Api GET "users`?search=$([uri]::EscapeDataString($petugasEmail))&per_page=5").data.data |
+           Where-Object { $_.email -eq $petugasEmail })
+if (@($adaPA).Count -eq 0) {
+    $mkPA = Api POST "register" @{
+        name = "Akun Test Petugas Acara"; email = $petugasEmail
+        password = $petugasPw; confirm_password = $petugasPw
+        role = "Karyawan"; isPetugasAcara = $true
+    }
+    if ($mkPA.resCode -eq 201) { Write-Host "  [BUAT    ] Petugas Acara : $petugasEmail" }
+    else { Write-Host "  [GAGAL   ] Petugas Acara : $($mkPA.resCode) $($mkPA.resMsg)" -ForegroundColor Yellow }
+} else {
+    Write-Host "  [ADA     ] Petugas Acara : $petugasEmail"
+}
+Ensure-Account "Akun Test Petugas Acara" $petugasEmail "Karyawan" $petugasPw | Out-Null
+
 # ── 3. Guru: pilih guru asli yang punya pengampu aktif (fallback: guru pertama) ──
 $gurus = @((Api GET "guru/all`?per_page=50").data.data)
 $guruPick = $null
@@ -227,6 +251,7 @@ Write-Host "=============================================================="
 Write-Host "  AKUN TEST SIAP DIPAKAI"
 Write-Host "  Admin    : akuntest.admin@example.com    / AdminTest123"
 Write-Host "  Karyawan : akuntest.karyawan@example.com / KaryawanTest123"
+Write-Host "  Petugas Acara : akuntest.petugasacara@example.com / PetugasAcaraTest123 (HANYA boleh kelola acara)"
 Write-Host "  Adm.Sek  : akuntest.adminsekolah@example.com / AdminSekolahTest123"
 Write-Host "             (karyawan bertanda isAdminSekolah - boleh manajemen akademik)"
 if ($guruEmail)  { Write-Host "  Guru     : $guruEmail / GuruTest123" }

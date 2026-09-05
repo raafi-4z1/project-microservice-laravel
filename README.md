@@ -114,7 +114,7 @@ diakses lewat IP:
 
 ```powershell
 cd C:\laragon\etc\ssl\mkcert
-mkcert gateway.test 192.168.12.181     # ganti dengan IP server
+mkcert gateway.test 192.168.12.173     # ganti dengan IP server
 ```
 
 Hasilnya bernama **`gateway.test+1.pem`** dan **`gateway.test+1-key.pem`**

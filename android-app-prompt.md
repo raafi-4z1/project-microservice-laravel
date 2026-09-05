@@ -104,15 +104,15 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
 ## Backend / API
 
 - Satu base URL Gateway. Untuk deployment ini backend ada di SERVER LAN, bukan PC
-  dev, jadi debug default = `https://192.168.12.181/api` (HP fisik & emulator sama-
+  dev, jadi debug default = `https://192.168.12.173/api` (HP fisik & emulator sama-
   sama menjangkaunya di LAN). Buat base URL configurable via BuildConfig/setting.
   Sertifikat server untuk `gateway.test` diakses lewat IP → sediakan opsi trust-all
   HANYA untuk build debug.
   **DUA masalah TLS terpisah — sering tertukar:**
-  1. *Hostname mismatch*: cert untuk `gateway.test`, app menembak `192.168.12.181`
-     → `SSLPeerUnverifiedException: Hostname 192.168.12.181 not verified`.
+  1. *Hostname mismatch*: cert untuk `gateway.test`, app menembak `192.168.12.173`
+     → `SSLPeerUnverifiedException: Hostname 192.168.12.173 not verified`.
      Solusi permanen: terbitkan ulang cert di server memuat IP
-     (`mkcert gateway.test 192.168.12.181`), atau matikan hostname verification
+     (`mkcert gateway.test 192.168.12.173`), atau matikan hostname verification
      di build debug (OkHttp: `hostnameVerifier { _, _ -> true }`).
   2. *CA tidak dipercaya*: mkcert memakai CA lokal yang HANYA ter-install di PC dev.
      Perangkat Android tidak mengenalnya → `Trust anchor for certification path not
