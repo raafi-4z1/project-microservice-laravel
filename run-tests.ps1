@@ -2502,6 +2502,38 @@ if ($env:TEST_TERMINAL_ID -and $env:TEST_TERMINAL_TOKEN -and $siswaKartuUid) {
     $r = Api POST "absensi/scan" $body -ExtraHeaders $th
     if ($r.resCode -eq 201 -or $r.resCode -eq 200) { $script:PASS++; Write-Host "  [PASS $($r.resCode)] POST /absensi/scan (terminal) status=$($r.data.status)" -ForegroundColor Green }
     else { $script:FAIL++; Write-Host "  [FAIL $($r.resCode)] POST /absensi/scan (terminal) -- $($r.resMsg)" -ForegroundColor Red }
+
+    # NAMA wajib ikut. Kiosk terminal memakai X-Terminal-Token, BUKAN sesi user:
+    # ia tak punya cache master data dan TIDAK BISA meresolusi id->nama sendiri.
+    # Tanpa ini layar sukses menampilkan "Guru #4" pada setiap scan.
+    if ($r.data.nama -or $r.data.namaLengkap) {
+        $script:PASS++; Write-Host "  [PASS] scan terminal menyertakan nama: $($r.data.nama)" -ForegroundColor Green
+    } else {
+        $script:FAIL++; Write-Host "  [FAIL] scan terminal TANPA nama - kiosk akan menampilkan '#id'" -ForegroundColor Red
+    }
+
+    # Jalur PIN (lupa kartu) mengambil nama dari sumber BERBEDA (pin/verify,
+    # bukan lookup-kartu), jadi diuji terpisah - bukan diasumsikan sama.
+    if ($guruId -and $guruTok) {
+        $nipGuru = (Api GET "guru`?idGuru=$guruId").data.nip
+        $pinOk = (Api POST "absensi/pin/atur" @{ pin = '4321' } -Token $guruTok).resCode -eq 200
+        $winOk = (Api POST "absensi/pin/buka" @{ subjek_tipe = 'guru'; subjek_id = $guruId; durasi_menit = 10 }).resCode -eq 201
+        if ($pinOk -and $winOk -and $nipGuru) {
+            $pb = @{ subjek_tipe = 'guru'; nip = "$nipGuru"; pin = '4321' }
+            if ($env:TEST_TERMINAL_LAT) { $pb['lat'] = [double]$env:TEST_TERMINAL_LAT }
+            if ($env:TEST_TERMINAL_LNG) { $pb['lng'] = [double]$env:TEST_TERMINAL_LNG }
+            $rp = Api POST "absensi/pin/absen" $pb -ExtraHeaders $th
+            Chk "POST /absensi/pin/absen (terminal)" $rp 200; if ($script:LAST_CHK) {
+                if ($rp.data.nama -or $rp.data.namaLengkap) {
+                    $script:PASS++; Write-Host "  [PASS] absen PIN menyertakan nama: $($rp.data.nama)" -ForegroundColor Green
+                } else {
+                    $script:FAIL++; Write-Host "  [FAIL] absen PIN TANPA nama" -ForegroundColor Red
+                }
+            }
+        } else {
+            Skip "absen PIN via terminal" "gagal menyiapkan PIN/jendela (pin=$pinOk window=$winOk)"
+        }
+    }
 } else {
     Skip "POST /absensi/scan (terminal, positif)" "set TEST_TERMINAL_ID/TOKEN(/LAT/LNG) + daftarkan terminal via 'php artisan terminal:register'"
 }
@@ -2777,6 +2809,10 @@ Chk "GET siswa/all?foto=1 (harus 200)" $r 200; if ($script:LAST_CHK) {
 }
 Chk "foto=1 per_page=26 (di atas batas 25, harus 422)" (Api GET "siswa/all`?foto=1&per_page=26") 422
 Chk "foto=1 per_page=25 (batas, harus 200)" (Api GET "siswa/all`?foto=1&per_page=25") 200
+
+# URL foto menunjuk endpoint BER-AUTENTIKASI, bukan /storage publik. Kalau suatu
+# saat foto dipindah ke disk publik, tes ini yang menangkapnya.
+Chk "GET /siswa/foto/{id} tanpa token (harus 401)" (Api GET "siswa/foto/1" -Token " ") 401
 $r = Api GET "siswa/all`?per_page=200"
 Chk "tanpa foto per_page=200 tetap boleh (mode cache)" $r 200; if ($script:LAST_CHK) {
     $row = @($r.data.data)[0]
@@ -2877,7 +2913,7 @@ Section "Phase 16.9: Jejak Audit"
 # yang paling perlu jejak: membuka jendela PIN (memberi orang lain jalur absensi
 # TANPA kartu) dan mengekspor peringkat se-angkatan (satu-satunya endpoint yang
 # mengeluarkan nama + NISN + nilai satu angkatan sebagai berkas yang dibawa pergi).
-foreach ($res in @('pin_window', 'ranking_angkatan')) {
+foreach ($res in @('pin_window', 'ranking_angkatan', 'acara')) {
     $q = "echo App\Models\AuditLog::where('resource','$res')->count();"
     $n = (& php Gateway/artisan tinker --execute=$q 2>$null | Select-Object -Last 1)
     if ("$n" -match '^\s*([0-9]+)\s*$' -and [int]$Matches[1] -gt 0) {
