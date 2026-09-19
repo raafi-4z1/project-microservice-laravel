@@ -85,6 +85,21 @@ class AuthController extends Controller
                     // orang baru tanpa ada yang memberikannya. Terbukti bisa
                     // direproduksi sebelum baris ini ada.
                     'is_admin_sekolah' => false,
+                    // Sama kelasnya dengan penanda di atas: penanda wajib-ganti
+                    // milik pemilik LAMA. `register` menentukan passwordnya secara
+                    // eksplisit, jadi tidak ada yang perlu dirotasi. Tanpa baris ini
+                    // pemilik baru login sukses lalu kena 403 di hampir semua
+                    // fitur ("wajib mengganti password") padahal admin baru saja
+                    // menetapkannya — terbukti bisa direproduksi. (`force.pwd`
+                    // masih meloloskan `user`, `logout`, dan `password`, jadi ia
+                    // terdampar di layar ganti-password, bukan terkunci total.)
+                    //
+                    // Nilainya `false`, sama dengan cabang `User::create()` di
+                    // bawah: pada `register` password memang ditentukan admin
+                    // secara eksplisit. Beda dengan `resetPassword()`/`restore()`
+                    // yang memaksanya `true` — di sana akunnya milik orang yang
+                    // sudah ada dan kredensial pilihan admin tidak boleh menetap.
+                    'must_change_password' => false,
                 ]);
                 // Token sebelum penghapusan harus mati: akun ini kini milik
                 // pendaftaran yang baru, bukan pemilik lamanya.

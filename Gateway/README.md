@@ -524,6 +524,26 @@ Hapus bersifat **soft delete** — kolom `deleted_at` terisi, data tetap di data
 
 ## Password Default & Wajib Ganti Password
 
+### Kapan penanda wajib-ganti dinyalakan
+
+Tersebar di beberapa jalur, dan nilainya sengaja berbeda:
+
+| Jalur | `must_change_password` | Alasan |
+|---|---|---|
+| `POST /register` (akun baru) | **false** | Admin menentukan passwordnya secara eksplisit lalu menyerahkannya |
+| `POST /register` (memulihkan email terhapus) | **false** | Sama dengan di atas — penanda milik pemilik LAMA tidak boleh diwariskan |
+| `POST /guru\|siswa\|karyawan` (`UserService::create`) | **true** | Password diturunkan dari email — praktis publik |
+| `POST /users/{id}/password` | **true** | Akun milik orang yang sudah ada; kredensial pilihan admin tidak boleh menetap |
+| `POST /users/{id}/restore` dengan `password` | **true** | Sama seperti reset |
+
+Pembedanya: **apakah akunnya sedang diserahkan kepada pemilik baru** (register —
+admin memang harus tahu password awalnya) **atau dikembalikan kepada pemilik yang
+sudah ada** (reset/restore — admin tidak boleh ikut memegang kredensialnya).
+
+Penanda yang diwariskan pernah jadi bug nyata: memulihkan email terhapus tanpa
+menimpa penandanya membuat pemilik baru login sukses lalu tertahan di layar
+ganti-password, padahal admin baru saja menetapkan passwordnya.
+
 Akun guru/siswa dibuat **otomatis** saat data guru/siswa didaftarkan, dengan
 password awal = alamat emailnya sendiri. Karena password default itu mudah
 ditebak, akun tersebut ditandai `must_change_password` dan **wajib mengganti

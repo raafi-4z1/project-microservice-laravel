@@ -2965,7 +2965,9 @@ if ($script:LAST_CHK) {
             $script:FAIL++; Write-Host "  [FAIL] baris akun terhapus tidak lengkap (deletedAt=$($brs.deletedAt) role=$($brs.role))" -ForegroundColor Red
         }
 
-        $masihAktif = @((Api GET "users`?per_page=200").data.data | Where-Object { $_.email -eq $emPulih })
+        # Dicari lewat `search=`, BUKAN memindai halaman pertama: `per_page` dibatasi
+        # 200, jadi pemindaian lulus hampa begitu sekolah punya >200 akun aktif.
+        $masihAktif = @((Api GET "users`?search=$([uri]::EscapeDataString($emPulih))&per_page=5").data.data | Where-Object { $_.email -eq $emPulih })
         if (@($masihAktif).Count -eq 0) { $script:PASS++; Write-Host "  [PASS] akun terhapus tidak bocor ke /users biasa" -ForegroundColor Green }
         else { $script:FAIL++; Write-Host "  [FAIL] akun terhapus masih muncul di /users" -ForegroundColor Red }
     }
@@ -3062,10 +3064,31 @@ if ($script:LAST_CHK) {
             Api DELETE "users/$uidA" | Out-Null
         }
 
-        # Token lama harus mati sesudah restore — kalau tidak, sesi yang sudah
-        # diputus bangkit lagi, dan password baru tidak mengunci pemegang lama.
+        # Token lama harus mati sesudah restore. Penghapusannya HARUS lewat DB,
+        # BUKAN `DELETE /users/{id}`: `destroy()` sudah mencabut token duluan,
+        # sehingga 401-nya dijamin muncul entah `restore()` mencabut atau tidak —
+        # asersinya jadi hampa dan tetap hijau meski pencabutannya dibuang.
+        # Penghapusan langsung di DB justru skenario yang dijaga komentar di
+        # `restore()`: baris ter-soft-delete tanpa tokennya ikut mati.
         $uidAdmUji = @((Api GET "users`?search=$([uri]::EscapeDataString($emAdmUji))&per_page=5").data.data)[0].id
-        Api DELETE "users/$uidAdmUji" | Out-Null
+        & php Gateway/artisan tinker --execute="App\Models\User::where('id',$uidAdmUji)->delete();" 2>$null | Out-Null
+
+        # Prasyarat diperiksa di DB, BUKAN dengan memanggil API: selama barisnya
+        # ter-soft-delete, Passport tidak bisa meresolusi user-nya sehingga token
+        # yang MASIH SAH pun membalas 401. Mengukur prasyarat lewat API karena itu
+        # akan gagal palsu. Yang benar-benar perlu dipastikan: tokennya belum
+        # dicabut, supaya 401 sesudah restore memang buah dari `restore()`.
+        # withTrashed WAJIB: barisnya baru saja di-soft-delete, jadi find() biasa
+        # mengembalikan null, `?->` korslet, `echo null` tidak mencetak apa pun, dan
+        # asersi ini akan MERAH di setiap run — prasyaratnya tak pernah terbukti.
+        $qTok = "echo App\Models\User::withTrashed()->find($uidAdmUji)?->tokens()->where('revoked',false)->count();"
+        $nTok = (& php Gateway/artisan tinker --execute=$qTok 2>$null | Select-Object -Last 1)
+        if ("$nTok" -match '^\s*([1-9][0-9]*)\s*$') {
+            $script:PASS++; Write-Host "  [PASS] token belum dicabut sebelum restore ($($Matches[1]) aktif) — prasyarat uji sahih" -ForegroundColor Green
+        } else {
+            $script:FAIL++; Write-Host "  [FAIL] tidak ada token aktif sebelum restore (hasil: '$nTok') — uji pencabutan jadi hampa" -ForegroundColor Red
+        }
+
         $rp = Api POST "users/$uidAdmUji/restore"
         Chk "pulihkan akun penguji (harus 200)" $rp 200; if ($script:LAST_CHK) {
             if ($rp.data.tokenDicabut -eq $true) { $script:PASS++; Write-Host "  [PASS] respons menyatakan token dicabut" -ForegroundColor Green }
