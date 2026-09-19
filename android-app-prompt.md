@@ -166,6 +166,8 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
   Admin tidak bisa membuat Admin lain), manajemen user
   (`GET /users` — paginated, mendukung `?role=` dan `?search=`; `GET /users/{id}`,
   `POST /users/{id}/password`, `DELETE /users/{id}`).
+  **Pemulihan akun** (`GET /users/terhapus`, `POST /users/{id}/restore`) — **SuperAdmin
+  & Admin saja**, Administrator Sekolah **403**. Lihat *Layar Pulihkan Akun* di bawah.
 - **Guru**: read-only data master; boleh input/update/hapus nilai — HANYA untuk
   mapel yang diampunya sendiri (server memvalidasi via lookup email, 403 jika
   bukan pengampunya); lihat jadwal mengajar.
@@ -232,6 +234,44 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
   autentikasi terminal, bukan login user — lihat modul Absensi).
 
 Sembunyikan menu & tombol aksi yang tidak sesuai role.
+
+
+### Layar Pulihkan Akun
+
+Menghapus akun itu **soft delete**, jadi akun terhapus masih bisa dihidupkan. Ada
+dua jalur, dan bedanya menentukan apakah layar ini perlu ada:
+
+| | `POST /register` email sama | `POST /users/{id}/restore` |
+|---|---|---|
+| Nama, role | **DITIMPA** isi form | tidak disentuh |
+| Password | **DITIMPA** | tetap lama |
+| Token lama | dicabut | tidak disentuh |
+| id & riwayat akademik | dipertahankan | dipertahankan |
+
+Operator yang cuma ingin menghidupkan akun bisa **tak sengaja mengganti role**-nya
+lewat register. Karena itu sediakan layar terpisah:
+
+1. `GET /users/terhapus?per_page=20` → daftar (`id`, `name`, `email`, `role`,
+   `deletedAt`). Terbaru dihapus di atas. Mendukung `?search=` dan `?role=`.
+2. Pilih satu → `POST /users/{id}/restore`.
+3. Opsional: kirim `{ "password": "..." }` kalau passwordnya perlu diganti
+   (plaintext lama tidak bisa dikembalikan). Min 8 karakter, huruf + angka,
+   kalau tidak **422**.
+
+**Kode yang perlu ditangani:**
+
+- **409** — akun sudah aktif. Bukan error; tampilkan "akun ini sudah aktif" lalu
+  muat ulang daftar. Aman dipanggil berkali-kali.
+- **403** — Admin memulihkan akun Admin/SuperAdmin. Batasnya sama persis dengan
+  hapus dan reset password, jadi jangan tampilkan tombolnya untuk baris yang
+  role-nya di luar Guru/Siswa/Karyawan bila operator ber-role Admin.
+- **404** — id tidak ada.
+
+⚠️ **`data.catatan`** muncul bila role-nya Guru/Siswa/Karyawan. Endpoint ini hanya
+memulihkan **akun login**; kalau dulu dihapus lewat `DELETE /{modul}/{id}`, record
+domainnya masih terhapus dan endpoint layan-diri (mis. `rekap/pegawai/saya`) akan
+membalas **404** — bukan 403. Tampilkan `catatan` itu apa adanya supaya operator
+tidak menyangka izinnya yang bermasalah.
 
 ## Modul & Endpoint (semua relatif ke base URL)
 

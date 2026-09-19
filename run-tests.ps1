@@ -3014,6 +3014,37 @@ if ($script:LAST_CHK) {
         Chk "Guru POST restore (harus 403)" (Api POST "users/$uidP/restore" -Token $guruTok) 403
     }
 
+    # Batas role SETARA destroy()/resetPassword(). Versi pertama endpoint ini
+    # TIDAK punya penjaga role sama sekali, dan itu menggabungkan dua kewenangan
+    # yang masing-masing dilarang untuk Admin: menghidupkan akun Admin yang sudah
+    # dihapus DAN menetapkan passwordnya. Jalurnya nyata: SuperAdmin menghapus
+    # akun Admin, lalu Admin lain memulihkannya dengan password pilihan sendiri.
+    #
+    # `akuntest.admin@example.com` memang ber-role Admin (bukan SuperAdmin) dan
+    # tidak wajib ganti password, jadi cukup satu login — penting karena login
+    # dibatasi 5/menit.
+    $admTok = (Api POST "login" @{ email = 'akuntest.admin@example.com'; password = 'AdminTest123'; device_name = 'restore-guard' }).data.token
+    if ($admTok) {
+        # Akun SuperAdmin (id 1) masih aktif. Yang diuji penjaganya, BUKAN
+        # keadaannya — karena itu penjaga role harus berjalan sebelum cek 409;
+        # kalau terbalik, Admin bisa memetakan akun mana yang ada lewat beda
+        # 409 vs 404.
+        Chk "Admin memulihkan akun SuperAdmin (harus 403, bukan 409)" (Api POST "users/1/restore" -Token $admTok) 403
+
+        $emAdm = "restore.adm_$TS@example.com"
+        $ra = Api POST "register" @{ name = "Adm $TS"; email = $emAdm; password = 'RahasiaAdm123'; confirm_password = 'RahasiaAdm123'; role = 'Admin' }
+        if ($ra.resCode -eq 201) {
+            $uidA = @((Api GET "users`?search=$([uri]::EscapeDataString($emAdm))&per_page=5").data.data)[0].id
+            Api DELETE "users/$uidA" | Out-Null
+            Chk "Admin memulihkan akun Admin lain (harus 403)" (Api POST "users/$uidA/restore" @{ password = 'Diambil123' } -Token $admTok) 403
+            # Penjaganya membatasi Admin, bukan mengunci total: SuperAdmin tetap boleh.
+            Chk "SuperAdmin memulihkan akun Admin (harus 200)" (Api POST "users/$uidA/restore") 200
+            Api DELETE "users/$uidA" | Out-Null
+        }
+    }
+
+    Chk "users/terhapus?search[]= (harus 422, bukan 500)" (Api GET "users/terhapus`?search[]=a") 422
+
     # Jejak audit — aksi istimewa tanpa jejak tidak bisa dipertanggungjawabkan
     $q = "echo App\Models\AuditLog::where('action','restored')->where('payload','like','%users/{id}/restore%')->count();"
     $n = (& php Gateway/artisan tinker --execute=$q 2>$null | Select-Object -Last 1)

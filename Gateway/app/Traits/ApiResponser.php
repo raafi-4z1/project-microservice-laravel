@@ -38,6 +38,19 @@ trait ApiResponser
                 $resPhrase = "Bad Request";
                 $resStatus = "fail";
                 break;
+            // 422 dipakai 158x di seluruh kode dan ADA di keenam service, tapi
+            // sempat tidak ada di Gateway — sehingga setiap galat validasi yang
+            // lahir di Gateway membalas resStatus/resPhrase KOSONG, sementara
+            // 422 yang diteruskan dari service terlihat benar. Klien yang
+            // bercabang pada `resStatus` menemui dua bentuk untuk kode yang sama.
+            case Response::HTTP_UNPROCESSABLE_ENTITY:
+                $resPhrase = "Unprocessible Entity";
+                $resStatus = "fail";
+                break;
+            case Response::HTTP_CONFLICT:
+                $resPhrase = "Conflict";
+                $resStatus = "fail";
+                break;
             case Response::HTTP_UNAUTHORIZED:
                 $resPhrase = "Unauthorized";
                 $resStatus = "fail";
@@ -67,7 +80,11 @@ trait ApiResponser
                 $resStatus = "fail";
                 break;
             default:
-                # code...
+                // Jaring pengaman: kode status baru yang belum punya case TIDAK
+                // boleh lolos dengan resStatus kosong — itu cara bug di atas
+                // bersembunyi selama ini. Turunkan dari kelas status-nya.
+                $resPhrase = Response::$statusTexts[$code] ?? "";
+                $resStatus = $code >= 200 && $code < 300 ? "success" : "fail";
                 break;
         }
         

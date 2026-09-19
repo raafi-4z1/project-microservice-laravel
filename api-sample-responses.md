@@ -1,6 +1,6 @@
 # Contoh Response API - SIM Sekolah (hasil capture asli)
 
-Dokumen ini berisi response JSON **asli** yang direkam dari Gateway pada 2026-09-05,
+Dokumen ini berisi response JSON **asli** yang direkam dari Gateway pada 2026-09-19,
 sebagai referensi bentuk DTO untuk pengembangan aplikasi client (Android, dsb).
 
 - Regenerate: `powershell -ExecutionPolicy Bypass -File capture-api-samples.ps1`
@@ -350,7 +350,7 @@ Response (HTTP 200):
 Request body:
 ```json
 {
-  "email": "sampleuser_200934@example.com",
+  "email": "sampleuser_152729@example.com",
   "name": "Sample User",
   "password": "SamplePass123",
   "confirm_password": "SamplePass123",
@@ -367,7 +367,7 @@ Response (HTTP 201):
   "resMsg": "User registered.",
   "data": {
     "user": "Sample User",
-    "email": "sampleuser_200934@example.com",
+    "email": "sampleuser_152729@example.com",
     "role": "Karyawan",
     "isPetugasAcara": false,
     "dipulihkan": false
@@ -375,7 +375,7 @@ Response (HTTP 201):
 }
 ```
 
-### `POST /users/260/password`
+### `POST /users/324/password`
 
 Reset password user lain. Semua token aktif milik target dicabut.
 
@@ -396,13 +396,13 @@ Response (HTTP 200):
   "resMsg": "Password user berhasil direset. User harus login ulang.",
   "data": {
     "name": "Sample User",
-    "email": "sampleuser_200934@example.com",
+    "email": "sampleuser_152729@example.com",
     "role": "Karyawan"
   }
 }
 ```
 
-### `DELETE /users/260`
+### `DELETE /users/324`
 
 Soft delete + semua token target dicabut.
 
@@ -415,7 +415,197 @@ Response (HTTP 202):
   "resMsg": "Akun user berhasil dihapus.",
   "data": {
     "name": "Sample User",
-    "email": "sampleuser_200934@example.com",
+    "email": "sampleuser_152729@example.com",
+    "role": "Karyawan"
+  }
+}
+```
+
+### `GET /users/terhapus?per_page=3`
+
+Daftar akun soft-deleted untuk layar `Pulihkan Akun`. Terbaru dihapus di atas. Akun di sini TIDAK muncul di `GET /users` biasa. Akses **SuperAdmin & Admin saja** (Administrator Sekolah 403).
+
+Response (HTTP 200):
+```json
+{
+  "resCode": 200,
+  "resPhrase": "Ok",
+  "resStatus": "success",
+  "resMsg": "Daftar akun terhapus.",
+  "data": {
+    "current_page": 1,
+    "data": [
+      {
+        "id": 324,
+        "name": "Sample User",
+        "email": "sampleuser_152729@example.com",
+        "role": "Karyawan",
+        "isAdminSekolah": false,
+        "isPetugasAcara": false,
+        "deletedAt": "2026-09-19T08:27:32.000000Z"
+      },
+      {
+        "id": 314,
+        "name": "Karyawan Test 152037",
+        "email": "testkaryawan_152037@example.com",
+        "role": "Karyawan",
+        "isAdminSekolah": false,
+        "isPetugasAcara": false,
+        "deletedAt": "2026-09-19T08:27:06.000000Z"
+      },
+      {
+        "id": 313,
+        "name": "Siswa Test Role 152037",
+        "email": "testsiswarole_152037@example.com",
+        "role": "Siswa",
+        "isAdminSekolah": false,
+        "isPetugasAcara": false,
+        "deletedAt": "2026-09-19T08:27:06.000000Z"
+      }
+    ],
+    "first_page_url": "https:\/\/gateway.test\/api\/users\/terhapus?page=1",
+    "from": 1,
+    "last_page": 90,
+    "last_page_url": "https:\/\/gateway.test\/api\/users\/terhapus?page=90",
+    "links": [
+      {
+        "url": null,
+        "label": "&laquo; Previous",
+        "page": null,
+        "active": false
+      },
+      {
+        "url": "https:\/\/gateway.test\/api\/users\/terhapus?page=1",
+        "label": "1",
+        "page": 1,
+        "active": true
+      },
+      {
+        "url": "https:\/\/gateway.test\/api\/users\/terhapus?page=2",
+        "label": "2",
+        "page": 2,
+        "active": false
+      },
+      {
+        "url": "https:\/\/gateway.test\/api\/users\/terhapus?page=3",
+        "label": "3",
+        "page": 3,
+        "active": false
+      },
+      {
+        "url": "https:\/\/gateway.test\/api\/users\/terhapus?page=4",
+        "label": "4",
+        "page": 4,
+        "active": false
+      },
+      {
+        "url": "https:\/\/gateway.test\/api\/users\/terhapus?page=5",
+        "label": "5",
+        "page": 5,
+        "active": false
+      },
+      {
+        "url": "https:\/\/gateway.test\/api\/users\/terhapus?page=6",
+        "label": "6",
+        "page": 6,
+        "active": false
+      },
+      {
+        "url": "https:\/\/gateway.test\/api\/users\/terhapus?page=7",
+        "label": "7",
+        "page": 7,
+        "active": false
+      },
+      {
+        "url": "https:\/\/gateway.test\/api\/users\/terhapus?page=8",
+        "label": "8",
+        "page": 8,
+        "active": false
+      },
+      {
+        "url": "https:\/\/gateway.test\/api\/users\/terhapus?page=9",
+        "label": "9",
+        "page": 9,
+        "active": false
+      },
+      {
+        "url": "https:\/\/gateway.test\/api\/users\/terhapus?page=10",
+        "label": "10",
+        "page": 10,
+        "active": false
+      },
+      {
+        "url": null,
+        "label": "...",
+        "active": false
+      },
+      {
+        "url": "https:\/\/gateway.test\/api\/users\/terhapus?page=89",
+        "label": "89",
+        "page": 89,
+        "active": false
+      },
+      {
+        "url": "https:\/\/gateway.test\/api\/users\/terhapus?page=90",
+        "label": "90",
+        "page": 90,
+        "active": false
+      },
+      {
+        "url": "https:\/\/gateway.test\/api\/users\/terhapus?page=2",
+        "label": "Next &raquo;",
+        "page": 2,
+        "active": false
+      }
+    ],
+    "next_page_url": "https:\/\/gateway.test\/api\/users\/terhapus?page=2",
+    "path": "https:\/\/gateway.test\/api\/users\/terhapus",
+    "per_page": 3,
+    "prev_page_url": null,
+    "to": 3,
+    "total": 270
+  }
+}
+```
+
+### `POST /users/324/restore`
+
+Aktifkan ulang **APA ADANYA**: nama, role, dan password lama TIDAK diubah -- beda dengan memulihkan lewat `POST /register` email sama, yang menimpa ketiganya. Body opsional ``{ "password": "..." }`` bila passwordnya memang perlu diganti. `data.catatan` muncul untuk role Guru/Siswa/Karyawan: endpoint ini hanya menyentuh tabel `users`, record domainnya tidak ikut dipulihkan.
+
+Response (HTTP 200):
+```json
+{
+  "resCode": 200,
+  "resPhrase": "Ok",
+  "resStatus": "success",
+  "resMsg": "Akun dipulihkan apa adanya \u2014 nama, role, dan password lama tidak diubah.",
+  "data": {
+    "id": 324,
+    "name": "Sample User",
+    "email": "sampleuser_152729@example.com",
+    "role": "Karyawan",
+    "isAdminSekolah": false,
+    "isPetugasAcara": false,
+    "passwordDiubah": false,
+    "catatan": "Hanya akun login yang dipulihkan. Bila dulu dihapus lewat DELETE \/karyawan\/{id}, record domainnya masih terhapus \u2014 buat ulang lewat POST \/karyawan dengan email yang sama; record lama akan dipulihkan, bukan dibuat baru."
+  }
+}
+```
+
+### `POST /users/324/restore`
+
+Diulang saat akun sudah aktif: **409**, bukan 500. Aman dipanggil berkali-kali.
+
+Response (HTTP 409):
+```json
+{
+  "resCode": 409,
+  "resPhrase": "Conflict",
+  "resStatus": "fail",
+  "resMsg": "Akun sampleuser_152729@example.com masih aktif \u2014 tidak ada yang perlu dipulihkan.",
+  "data": {
+    "id": 324,
+    "email": "sampleuser_152729@example.com",
     "role": "Karyawan"
   }
 }
@@ -457,7 +647,7 @@ Response (HTTP 200):
       }
     ],
     "from": 1,
-    "last_page": 7,
+    "last_page": 9,
     "links": [
       {
         "query": "per_page=3&page=1",
@@ -486,7 +676,7 @@ Response (HTTP 200):
     ],
     "per_page": 3,
     "to": 3,
-    "total": 21
+    "total": 26
   }
 }
 ```
@@ -517,8 +707,8 @@ Response (HTTP 200):
 Request body:
 ```json
 {
-  "kode": "SMPL200934",
-  "namaPelajaran": "Mapel Contoh 200934",
+  "kode": "SMPL152729",
+  "namaPelajaran": "Mapel Contoh 152729",
   "keterangan": "Dibuat oleh capture-api-samples.ps1"
 }
 ```
@@ -531,12 +721,12 @@ Response (HTTP 201):
   "resStatus": "success",
   "resMsg": "Mata Pelajaran berhasil disimpan.",
   "data": {
-    "kode": "SMPL200934",
-    "namaPelajaran": "Mapel Contoh 200934",
+    "kode": "SMPL152729",
+    "namaPelajaran": "Mapel Contoh 152729",
     "keterangan": "Dibuat oleh capture-api-samples.ps1",
-    "updated_at": "2026-09-05T13:09:51.000000Z",
-    "created_at": "2026-09-05T13:09:51.000000Z",
-    "idPelajaran": 90
+    "updated_at": "2026-09-19T08:27:34.000000Z",
+    "created_at": "2026-09-19T08:27:34.000000Z",
+    "idPelajaran": 101
   }
 }
 ```
@@ -549,7 +739,7 @@ Request body:
 ```json
 {
   "keterangan": "Keterangan diubah",
-  "idPelajaran": 90
+  "idPelajaran": 101
 }
 ```
 
@@ -559,20 +749,20 @@ Response (HTTP 202):
   "resCode": 202,
   "resPhrase": "Accepted",
   "resStatus": "success",
-  "resMsg": "Mata Pelajaran dengan id:90 berhasil diupdate.",
+  "resMsg": "Mata Pelajaran dengan id:101 berhasil diupdate.",
   "data": {
-    "idPelajaran": 90,
-    "kode": "SMPL200934",
-    "namaPelajaran": "Mapel Contoh 200934",
+    "idPelajaran": 101,
+    "kode": "SMPL152729",
+    "namaPelajaran": "Mapel Contoh 152729",
     "keterangan": "Keterangan diubah",
-    "created_at": "2026-09-05T13:09:51.000000Z",
-    "updated_at": "2026-09-05T13:09:52.000000Z",
+    "created_at": "2026-09-19T08:27:34.000000Z",
+    "updated_at": "2026-09-19T08:27:35.000000Z",
     "deleted_at": null
   }
 }
 ```
 
-### `DELETE /mapel/90`
+### `DELETE /mapel/101`
 
 Response (HTTP 202):
 ```json
@@ -580,7 +770,7 @@ Response (HTTP 202):
   "resCode": 202,
   "resPhrase": "Accepted",
   "resStatus": "success",
-  "resMsg": "Mata Pelajaran dengan id:90 berhasil dihapus.",
+  "resMsg": "Mata Pelajaran dengan id:101 berhasil dihapus.",
   "data": []
 }
 ```
@@ -706,9 +896,9 @@ Response (HTTP 201):
     "tingkat": 3,
     "jurusan": "IPS",
     "limitSiswa": 30,
-    "updated_at": "2026-09-05T13:09:59.000000Z",
-    "created_at": "2026-09-05T13:09:59.000000Z",
-    "idKelas": 112
+    "updated_at": "2026-09-19T08:27:36.000000Z",
+    "created_at": "2026-09-19T08:27:36.000000Z",
+    "idKelas": 123
   }
 }
 ```
@@ -718,7 +908,7 @@ Response (HTTP 201):
 Request body:
 ```json
 {
-  "idKelas": 112,
+  "idKelas": 123,
   "limitSiswa": 32
 }
 ```
@@ -729,15 +919,15 @@ Response (HTTP 202):
   "resCode": 202,
   "resPhrase": "Accepted",
   "resStatus": "success",
-  "resMsg": "Ruang kelas dengan id:112 berhasil diupdate.",
+  "resMsg": "Ruang kelas dengan id:123 berhasil diupdate.",
   "data": {
-    "idKelas": 112,
+    "idKelas": 123,
     "namaKelas": "XII IPS 96",
     "tingkat": "3",
     "jurusan": "IPS",
     "limitSiswa": "32",
-    "created_at": "2026-09-05T13:09:59.000000Z",
-    "updated_at": "2026-09-05T13:10:01.000000Z",
+    "created_at": "2026-09-19T08:27:36.000000Z",
+    "updated_at": "2026-09-19T08:27:37.000000Z",
     "deleted_at": null
   }
 }
@@ -846,9 +1036,9 @@ Response (HTTP 200):
     "statusPernikahan": null,
     "alamat": "Jl. Merdeka 1",
     "foto": "data:image\/webp;base64,UklGRqpHAABXRUJQVlA4IJ5H...<dipotong>",
-    "kartu_uid": "GUR-KODEJ70BHXCG",
+    "kartu_uid": "GUR-ZEPXQYUTJFWR",
     "kartu_status": "aktif",
-    "kartu_diterbitkan_at": "2026-09-05T12:58:07.000000Z",
+    "kartu_diterbitkan_at": "2026-09-19T08:25:32.000000Z",
     "statusKepegawaian": "PNS",
     "nomorSKPengangkatan": null,
     "tanggalMasuk": "2005-01-10",
@@ -860,7 +1050,7 @@ Response (HTTP 200):
     "tahunLulus": "2003",
     "pelatihan": null,
     "created_at": "2026-06-15T07:49:12.000000Z",
-    "updated_at": "2026-09-05T12:58:39.000000Z",
+    "updated_at": "2026-09-19T08:25:41.000000Z",
     "deleted_at": null
   }
 }
@@ -993,9 +1183,9 @@ Response (HTTP 200):
     "tanggalMasuk": "2023-07-10",
     "alamat": "Jl. Baru No.1 Updated",
     "foto": "data:image\/webp;base64,UklGRpIvAABXRUJQVlA4IIYv...<dipotong>",
-    "kartu_uid": "SIS-FCZ3TSEGN76X",
+    "kartu_uid": "SIS-AERFGMO7AVSF",
     "kartu_status": "aktif",
-    "kartu_diterbitkan_at": "2026-09-05T12:58:05.000000Z",
+    "kartu_diterbitkan_at": "2026-09-19T08:25:31.000000Z",
     "namaAyah": null,
     "namaIbu": "Siti Aminah",
     "pekerjaanAyah": null,
@@ -1006,7 +1196,7 @@ Response (HTTP 200):
     "hubunganWali": null,
     "noTelpWali": null,
     "created_at": "2026-06-15T00:50:37.000000Z",
-    "updated_at": "2026-09-05T12:58:05.000000Z",
+    "updated_at": "2026-09-19T08:25:31.000000Z",
     "deleted_at": null
   }
 }
@@ -1336,7 +1526,7 @@ Request akademik memakai snake_case; response camelCase.
 Request body:
 ```json
 {
-  "kelas_id": 112,
+  "kelas_id": 123,
   "semester": 2,
   "siswa_id": 8,
   "tahun_ajaran": "2024/2025"
@@ -1353,7 +1543,7 @@ Response (HTTP 201):
   "data": {
     "idSiswaKelas": 9,
     "siswaId": 8,
-    "kelasId": 112,
+    "kelasId": 123,
     "tahunAjaran": "2024\/2025",
     "semester": "2"
   }
@@ -1504,7 +1694,7 @@ Request body:
   "guru_id": 1,
   "semester": 2,
   "tahun_ajaran": "2024/2025",
-  "kelas_id": 112,
+  "kelas_id": 123,
   "mapel_id": 1
 }
 ```
@@ -1517,10 +1707,10 @@ Response (HTTP 201):
   "resStatus": "success",
   "resMsg": "Guru berhasil ditetapkan sebagai pengampu mapel.",
   "data": {
-    "idPengampuMapel": 21,
+    "idPengampuMapel": 22,
     "guruId": 1,
     "mapelId": 1,
-    "kelasId": 112,
+    "kelasId": 123,
     "tahunAjaran": "2024\/2025",
     "semester": 2
   }
@@ -1667,7 +1857,7 @@ Response (HTTP 200):
 Request body:
 ```json
 {
-  "pengampu_mapel_id": 21,
+  "pengampu_mapel_id": 22,
   "siswa_kelas_id": 9,
   "nilai_harian_2": 80,
   "nilai_harian_1": 90,
@@ -1683,13 +1873,13 @@ Response (HTTP 201):
   "resStatus": "success",
   "resMsg": "Nilai berhasil disimpan.",
   "data": {
-    "idNilai": 24,
+    "idNilai": 25,
     "siswaKelasId": 9,
     "siswaId": 8,
-    "pengampuMapelId": 21,
+    "pengampuMapelId": 22,
     "guruId": 1,
     "mapelId": 1,
-    "kelasId": 112,
+    "kelasId": 123,
     "tahunAjaran": "2024\/2025",
     "semester": 2,
     "nilaiHarian": 80,
@@ -1705,7 +1895,7 @@ Response (HTTP 201):
 }
 ```
 
-### `PATCH /akademik/nilai/24`
+### `PATCH /akademik/nilai/25`
 
 Setelah semua komponen terisi, `nilaiAkhir` dihitung otomatis dari bobot semester.
 
@@ -1725,13 +1915,13 @@ Response (HTTP 200):
   "resStatus": "success",
   "resMsg": "Nilai berhasil diperbarui.",
   "data": {
-    "idNilai": 24,
+    "idNilai": 25,
     "siswaKelasId": 9,
     "siswaId": 8,
-    "pengampuMapelId": 21,
+    "pengampuMapelId": 22,
     "guruId": 1,
     "mapelId": 1,
-    "kelasId": 112,
+    "kelasId": 123,
     "tahunAjaran": "2024\/2025",
     "semester": 2,
     "nilaiHarian": 80,
@@ -1750,7 +1940,7 @@ Response (HTTP 200):
 }
 ```
 
-### `PATCH /akademik/nilai/24`
+### `PATCH /akademik/nilai/25`
 
 MENGOSONGKAN satu ulangan: kirim `null` secara EKSPLISIT (menghilangkan field = tidak berubah). Penyebut rata-rata otomatis menyesuaikan -- lihat `jumlahUlangan` turun.
 
@@ -1769,13 +1959,13 @@ Response (HTTP 200):
   "resStatus": "success",
   "resMsg": "Nilai berhasil diperbarui.",
   "data": {
-    "idNilai": 24,
+    "idNilai": 25,
     "siswaKelasId": 9,
     "siswaId": 8,
-    "pengampuMapelId": 21,
+    "pengampuMapelId": 22,
     "guruId": 1,
     "mapelId": 1,
-    "kelasId": 112,
+    "kelasId": 123,
     "tahunAjaran": "2024\/2025",
     "semester": 2,
     "nilaiHarian": 80,
@@ -1794,7 +1984,7 @@ Response (HTTP 200):
 }
 ```
 
-### `GET /akademik/nilai/pengampu/21?tahun_ajaran=2024%2F2025&semester=2`
+### `GET /akademik/nilai/pengampu/22?tahun_ajaran=2024%2F2025&semester=2`
 
 Response (HTTP 200):
 ```json
@@ -1802,16 +1992,16 @@ Response (HTTP 200):
   "resCode": 200,
   "resPhrase": "Ok",
   "resStatus": "success",
-  "resMsg": "Nilai pengampu id:21.",
+  "resMsg": "Nilai pengampu id:22.",
   "data": [
     {
-      "idNilai": 24,
+      "idNilai": 25,
       "siswaKelasId": 9,
       "siswaId": 8,
-      "pengampuMapelId": 21,
+      "pengampuMapelId": 22,
       "guruId": 1,
       "mapelId": 1,
-      "kelasId": 112,
+      "kelasId": 123,
       "tahunAjaran": "2024\/2025",
       "semester": 2,
       "nilaiHarian": 80,
@@ -1842,13 +2032,13 @@ Response (HTTP 200):
   "resMsg": "Nilai siswa id:8.",
   "data": [
     {
-      "idNilai": 24,
+      "idNilai": 25,
       "siswaKelasId": 9,
       "siswaId": 8,
-      "pengampuMapelId": 21,
+      "pengampuMapelId": 22,
       "guruId": 1,
       "mapelId": 1,
-      "kelasId": 112,
+      "kelasId": 123,
       "tahunAjaran": "2024\/2025",
       "semester": 2,
       "nilaiHarian": 80,
@@ -1894,8 +2084,8 @@ Response (HTTP 200):
     },
     "nilai": [
       {
-        "idNilai": 24,
-        "pengampuMapelId": 21,
+        "idNilai": 25,
+        "pengampuMapelId": 22,
         "guruId": 1,
         "mapelId": 1,
         "nilaiHarian": 80,
@@ -1916,7 +2106,7 @@ Response (HTTP 200):
 }
 ```
 
-### `GET /akademik/raport/kelas/112?tahun_ajaran=2024%2F2025&semester=2`
+### `GET /akademik/raport/kelas/123?tahun_ajaran=2024%2F2025&semester=2`
 
 Response (HTTP 200):
 ```json
@@ -1924,9 +2114,9 @@ Response (HTTP 200):
   "resCode": 200,
   "resPhrase": "Ok",
   "resStatus": "success",
-  "resMsg": "Raport kelas id:112.",
+  "resMsg": "Raport kelas id:123.",
   "data": {
-    "kelasId": 112,
+    "kelasId": 123,
     "tahunAjaran": "2024\/2025",
     "semester": 2,
     "bobot": {
@@ -1940,7 +2130,7 @@ Response (HTTP 200):
         "siswaKelasId": 9,
         "nilai": [
           {
-            "pengampuMapelId": 21,
+            "pengampuMapelId": 22,
             "mapelId": 1,
             "nilaiHarian": 80,
             "ulanganHarian": [
@@ -1962,7 +2152,7 @@ Response (HTTP 200):
 }
 ```
 
-### `GET /akademik/nilai/ranking/kelas/112?tahun_ajaran=2024%2F2025&semester=2`
+### `GET /akademik/nilai/ranking/kelas/123?tahun_ajaran=2024%2F2025&semester=2`
 
 Response (HTTP 200):
 ```json
@@ -1970,9 +2160,9 @@ Response (HTTP 200):
   "resCode": 200,
   "resPhrase": "Ok",
   "resStatus": "success",
-  "resMsg": "Peringkat kelas id:112.",
+  "resMsg": "Peringkat kelas id:123.",
   "data": {
-    "kelasId": 112,
+    "kelasId": 123,
     "tahunAjaran": "2024\/2025",
     "semester": 2,
     "totalSiswa": 1,
@@ -2015,7 +2205,7 @@ Response (HTTP 201):
   "resStatus": "success",
   "resMsg": "Periode khusus berhasil dibuat.",
   "data": {
-    "idPeriode": 93,
+    "idPeriode": 110,
     "nama": "Ramadan (contoh)",
     "tahunAjaran": "2024\/2025",
     "semester": 2,
@@ -2052,7 +2242,7 @@ Response (HTTP 201):
   "resStatus": "success",
   "resMsg": "Periode khusus berhasil dibuat.",
   "data": {
-    "idPeriode": 94,
+    "idPeriode": 111,
     "nama": "Libur 1 hari (contoh)",
     "tahunAjaran": "2024\/2025",
     "semester": 2,
@@ -2077,7 +2267,7 @@ Response (HTTP 200):
   "resStatus": "success",
   "resMsg": "Periode berlaku pada 2030-02-10.",
   "data": {
-    "idPeriode": 94,
+    "idPeriode": 111,
     "nama": "Libur 1 hari (contoh)",
     "tahunAjaran": "2024\/2025",
     "semester": 2,
@@ -2102,7 +2292,7 @@ Response (HTTP 200):
   "resStatus": "success",
   "resMsg": "Periode berlaku pada 2030-02-05.",
   "data": {
-    "idPeriode": 93,
+    "idPeriode": 110,
     "nama": "Ramadan (contoh)",
     "tahunAjaran": "2024\/2025",
     "semester": 2,
@@ -2172,7 +2362,7 @@ Response (HTTP 200):
       "keterangan": null
     },
     {
-      "idPeriode": 93,
+      "idPeriode": 110,
       "nama": "Ramadan (contoh)",
       "tahunAjaran": "2024\/2025",
       "semester": 2,
@@ -2183,7 +2373,7 @@ Response (HTTP 200):
       "keterangan": null
     },
     {
-      "idPeriode": 94,
+      "idPeriode": 111,
       "nama": "Libur 1 hari (contoh)",
       "tahunAjaran": "2024\/2025",
       "semester": 2,
@@ -2205,7 +2395,7 @@ Request body:
 ```json
 {
   "jam_mulai": "07:30",
-  "periode_id": 93,
+  "periode_id": 110,
   "jam_selesai": "08:00",
   "ke": 1
 }
@@ -2217,10 +2407,10 @@ Response (HTTP 201):
   "resCode": 201,
   "resPhrase": "Created",
   "resStatus": "success",
-  "resMsg": "Jam ke-1 berhasil ditambahkan (periode id:93, semua hari).",
+  "resMsg": "Jam ke-1 berhasil ditambahkan (periode id:110, semua hari).",
   "data": {
-    "idJam": 60,
-    "periodeId": 93,
+    "idJam": 73,
+    "periodeId": 110,
     "hari": null,
     "ke": 1,
     "jamMulai": "07:30",
@@ -2244,14 +2434,14 @@ Response (HTTP 200):
     "tanggal": "2030-02-05",
     "hari": "Senin",
     "periode": {
-      "idPeriode": 93,
+      "idPeriode": 110,
       "nama": "Ramadan (contoh)",
       "jenis": "ramadan"
     },
     "jam": [
       {
-        "idJam": 60,
-        "periodeId": 93,
+        "idJam": 73,
+        "periodeId": 110,
         "hari": null,
         "ke": 1,
         "jamMulai": "07:30:00",
@@ -2329,7 +2519,7 @@ Request body:
 ```json
 {
   "semester": 2,
-  "periode_id": 93,
+  "periode_id": 110,
   "batas_terlambat_siswa": "08:00",
   "tahun_ajaran": "2024/2025",
   "batas_terlambat_pegawai": "08:00"
@@ -2344,10 +2534,10 @@ Response (HTTP 201):
   "resStatus": "success",
   "resMsg": "Pengaturan absensi berhasil dibuat.",
   "data": {
-    "idPengaturanAbsensi": 39,
+    "idPengaturanAbsensi": 50,
     "tahunAjaran": "2024\/2025",
     "semester": 2,
-    "periodeId": 93,
+    "periodeId": 110,
     "periodeNama": "Ramadan (contoh)",
     "lingkup": "periode",
     "jamMasukSekolah": "07:00:00",
@@ -2375,7 +2565,7 @@ Response (HTTP 200):
     "tahunAjaran": "2024\/2025",
     "semester": 2,
     "periode": {
-      "idPeriode": 93,
+      "idPeriode": 110,
       "nama": "Ramadan (contoh)",
       "jenis": "ramadan",
       "kbmNormal": true
@@ -2402,9 +2592,9 @@ Response (HTTP 200):
   "resCode": 200,
   "resPhrase": "Ok",
   "resStatus": "success",
-  "resMsg": "Pengaturan absensi berlaku pada 2026-09-05.",
+  "resMsg": "Pengaturan absensi berlaku pada 2026-09-19.",
   "data": {
-    "tanggal": "2026-09-05",
+    "tanggal": "2026-09-19",
     "tahunAjaran": "2024\/2025",
     "semester": 2,
     "periode": null,
@@ -2420,7 +2610,7 @@ Response (HTTP 200):
 }
 ```
 
-### `DELETE /akademik/pengaturan-absensi/39`
+### `DELETE /akademik/pengaturan-absensi/50`
 
 Response (HTTP 202):
 ```json
@@ -2433,7 +2623,7 @@ Response (HTTP 202):
 }
 ```
 
-### `DELETE /akademik/periode/93`
+### `DELETE /akademik/periode/110`
 
 Soft delete.
 
@@ -2472,9 +2662,9 @@ Response (HTTP 200):
   "resMsg": "Kartu diterbitkan.",
   "data": {
     "idSiswa": 1,
-    "kartuUid": "SIS-CWQKPITLANGU",
+    "kartuUid": "SIS-PKZICJZLWASS",
     "kartuStatus": "aktif",
-    "kartuDiterbitkanAt": "2026-09-05T13:11:45.000000Z"
+    "kartuDiterbitkanAt": "2026-09-19T08:28:07.000000Z"
   }
 }
 ```
@@ -2525,9 +2715,9 @@ Response (HTTP 200):
   "resMsg": "Kartu diterbitkan.",
   "data": {
     "idGuru": 1,
-    "kartuUid": "GUR-SWHQDIR9A9QU",
+    "kartuUid": "GUR-YUQG1CYSELJ2",
     "kartuStatus": "aktif",
-    "kartuDiterbitkanAt": "2026-09-05T13:11:50.000000Z"
+    "kartuDiterbitkanAt": "2026-09-19T08:28:08.000000Z"
   }
 }
 ```
@@ -2557,10 +2747,10 @@ Response (HTTP 201):
   "resStatus": "success",
   "resMsg": "Izin keluar tercatat.",
   "data": {
-    "idKeluar": 46,
+    "idKeluar": 52,
     "siswaId": 1,
-    "tanggal": "2026-09-05",
-    "jamKeluar": "2026-09-05 20:11:51",
+    "tanggal": "2026-09-19",
+    "jamKeluar": "2026-09-19 15:28:08",
     "jenis": "pulang_awal",
     "keterangan": "dijemput orang tua",
     "disetujuiOleh": 1,
@@ -2579,173 +2769,53 @@ Response (HTTP 200):
   "resCode": 200,
   "resPhrase": "Ok",
   "resStatus": "success",
-  "resMsg": "Daftar izin keluar tanggal 2026-09-05.",
+  "resMsg": "Daftar izin keluar tanggal 2026-09-19.",
   "data": [
     {
-      "idKeluar": 30,
+      "idKeluar": 48,
       "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 15:43:09",
+      "tanggal": "2026-09-19",
+      "jamKeluar": "2026-09-19 13:56:59",
       "jenis": "pulang_awal",
-      "keterangan": "test 153329",
+      "keterangan": "test 135115",
       "disetujuiOleh": 1,
       "terminalId": null
     },
     {
-      "idKeluar": 31,
+      "idKeluar": 49,
       "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 15:50:11",
+      "tanggal": "2026-09-19",
+      "jamKeluar": "2026-09-19 14:08:29",
       "jenis": "pulang_awal",
-      "keterangan": "dijemput orang tua",
+      "keterangan": "test 140332",
       "disetujuiOleh": 1,
       "terminalId": null
     },
     {
-      "idKeluar": 32,
+      "idKeluar": 50,
       "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 15:55:29",
+      "tanggal": "2026-09-19",
+      "jamKeluar": "2026-09-19 14:15:27",
       "jenis": "pulang_awal",
-      "keterangan": "dijemput orang tua",
+      "keterangan": "test 141031",
       "disetujuiOleh": 1,
       "terminalId": null
     },
     {
-      "idKeluar": 33,
+      "idKeluar": 51,
       "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 16:00:41",
+      "tanggal": "2026-09-19",
+      "jamKeluar": "2026-09-19 15:25:32",
       "jenis": "pulang_awal",
-      "keterangan": "dijemput orang tua",
+      "keterangan": "test 152037",
       "disetujuiOleh": 1,
       "terminalId": null
     },
     {
-      "idKeluar": 34,
+      "idKeluar": 52,
       "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 16:06:21",
-      "jenis": "pulang_awal",
-      "keterangan": "dijemput orang tua",
-      "disetujuiOleh": 1,
-      "terminalId": null
-    },
-    {
-      "idKeluar": 35,
-      "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 16:12:02",
-      "jenis": "pulang_awal",
-      "keterangan": "dijemput orang tua",
-      "disetujuiOleh": 1,
-      "terminalId": null
-    },
-    {
-      "idKeluar": 36,
-      "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 16:43:05",
-      "jenis": "pulang_awal",
-      "keterangan": "test 163315",
-      "disetujuiOleh": 1,
-      "terminalId": null
-    },
-    {
-      "idKeluar": 37,
-      "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 16:53:00",
-      "jenis": "pulang_awal",
-      "keterangan": "dijemput orang tua",
-      "disetujuiOleh": 1,
-      "terminalId": null
-    },
-    {
-      "idKeluar": 38,
-      "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 17:13:57",
-      "jenis": "pulang_awal",
-      "keterangan": "test 170906",
-      "disetujuiOleh": 1,
-      "terminalId": null
-    },
-    {
-      "idKeluar": 39,
-      "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 17:24:58",
-      "jenis": "pulang_awal",
-      "keterangan": "test 172004",
-      "disetujuiOleh": 1,
-      "terminalId": null
-    },
-    {
-      "idKeluar": 40,
-      "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 19:07:45",
-      "jenis": "pulang_awal",
-      "keterangan": "test 190231",
-      "disetujuiOleh": 1,
-      "terminalId": null
-    },
-    {
-      "idKeluar": 41,
-      "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 19:14:04",
-      "jenis": "pulang_awal",
-      "keterangan": "test 190907",
-      "disetujuiOleh": 1,
-      "terminalId": null
-    },
-    {
-      "idKeluar": 42,
-      "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 19:20:30",
-      "jenis": "pulang_awal",
-      "keterangan": "test 191526",
-      "disetujuiOleh": 1,
-      "terminalId": null
-    },
-    {
-      "idKeluar": 43,
-      "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 19:30:11",
-      "jenis": "pulang_awal",
-      "keterangan": "test 192155",
-      "disetujuiOleh": 1,
-      "terminalId": null
-    },
-    {
-      "idKeluar": 44,
-      "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 19:42:21",
-      "jenis": "pulang_awal",
-      "keterangan": "test 193219",
-      "disetujuiOleh": 1,
-      "terminalId": null
-    },
-    {
-      "idKeluar": 45,
-      "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 19:58:08",
-      "jenis": "pulang_awal",
-      "keterangan": "test 194756",
-      "disetujuiOleh": 1,
-      "terminalId": null
-    },
-    {
-      "idKeluar": 46,
-      "siswaId": 1,
-      "tanggal": "2026-09-05",
-      "jamKeluar": "2026-09-05 20:11:51",
+      "tanggal": "2026-09-19",
+      "jamKeluar": "2026-09-19 15:28:08",
       "jenis": "pulang_awal",
       "keterangan": "dijemput orang tua",
       "disetujuiOleh": 1,
@@ -2771,16 +2841,16 @@ Response (HTTP 200):
     "tahunAjaran": "2024\/2025",
     "semester": "2",
     "dari": "2026-09-01",
-    "sampai": "2026-09-05",
+    "sampai": "2026-09-19",
     "siswa": [
       {
         "siswaId": 1,
         "hadir": 0,
-        "terlambat": 1,
+        "terlambat": 2,
         "izin": 0,
         "sakit": 0,
         "alpa": 0,
-        "total": 1,
+        "total": 2,
         "namaLengkap": "Andi Wijaya"
       }
     ]
@@ -2802,19 +2872,25 @@ Response (HTTP 200):
   "data": {
     "siswaId": 1,
     "dari": "2026-09-01",
-    "sampai": "2026-09-05",
+    "sampai": "2026-09-19",
     "ringkasan": {
       "hadir": 0,
-      "terlambat": 1,
+      "terlambat": 2,
       "izin": 0,
       "sakit": 0,
       "alpa": 0,
-      "total": 1
+      "total": 2
     },
     "detail": [
       {
         "tanggal": "2026-09-05",
         "jamMasuk": "2026-09-05 14:14:09",
+        "status": "terlambat",
+        "metode": "scan"
+      },
+      {
+        "tanggal": "2026-09-19",
+        "jamMasuk": "2026-09-19 13:57:06",
         "status": "terlambat",
         "metode": "scan"
       }
@@ -2837,7 +2913,7 @@ Response (HTTP 200):
   "data": {
     "siswaId": 1,
     "dari": "2026-09-01",
-    "sampai": "2026-09-05",
+    "sampai": "2026-09-19",
     "ringkasan": {
       "hadir": 0,
       "izin": 0,
@@ -2864,15 +2940,15 @@ Response (HTTP 200):
     "subjekTipe": "guru",
     "subjekId": 1,
     "dari": "2026-09-01",
-    "sampai": "2026-09-05",
+    "sampai": "2026-09-19",
     "ringkasan": {
       "hadir": 0,
-      "terlambat": 1,
+      "terlambat": 2,
       "izin": 0,
       "sakit": 0,
       "dinas_luar": 0,
       "alpa": 0,
-      "total": 1
+      "total": 2
     },
     "detail": [
       {
@@ -2881,6 +2957,13 @@ Response (HTTP 200):
         "jamPulang": null,
         "status": "terlambat",
         "metode": "scan"
+      },
+      {
+        "tanggal": "2026-09-19",
+        "jamMasuk": "2026-09-19 13:57:09",
+        "jamPulang": null,
+        "status": "terlambat",
+        "metode": "pin"
       }
     ]
   }
@@ -2908,10 +2991,10 @@ Response (HTTP 201):
   "resStatus": "success",
   "resMsg": "Jendela PIN dibuka.",
   "data": {
-    "idPinWindow": 92,
+    "idPinWindow": 113,
     "subjekTipe": "guru",
     "subjekId": 1,
-    "berlakuSampai": "2026-09-05 20:22:01",
+    "berlakuSampai": "2026-09-19 15:38:11",
     "durasiMenit": 10
   }
 }
@@ -3280,7 +3363,7 @@ Response (HTTP 200):
 
 ## Contoh Response DELETE (dari cleanup data sementara)
 
-### `DELETE /akademik/nilai/24`
+### `DELETE /akademik/nilai/25`
 
 Response (HTTP 202):
 ```json
@@ -3293,7 +3376,7 @@ Response (HTTP 202):
 }
 ```
 
-### `DELETE /akademik/pengampu/21`
+### `DELETE /akademik/pengampu/22`
 
 Response (HTTP 202):
 ```json
@@ -3319,7 +3402,7 @@ Response (HTTP 202):
 }
 ```
 
-### `DELETE /class/112`
+### `DELETE /class/123`
 
 Response (HTTP 202):
 ```json
@@ -3327,7 +3410,7 @@ Response (HTTP 202):
   "resCode": 202,
   "resPhrase": "Accepted",
   "resStatus": "success",
-  "resMsg": "Ruang kelas dengan id:112 berhasil dihapus.",
+  "resMsg": "Ruang kelas dengan id:123 berhasil dihapus.",
   "data": []
 }
 ```
@@ -3475,9 +3558,9 @@ Response (HTTP 200):
     "tanggalMasuk": "2023-07-10",
     "alamat": "Jl. Baru No.1 Updated",
     "foto": "data:image\/webp;base64,UklGRpIvAABXRUJQVlA4IIYv...<dipotong>",
-    "kartu_uid": "SIS-Z7AAUIAS6BAZ",
+    "kartu_uid": "SIS-UYEYYEYNVQCO",
     "kartu_status": "aktif",
-    "kartu_diterbitkan_at": "2026-09-05T13:11:48.000000Z",
+    "kartu_diterbitkan_at": "2026-09-19T08:28:07.000000Z",
     "namaAyah": null,
     "namaIbu": "Siti Aminah",
     "pekerjaanAyah": null,
@@ -3488,7 +3571,7 @@ Response (HTTP 200):
     "hubunganWali": null,
     "noTelpWali": null,
     "created_at": "2026-06-15T00:50:37.000000Z",
-    "updated_at": "2026-09-05T13:11:48.000000Z",
+    "updated_at": "2026-09-19T08:28:07.000000Z",
     "deleted_at": null
   }
 }
@@ -3674,7 +3757,7 @@ Response (HTTP 404):
 ```
 
 
-> **Catatan:** contoh di atas terekam **404**, bukan 200. Akun `akuntest.karyawan` punya user di Gateway tapi belum punya record di tabel `karyawans`, sehingga subjeknya tak bisa diresolve. Gate role-nya sendiri LOLOS (bukan 403) -- karyawan biasa memang berhak atas endpoint ini. **Menjalankan `seed-test-accounts.ps1` TIDAK memperbaikinya**: skrip itu sudah mencoba `POST /karyawan`, tapi ditolak 422 karena emailnya dipegang akun yang masih aktif (guard anti data-yatim). Pemulihan yang ada hanya menangani record **terhapus**, bukan "akun aktif tanpa record domain". Untuk mendapat contoh 200: pakai email lain untuk akun uji karyawan, atau buat record karyawannya langsung di DB.
+> **Catatan:** contoh di atas terekam **404**, bukan 200. Akun `akuntest.karyawan` punya user di Gateway tapi belum punya record di tabel `karyawans`, sehingga subjeknya tak bisa diresolve. Gate role-nya sendiri LOLOS (bukan 403) -- karyawan biasa memang berhak atas endpoint ini. **Menjalankan `seed-test-accounts.ps1` TIDAK memperbaikinya**: skrip itu sudah mencoba `POST /karyawan`, tapi ditolak 422 karena emailnya dipegang akun yang masih aktif (guard anti data-yatim). Pemulihan yang ada hanya menangani record **terhapus**, bukan \
 
 ### `POST /refresh`
 
@@ -3713,8 +3796,8 @@ Response (HTTP 422):
 ```json
 {
   "resCode": 422,
-  "resPhrase": "",
-  "resStatus": "",
+  "resPhrase": "Unprocessible Entity",
+  "resStatus": "fail",
   "resMsg": "Password saat ini tidak sesuai.",
   "data": []
 }
@@ -3837,8 +3920,8 @@ Response (HTTP 422):
 ```json
 {
   "resCode": 422,
-  "resPhrase": "",
-  "resStatus": "",
+  "resPhrase": "Unprocessible Entity",
+  "resStatus": "fail",
   "resMsg": "Role tidak valid. Karyawan hanya boleh membuat: Guru, Siswa, Karyawan.",
   "data": [
     "Role tidak valid. Karyawan hanya boleh membuat: Guru, Siswa, Karyawan."
@@ -3902,7 +3985,7 @@ Request body:
   "kategori": "upacara",
   "tanggal_mulai": "2035-01-06",
   "tanggal_selesai": "2035-01-06",
-  "judul": "Upacara Contoh 201303",
+  "judul": "Upacara Contoh 152850",
   "lokasi": "Lapangan"
 }
 ```
@@ -3915,8 +3998,8 @@ Response (HTTP 201):
   "resStatus": "success",
   "resMsg": "Acara berhasil dibuat.",
   "data": {
-    "idAcara": 66,
-    "judul": "Upacara Contoh 201303",
+    "idAcara": 96,
+    "judul": "Upacara Contoh 152850",
     "kategori": "upacara",
     "tanggalMulai": "2035-01-06",
     "tanggalSelesai": "2035-01-06",
@@ -3929,7 +4012,7 @@ Response (HTTP 201):
 }
 ```
 
-### `PATCH /akademik/acara/66`
+### `PATCH /akademik/acara/96`
 
 PATCH parsial. Konsistensi tanggal/jam diperiksa terhadap nilai GABUNGAN (dikirim + tersimpan), bukan hanya yang dikirim.
 
@@ -3948,7 +4031,7 @@ Response (HTTP 200):
   "resStatus": "success",
   "resMsg": "Acara berhasil diperbarui.",
   "data": {
-    "idAcara": 66,
+    "idAcara": 96,
     "judul": "Upacara (revisi)",
     "kategori": "upacara",
     "tanggalMulai": "2035-01-06",
@@ -4368,8 +4451,8 @@ Response (HTTP 422):
 ```json
 {
   "resCode": 422,
-  "resPhrase": "",
-  "resStatus": "",
+  "resPhrase": "Unprocessible Entity",
+  "resStatus": "fail",
   "resMsg": "Email sudah terpakai akun lain yang masih aktif. Pakai email berbeda.",
   "data": []
 }

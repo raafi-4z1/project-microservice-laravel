@@ -217,6 +217,18 @@ foreach ($x in @(($u.raw | ConvertFrom-Json).data.data)) { if ($x.email -eq $tmp
 if ($tmpId) {
     Add-Sample POST "users/$tmpId/password" (RawApi POST "users/$tmpId/password" @{ new_password = "ResetPass456"; confirm_password = "ResetPass456" }) "Reset password user lain. Semua token aktif milik target dicabut."
     Add-Sample DELETE "users/$tmpId" (RawApi DELETE "users/$tmpId") "Soft delete + semua token target dicabut."
+
+    # Pemulihan akun — di-capture tepat setelah DELETE di atas, jadi contohnya
+    # memakai akun yang benar-benar baru terhapus, bukan data karangan.
+    Add-Sample GET "users/terhapus`?per_page=3" (RawApi GET "users/terhapus`?per_page=3") ("Daftar akun soft-deleted untuk layar ``Pulihkan Akun``. Terbaru dihapus di atas. " +
+        "Akun di sini TIDAK muncul di ``GET /users`` biasa. Akses **SuperAdmin & Admin saja** (Administrator Sekolah 403).")
+    Add-Sample POST "users/$tmpId/restore" (RawApi POST "users/$tmpId/restore") ("Aktifkan ulang **APA ADANYA**: nama, role, dan password lama TIDAK diubah -- " +
+        "beda dengan memulihkan lewat ``POST /register`` email sama, yang menimpa ketiganya. " +
+        'Body opsional ``{ "password": "..." }`` bila passwordnya memang perlu diganti. ' +
+        "``data.catatan`` muncul untuk role Guru/Siswa/Karyawan: endpoint ini hanya menyentuh tabel ``users``, " +
+        "record domainnya tidak ikut dipulihkan.")
+    Add-Sample POST "users/$tmpId/restore" (RawApi POST "users/$tmpId/restore") "Diulang saat akun sudah aktif: **409**, bukan 500. Aman dipanggil berkali-kali."
+    RawApi DELETE "users/$tmpId" | Out-Null
 }
 
 # ══════════════════ 3. MAPEL ══════════════════

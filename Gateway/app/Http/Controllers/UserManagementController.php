@@ -253,6 +253,25 @@ class UserManagementController extends Controller
      */
     public function terhapus(Request $request)
     {
+        // Divalidasi persis seperti index(). Tanpa ini `?search[]=a` membuat
+        // array diinterpolasi ke string dan endpoint membalas 500, sementara
+        // `/users?search[]=a` yang setara membalas 422 — dua endpoint kembar
+        // dengan perilaku galat berbeda.
+        $validate = Validator::make($request->all(), [
+            'page'     => 'sometimes|numeric|min:1',
+            'per_page' => 'sometimes|numeric|min:1|max:' . self::MAX_PER_PAGE,
+            'role'     => 'sometimes|string|max:30',
+            'search'   => 'sometimes|string|max:100',
+        ]);
+
+        if ($validate->fails()) {
+            return $this->response(
+                $validate->errors()->first(),
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+                $validate->errors()
+            );
+        }
+
         // `is_admin_sekolah`/`is_petugas_acara` WAJIB ikut di-select: keduanya
         // dibaca langsung di bawah, dan kalau kolomnya tidak dimuat hasilnya
         // bukan "hilang" melainkan selalu false — jebakan yang sama persis
@@ -275,12 +294,6 @@ class UserManagementController extends Controller
         }
 
         $perPage = (int) $request->input('per_page', 10);
-        if ($perPage < 1 || $perPage > self::MAX_PER_PAGE) {
-            return $this->response(
-                'per_page harus antara 1 dan ' . self::MAX_PER_PAGE . '.',
-                Response::HTTP_UNPROCESSABLE_ENTITY
-            );
-        }
 
         // Terbaru dihapus di atas: yang barusan salah hapus itulah yang paling
         // mungkin sedang dicari operator.
@@ -320,6 +333,42 @@ class UserManagementController extends Controller
 
         if (!$target) {
             return $this->response('User tidak ditemukan.', Response::HTTP_NOT_FOUND);
+        }
+
+        // PENJAGA ROLE — sempat hilang sama sekali di versi pertama, dan itu
+        // lubang eskalasi: `destroy()` melarang Admin menghapus akun
+        // Admin/SuperAdmin dan `resetPassword()` melarang Admin mereset
+        // passwordnya, tapi `restore()` tanpa penjaga menggabungkan KEDUA
+        // kewenangan terlarang itu dalam satu panggilan. Jalurnya nyata:
+        // SuperAdmin menghapus akun Admin, lalu Admin lain memanggil
+        // restore dengan body {"password":"..."} dan akun Admin itu jadi
+        // miliknya.
+        $requester = auth()->user();
+
+        // Akun SuperAdmin tidak boleh dihidupkan lagi oleh Admin. (Tidak
+        // dikunci total seperti destroy(): SuperAdmin sendiri masih boleh,
+        // supaya penghapusan lewat DB tidak jadi jalan buntu permanen.)
+        if ($target->role === 'SuperAdmin' && $requester->role !== 'SuperAdmin') {
+            return $this->response(
+                'Akun SuperAdmin hanya dapat dipulihkan oleh SuperAdmin.',
+                Response::HTTP_FORBIDDEN
+            );
+        }
+
+        // Batas Admin dibuat sama persis dengan destroy() dan resetPassword().
+        if ($requester->role === 'Admin' && !in_array($target->role, self::ADMIN_DELETABLE_ROLES, true)) {
+            return $this->response(
+                'Admin hanya dapat memulihkan akun dengan role: '
+                    . implode(', ', self::ADMIN_DELETABLE_ROLES) . '.',
+                Response::HTTP_FORBIDDEN
+            );
+        }
+
+        // Administrator Sekolah sudah tertahan `check.role` di route, tapi
+        // CheckRole hanya MEMBERI izin dan tidak pernah mencabut — kalau suatu
+        // saat route-nya diperlebar, lapisan ini yang tetap menahan.
+        if ($tolak = $this->batasiAdminSekolah($requester, $target, 'memulihkan')) {
+            return $tolak;
         }
 
         // Aman diulang: memulihkan akun yang sudah aktif bukan kesalahan server,

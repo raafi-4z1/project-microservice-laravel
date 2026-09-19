@@ -634,8 +634,8 @@ Selalu jalankan `run-tests.ps1` sesudahnya. Kalau ada regresi,
 
 ### Testing Otomatis (PowerShell)
 
-Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**453 asersi**,
-terakhir 453 PASS / 0 FAIL / 0 SKIP — tanpa SKIP bila `TEST_TERMINAL_ID/TOKEN` diset) mencakup auth, CRUD semua service, akademik,
+Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**457 asersi**,
+terakhir 457 PASS / 0 FAIL / 0 SKIP — tanpa SKIP bila `TEST_TERMINAL_ID/TOKEN` diset) mencakup auth, CRUD semua service, akademik,
 **absensi** (kartu/QR, keluar, rekap, jendela PIN, wali kelas, autentikasi
 terminal), RBAC 5 akun (termasuk pasangan pembanding karyawan biasa vs
 Administrator Sekolah), **privasi baca** (penyaringan PII direktori + oracle
@@ -760,7 +760,7 @@ Checklist lain:
       reservation** supaya tidak perlu diulang.
 - [ ] **CA mkcert harus dipercaya perangkat klien.** Android tidak mempercayai CA
       mkcert secara bawaan. Pasang `rootCA.pem`
-      (`%LOCALAPPDATA%\mkcertootCA.pem`) sebagai CA pengguna di perangkat, atau
+      (`%LOCALAPPDATA%\mkcert\rootCA.pem`) sebagai CA pengguna di perangkat, atau
       beri app `network_security_config.xml`. Tanpa itu app tetap ditolak meski SAN
       sudah benar.
 - [ ] **Sembunyikan header versi server.** `security-tests.ps1` menandai
