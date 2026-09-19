@@ -2523,7 +2523,14 @@ if ($env:TEST_TERMINAL_ID -and $env:TEST_TERMINAL_TOKEN -and $siswaKartuUid) {
             if ($env:TEST_TERMINAL_LAT) { $pb['lat'] = [double]$env:TEST_TERMINAL_LAT }
             if ($env:TEST_TERMINAL_LNG) { $pb['lng'] = [double]$env:TEST_TERMINAL_LNG }
             $rp = Api POST "absensi/pin/absen" $pb -ExtraHeaders $th
-            Chk "POST /absensi/pin/absen (terminal)" $rp 200; if ($script:LAST_CHK) {
+            # 201 = catatan absen hari itu baru dibuat, 200 = catatan yang sudah
+            # ada diperbarui. Keduanya sah; mana yang muncul tergantung apakah
+            # suite sudah pernah jalan hari ini. Mengunci ke 200 saja membuat tes
+            # gagal palsu pada run pertama di hari baru — sudah terjadi.
+            $script:LAST_CHK = ($rp.resCode -eq 200 -or $rp.resCode -eq 201)
+            if ($script:LAST_CHK) { $script:PASS++; Write-Host "  [PASS $($rp.resCode)] POST /absensi/pin/absen (terminal)" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL $($rp.resCode)/200|201] POST /absensi/pin/absen (terminal) -- $($rp.resMsg)" -ForegroundColor Red }
+            if ($script:LAST_CHK) {
                 if ($rp.data.nama -or $rp.data.namaLengkap) {
                     $script:PASS++; Write-Host "  [PASS] absen PIN menyertakan nama: $($rp.data.nama)" -ForegroundColor Green
                 } else {
@@ -2927,6 +2934,100 @@ foreach ($res in @('pin_window', 'ranking_angkatan', 'acara')) {
     }
 }
 
+# ──────────────────────────────────────────────
+#  Fase 19 — Pemulihan akun restore-only
+# ──────────────────────────────────────────────
+# Pemulihan lewat `register` email yang sama MENIMPA nama, role, dan password
+# dengan isi form — operator yang cuma ingin menghidupkan akun bisa tak sengaja
+# mengganti role-nya. Jalur ini memulihkan APA ADANYA. Yang paling penting diuji
+# bukan status 200-nya, melainkan bahwa password LAMA masih berlaku sesudahnya:
+# itu satu-satunya bukti tak ada field yang ditimpa.
+Write-Host ""
+Write-Host "== Fase 19: Pemulihan akun (restore-only) ==" -ForegroundColor Cyan
+
+$emPulih = "restore.uji_$TS@example.com"
+$pwAsli  = 'RahasiaAsli123'
+$r = Api POST "register" @{ name = "Guru Asli $TS"; email = $emPulih; password = $pwAsli; confirm_password = $pwAsli; role = 'Guru' }
+Chk "siapkan akun untuk uji restore (harus 201)" $r 201
+if ($script:LAST_CHK) {
+    $uidP = @((Api GET "users`?search=$([uri]::EscapeDataString($emPulih))&per_page=5").data.data)[0].id
+    Api DELETE "users/$uidP" | Out-Null
+
+    $rt = Api GET "users/terhapus`?per_page=100"
+    Chk "GET users/terhapus (harus 200)" $rt 200; if ($script:LAST_CHK) {
+        # Kalau route `terhapus` didaftarkan SESUDAH `/users/{id}`, Laravel
+        # mencocokkan `{id}` lebih dulu dan "terhapus" jadi id — gejalanya 404,
+        # bukan error yang jelas. Baris ini yang menjaganya.
+        $brs = @($rt.data.data | Where-Object { $_.email -eq $emPulih })[0]
+        if ($brs -and $brs.deletedAt -and $brs.role -eq 'Guru') {
+            $script:PASS++; Write-Host "  [PASS] akun terhapus terdaftar lengkap dengan deletedAt & role asli" -ForegroundColor Green
+        } else {
+            $script:FAIL++; Write-Host "  [FAIL] baris akun terhapus tidak lengkap (deletedAt=$($brs.deletedAt) role=$($brs.role))" -ForegroundColor Red
+        }
+
+        $masihAktif = @((Api GET "users`?per_page=200").data.data | Where-Object { $_.email -eq $emPulih })
+        if (@($masihAktif).Count -eq 0) { $script:PASS++; Write-Host "  [PASS] akun terhapus tidak bocor ke /users biasa" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] akun terhapus masih muncul di /users" -ForegroundColor Red }
+    }
+
+    $rr = Api POST "users/$uidP/restore"
+    Chk "POST users/{id}/restore (harus 200)" $rr 200; if ($script:LAST_CHK) {
+        if ($rr.data.role -eq 'Guru' -and $rr.data.name -eq "Guru Asli $TS") {
+            $script:PASS++; Write-Host "  [PASS] role & nama TIDAK ditimpa" -ForegroundColor Green
+        } else {
+            $script:FAIL++; Write-Host "  [FAIL] data lama ikut berubah (role=$($rr.data.role) name=$($rr.data.name))" -ForegroundColor Red
+        }
+        if ($rr.data.catatan) { $script:PASS++; Write-Host "  [PASS] menyertakan catatan record domain" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] catatan record domain hilang — operator bisa salah kira 404 = bug izin" -ForegroundColor Red }
+    }
+
+    # Pembeda inti dari register: kredensial lama harus selamat.
+    $lgLama = Api POST "login" @{ email = $emPulih; password = $pwAsli; device_name = 'restore' }
+    if ($lgLama.resCode -eq 200) { $script:PASS++; Write-Host "  [PASS] password LAMA masih berlaku — tidak ada yang ditimpa" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] password lama tidak berlaku ($($lgLama.resCode)) — restore ikut menimpa" -ForegroundColor Red }
+
+    Chk "restore akun yang sudah aktif (harus 409)" (Api POST "users/$uidP/restore") 409
+    Chk "restore id tidak ada (harus 404)" (Api POST "users/99999999/restore") 404
+
+    # Password boleh diganti saat memulihkan — plaintext lama tak bisa dikembalikan
+    Api DELETE "users/$uidP" | Out-Null
+    $rr = Api POST "users/$uidP/restore" @{ password = 'RahasiaBaru456' }
+    Chk "restore + password baru (harus 200)" $rr 200; if ($script:LAST_CHK) {
+        if ($rr.data.role -eq 'Guru') { $script:PASS++; Write-Host "  [PASS] role tetap utuh meski password diganti" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] role berubah jadi $($rr.data.role)" -ForegroundColor Red }
+    }
+    Api DELETE "users/$uidP" | Out-Null
+    Chk "restore password lemah (harus 422)" (Api POST "users/$uidP/restore" @{ password = '123' }) 422
+
+    # Anti-eskalasi: Administrator Sekolah boleh mendaftarkan user, tapi TIDAK
+    # boleh menghidupkan kembali akun yang sudah disingkirkan.
+    #
+    # Fase ini sengaja berjalan SEBELUM Cleanup: akun Adm. Sekolah di $asTU dibuat
+    # oleh suite dan ikut dihapus saat cleanup. Kalau fase ini ditaruh sesudahnya,
+    # tokennya sudah mati dan asersi gating membalas 401, bukan 403 — terbaca
+    # seperti gating yang bocor padahal cuma fixture yang sudah dibereskan.
+    if ($asTU) {
+        Chk "Adm. Sekolah GET users/terhapus (harus 403)" (Api GET "users/terhapus" -Token $asTU.tok) 403
+        Chk "Adm. Sekolah POST restore (harus 403)" (Api POST "users/$uidP/restore" -Token $asTU.tok) 403
+    }
+    if ($guruTok) {
+        Chk "Guru POST restore (harus 403)" (Api POST "users/$uidP/restore" -Token $guruTok) 403
+    }
+
+    # Jejak audit — aksi istimewa tanpa jejak tidak bisa dipertanggungjawabkan
+    $q = "echo App\Models\AuditLog::where('action','restored')->where('payload','like','%users/{id}/restore%')->count();"
+    $n = (& php Gateway/artisan tinker --execute=$q 2>$null | Select-Object -Last 1)
+    if ("$n" -match '^\s*([0-9]+)\s*$' -and [int]$Matches[1] -gt 0) {
+        $script:PASS++; Write-Host "  [PASS] restore tercatat di audit log ($($Matches[1]) baris)" -ForegroundColor Green
+    } else {
+        $script:FAIL++; Write-Host "  [FAIL] restore TIDAK tercatat di audit (hasil: '$n')" -ForegroundColor Red
+    }
+
+    # bersih-bersih
+    $rx = Api POST "users/$uidP/restore"
+    if ($rx.resCode -eq 200) { Api DELETE "users/$uidP" | Out-Null }
+}
+
 Section "Phase 17: Cleanup"
 
 if ($CFG.SkipCleanup) {
@@ -2995,6 +3096,7 @@ if ($CFG.SkipCleanup) {
 
     Write-Host "  Cleanup selesai." -ForegroundColor DarkGray
 }
+
 
 
 # ──────────────────────────────────────────────

@@ -239,4 +239,169 @@ class UserManagementController extends Controller
             'role'  => $target->role,
         ]);
     }
+
+    /**
+     * GET /users/terhapus — daftar akun yang di-soft-delete.
+     *
+     * Ada supaya operator bisa MEMILIH akun yang mau dihidupkan lagi. Tanpa daftar
+     * ini satu-satunya cara memulihkan adalah menebak emailnya lewat `register`,
+     * dan jalur itu menimpa data lama (lihat `restore()` di bawah).
+     *
+     * Proyeksinya disusun eksplisit, bukan diserahkan ke serialisasi model:
+     * daftar ini dibaca layar "Pulihkan Akun", dan proyeksi eksplisit memastikan
+     * kolom baru tidak ikut terbawa diam-diam suatu hari nanti.
+     */
+    public function terhapus(Request $request)
+    {
+        // `is_admin_sekolah`/`is_petugas_acara` WAJIB ikut di-select: keduanya
+        // dibaca langsung di bawah, dan kalau kolomnya tidak dimuat hasilnya
+        // bukan "hilang" melainkan selalu false — jebakan yang sama persis
+        // dengan index() dan show().
+        $query = User::onlyTrashed()->select(
+            'id', 'name', 'email', 'role',
+            'is_admin_sekolah', 'is_petugas_acara', 'deleted_at'
+        );
+
+        if ($request->filled('role')) {
+            $query->where('role', $request->role);
+        }
+
+        if ($request->filled('search')) {
+            $s = $request->input('search');
+            $query->where(function ($q) use ($s) {
+                $q->where('name', 'like', "%{$s}%")
+                  ->orWhere('email', 'like', "%{$s}%");
+            });
+        }
+
+        $perPage = (int) $request->input('per_page', 10);
+        if ($perPage < 1 || $perPage > self::MAX_PER_PAGE) {
+            return $this->response(
+                'per_page harus antara 1 dan ' . self::MAX_PER_PAGE . '.',
+                Response::HTTP_UNPROCESSABLE_ENTITY
+            );
+        }
+
+        // Terbaru dihapus di atas: yang barusan salah hapus itulah yang paling
+        // mungkin sedang dicari operator.
+        $users = $query->orderByDesc('deleted_at')->paginate($perPage);
+
+        $users->through(fn (User $u) => [
+            'id'             => $u->id,
+            'name'           => $u->name,
+            'email'          => $u->email,
+            'role'           => $u->role,
+            'isAdminSekolah' => (bool) $u->is_admin_sekolah,
+            'isPetugasAcara' => (bool) $u->is_petugas_acara,
+            'deletedAt'      => optional($u->deleted_at)->toISOString(),
+        ]);
+
+        return $this->response('Daftar akun terhapus.', Response::HTTP_OK, $users);
+    }
+
+    /**
+     * POST /users/{id}/restore — aktifkan ulang akun APA ADANYA.
+     *
+     * Bedanya dengan memulihkan lewat `register` email yang sama: jalur itu
+     * MENIMPA nama, role, dan password dengan isi form, sehingga operator yang
+     * cuma ingin menghidupkan akun bisa tak sengaja mengganti role-nya. Di sini
+     * tidak satu pun field lama disentuh; password hanya berubah kalau memang
+     * dikirim, karena plaintext lama tidak bisa dikembalikan.
+     *
+     * Gating SuperAdmin/Admin saja — Administrator Sekolah TIDAK, konsisten
+     * dengan `register`: menghidupkan kembali akun Admin yang sudah disingkirkan
+     * adalah eskalasi hak yang sama seriusnya dengan membuatnya dari nol.
+     */
+    public function restore(Request $request, $id)
+    {
+        // withTrashed tanpa select parsial: seluruh kolom dimuat, jadi accessor
+        // penanda aman dan `trashed()` punya deleted_at yang dibutuhkannya.
+        $target = User::withTrashed()->find($id);
+
+        if (!$target) {
+            return $this->response('User tidak ditemukan.', Response::HTTP_NOT_FOUND);
+        }
+
+        // Aman diulang: memulihkan akun yang sudah aktif bukan kesalahan server,
+        // hanya permintaan yang tidak ada artinya.
+        if (!$target->trashed()) {
+            return $this->response(
+                "Akun {$target->email} masih aktif — tidak ada yang perlu dipulihkan.",
+                Response::HTTP_CONFLICT,
+                ['id' => $target->id, 'email' => $target->email, 'role' => $target->role]
+            );
+        }
+
+        $gantiPassword = $request->filled('password');
+        if ($gantiPassword) {
+            $validator = Validator::make($request->all(), [
+                'password' => ['required', Password::min(8)->letters()->numbers()],
+            ]);
+
+            if ($validator->fails()) {
+                return $this->response(
+                    $validator->messages()->first(),
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                    $validator->errors()->all()
+                );
+            }
+        }
+
+        $target->restore();
+
+        if ($gantiPassword) {
+            $target->update(['password' => Hash::make($request->input('password'))]);
+        }
+
+        $this->auditLog('restored', 'user', $target->email, [
+            'name'           => $target->name,
+            'email'          => $target->email,
+            'role'           => $target->role,
+            // JANGAN namai ini *password*: sanitizer auditLog() membuang setiap
+            // key yang mengandung kata itu, jadi penandanya akan hilang diam-diam
+            // — sudah sempat terjadi. Nilainya boolean, bukan kredensial.
+            'kredensialDiganti' => $gantiPassword,
+            'via'               => 'users/{id}/restore',
+        ]);
+
+        $data = [
+            'id'             => $target->id,
+            'name'           => $target->name,
+            'email'          => $target->email,
+            'role'           => $target->role,
+            'isAdminSekolah' => $target->isAdminSekolah(),
+            'isPetugasAcara' => $target->isPetugasAcara(),
+            'passwordDiubah' => $gantiPassword,
+        ];
+
+        // Menghapus guru/siswa/karyawan ikut menghapus akunnya, tapi TIDAK
+        // sebaliknya: endpoint ini hanya menyentuh tabel users. Kalau akun ini
+        // dulu dihapus lewat DELETE /{modul}/{id}, record domainnya masih
+        // terhapus dan endpoint layan-diri (mis. rekap/pegawai/saya) membalas
+        // 404 — bukan 403. Disebut di sini supaya tidak didiagnosis sebagai bug
+        // izin, kesalahpahaman yang sudah pernah terjadi.
+        if (in_array($target->role, ['Guru', 'Siswa', 'Karyawan'], true)) {
+            $modul = $this->modulDomain($target->role);
+            $data['catatan'] = 'Hanya akun login yang dipulihkan. Bila dulu dihapus lewat '
+                . "DELETE /{$modul}/{id}, record domainnya masih terhapus — buat ulang lewat "
+                . "POST /{$modul} dengan email yang sama; record lama akan dipulihkan, bukan dibuat baru.";
+        }
+
+        $pesan = $gantiPassword
+            ? 'Akun dipulihkan apa adanya; password diganti sesuai permintaan.'
+            : 'Akun dipulihkan apa adanya — nama, role, dan password lama tidak diubah.';
+
+        return $this->response($pesan, Response::HTTP_OK, $data);
+    }
+
+    /** Peta role ke prefix modul domain, dipakai pesan petunjuk di restore(). */
+    private function modulDomain(string $role): string
+    {
+        return match ($role) {
+            'Guru'     => 'guru',
+            'Siswa'    => 'siswa',
+            'Karyawan' => 'karyawan',
+            default    => 'modul',
+        };
+    }
 }

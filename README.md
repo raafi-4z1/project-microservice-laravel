@@ -634,8 +634,8 @@ Selalu jalankan `run-tests.ps1` sesudahnya. Kalau ada regresi,
 
 ### Testing Otomatis (PowerShell)
 
-Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**436 asersi**,
-terakhir 436 PASS / 0 FAIL / 0 SKIP — tanpa SKIP bila `TEST_TERMINAL_ID/TOKEN` diset) mencakup auth, CRUD semua service, akademik,
+Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**453 asersi**,
+terakhir 453 PASS / 0 FAIL / 0 SKIP — tanpa SKIP bila `TEST_TERMINAL_ID/TOKEN` diset) mencakup auth, CRUD semua service, akademik,
 **absensi** (kartu/QR, keluar, rekap, jendela PIN, wali kelas, autentikasi
 terminal), RBAC 5 akun (termasuk pasangan pembanding karyawan biasa vs
 Administrator Sekolah), **privasi baca** (penyaringan PII direktori + oracle
@@ -746,6 +746,23 @@ Checklist lain:
 - [ ] Kalau nanti ada frontend web: batasi CORS (`config/cors.php`) ke domain
       sekolah saja — default Laravel mengizinkan semua origin (aman untuk API
       Bearer, tapi sebaiknya diperketat)
+- [ ] **Sertifikat HTTPS harus memuat IP LAN server.** Sertifikat mkcert dibuat
+      untuk nama tertentu; kalau IP server berganti (DHCP) dan IP barunya tidak ada
+      di SAN, setiap klien menolak koneksi dengan `RemoteCertificateNameMismatch` —
+      app Android tidak bisa konek sama sekali, sementara `curl -k` tetap jalan
+      sehingga mudah dikira backend baik-baik saja. Regenerasi:
+      ```sh
+      cd C:/laragon/etc/ssl/mkcert
+      ./../mkcert.exe -cert-file gateway-lan.pem -key-file gateway-lan-key.pem         gateway.test localhost 127.0.0.1 <IP-SERVER>
+      ```
+      lalu arahkan `SSLCertificateFile`/`SSLCertificateKeyFile` di vhost ke berkas
+      itu dan reload Apache. **Lebih baik lagi: kunci IP server lewat DHCP
+      reservation** supaya tidak perlu diulang.
+- [ ] **CA mkcert harus dipercaya perangkat klien.** Android tidak mempercayai CA
+      mkcert secara bawaan. Pasang `rootCA.pem`
+      (`%LOCALAPPDATA%\mkcertootCA.pem`) sebagai CA pengguna di perangkat, atau
+      beri app `network_security_config.xml`. Tanpa itu app tetap ditolak meski SAN
+      sudah benar.
 - [ ] **Sembunyikan header versi server.** `security-tests.ps1` menandai
       `X-Powered-By`/`Server` yang membocorkan versi PHP dan Apache — itu memberi
       penyerang daftar exploit yang cocok tanpa perlu menebak. Di `php.ini` set

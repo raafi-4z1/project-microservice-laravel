@@ -83,6 +83,34 @@ Base URL: `https://gateway.test/api`
 | GET | `/users/{id}` | SuperAdmin, Admin | Detail akun user by ID |
 | POST | `/users/{id}/password` | SuperAdmin, Admin | Reset password user lain (token target dicabut) |
 | DELETE | `/users/{id}` | SuperAdmin, Admin | Hapus akun user (soft delete) |
+| GET | `/users/terhapus` | SuperAdmin, Admin **saja** | Daftar akun yang di-soft-delete: `id`, `name`, `email`, `role`, `isAdminSekolah`, `isPetugasAcara`, `deletedAt`. Query: `page`, `per_page` (1–200), `role`, `search`. Terbaru dihapus di atas |
+| POST | `/users/{id}/restore` | SuperAdmin, Admin **saja** | Aktifkan ulang akun **apa adanya**. Body opsional `{ "password": "..." }` |
+
+#### Pemulihan akun: `restore` vs `register`
+
+Ada dua jalur menghidupkan akun terhapus, dan bedanya penting:
+
+| | `POST /register` email sama | `POST /users/{id}/restore` |
+|---|---|---|
+| Nama, role, jabatan | **DITIMPA** isi form | tidak disentuh |
+| Password | **DITIMPA** | tetap lama, kecuali body mengirim `password` |
+| Token lama | dicabut | tidak disentuh |
+| id & riwayat akademik | dipertahankan | dipertahankan |
+
+Operator yang hanya ingin "menghidupkan kembali" akun bisa **tak sengaja mengganti
+role**-nya lewat `register` — itulah alasan jalur `restore` ada. Gatingnya
+SuperAdmin/Admin **saja**: Administrator Sekolah boleh mendaftarkan user tapi tidak
+boleh menghidupkan kembali akun yang sudah disingkirkan (anti-eskalasi, konsisten
+dengan `register`).
+
+Aman diulang: memulihkan akun yang sudah aktif membalas **409**, bukan 500.
+Tercatat di audit log (`action = restored`, `payload.via = users/{id}/restore`).
+
+> **Hanya akun login yang dipulihkan.** Menghapus guru/siswa/karyawan ikut menghapus
+> akunnya, tapi tidak sebaliknya — endpoint ini cuma menyentuh tabel `users`. Kalau
+> akun dulu dihapus lewat `DELETE /{modul}/{id}`, record domainnya masih terhapus dan
+> endpoint layan-diri membalas **404** (bukan 403). Responsnya menyertakan `catatan`
+> yang menjelaskan ini supaya tidak didiagnosis sebagai bug izin.
 
 ### Kartu Absensi
 

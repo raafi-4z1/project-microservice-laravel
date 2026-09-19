@@ -8,6 +8,18 @@ use App\Http\Controllers\UserManagementController;
 // Login publik (throttle 5x/menit)
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
+// Pemulihan akun terhapus — SuperAdmin & Admin SAJA (tanpa AdminSekolah).
+// Menghidupkan kembali akun Admin yang sudah disingkirkan adalah eskalasi hak
+// yang sama seriusnya dengan membuatnya, jadi gatingnya mengikuti `register`.
+//
+// HARUS didaftarkan SEBELUM `GET /users/{id}` di grup bawah: Laravel mencocokkan
+// route sesuai urutan pendaftaran, jadi kalau dibalik, `/users/terhapus` akan
+// ditelan `{id}` dan controller menerima id bernilai "terhapus".
+Route::middleware(['auth:api', 'force.pwd', 'batasi.acara', 'check.role:SuperAdmin,Admin'])->group(function () {
+    Route::get('/users/terhapus', [UserManagementController::class, 'terhapus']);
+    Route::post('/users/{id}/restore', [UserManagementController::class, 'restore']);
+});
+
 // Register & manajemen user — hanya SuperAdmin dan Admin
 Route::middleware(['auth:api', 'force.pwd', 'batasi.acara', 'check.role:SuperAdmin,Admin,AdminSekolah'])->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
