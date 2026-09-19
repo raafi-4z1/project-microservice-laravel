@@ -402,6 +402,24 @@ class UserManagementController extends Controller
             $target->update(['password' => Hash::make($request->input('password'))]);
         }
 
+        // Token lama HARUS mati. Ketiga jalur sejenis sudah melakukannya
+        // (`destroy()`, `resetPassword()`, dan pemulihan lewat
+        // `UserService::create()` yang komentarnya berbunyi "Token sebelum
+        // penghapusan harus mati") — `restore()` sempat jadi satu-satunya yang
+        // tidak, dan itu bocor dua arah:
+        //
+        //  1. Token terbitan sebelum penghapusan hidup lagi begitu `deleted_at`
+        //     kosong. Sesi yang sudah diputus bangkit tanpa ada yang login.
+        //  2. Lebih buruk saat `password` dikirim: maksud menetapkan password
+        //     baru adalah mengambil alih akun atau mengunci pemegang lama, tapi
+        //     token pemegang lama tetap sah — persis yang dicegah
+        //     `resetPassword()`.
+        //
+        // Mencabut token TIDAK melanggar "pulihkan apa adanya": yang dijaga
+        // brief adalah field tersimpan (nama, role, jabatan, password), bukan
+        // sesi. Pemiliknya tinggal login ulang.
+        $target->tokens()->where('revoked', false)->each(fn ($t) => $t->revoke());
+
         $this->auditLog('restored', 'user', $target->email, [
             'name'           => $target->name,
             'email'          => $target->email,
@@ -410,6 +428,7 @@ class UserManagementController extends Controller
             // key yang mengandung kata itu, jadi penandanya akan hilang diam-diam
             // — sudah sempat terjadi. Nilainya boolean, bukan kredensial.
             'kredensialDiganti' => $gantiPassword,
+            'tokenDicabut'      => true,
             'via'               => 'users/{id}/restore',
         ]);
 
@@ -421,6 +440,7 @@ class UserManagementController extends Controller
             'isAdminSekolah' => $target->isAdminSekolah(),
             'isPetugasAcara' => $target->isPetugasAcara(),
             'passwordDiubah' => $gantiPassword,
+            'tokenDicabut'   => true,
         ];
 
         // Menghapus guru/siswa/karyawan ikut menghapus akunnya, tapi TIDAK
@@ -437,8 +457,8 @@ class UserManagementController extends Controller
         }
 
         $pesan = $gantiPassword
-            ? 'Akun dipulihkan apa adanya; password diganti sesuai permintaan.'
-            : 'Akun dipulihkan apa adanya — nama, role, dan password lama tidak diubah.';
+            ? 'Akun dipulihkan apa adanya; password diganti sesuai permintaan. Sesi lama dicabut — user harus login ulang.'
+            : 'Akun dipulihkan apa adanya — nama, role, dan password lama tidak diubah. Sesi lama dicabut — user harus login ulang.';
 
         return $this->response($pesan, Response::HTTP_OK, $data);
     }

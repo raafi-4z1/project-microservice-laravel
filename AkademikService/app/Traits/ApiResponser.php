@@ -34,6 +34,11 @@ trait ApiResponser
             case Response::HTTP_INTERNAL_SERVER_ERROR:
                 $resPhrase = "Internal Server Error"; $resStatus = "fail"; break;
             default:
+                // Jaring pengaman: kode status yang belum punya case TIDAK
+                // boleh lolos dengan resStatus kosong — begitulah 422 sempat
+                // tak tertangani di Gateway tanpa ada yang sadar.
+                $resPhrase = Response::$statusTexts[$code] ?? "";
+                $resStatus = $code >= 200 && $code < 300 ? "success" : "fail";
                 break;
         }
         

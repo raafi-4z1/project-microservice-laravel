@@ -94,7 +94,7 @@ Ada dua jalur menghidupkan akun terhapus, dan bedanya penting:
 |---|---|---|
 | Nama, role, jabatan | **DITIMPA** isi form | tidak disentuh |
 | Password | **DITIMPA** | tetap lama, kecuali body mengirim `password` |
-| Token lama | dicabut | tidak disentuh |
+| Token lama | dicabut | **juga dicabut** — sesi yang sudah diputus tidak boleh bangkit sendiri |
 | id & riwayat akademik | dipertahankan | dipertahankan |
 
 Operator yang hanya ingin "menghidupkan kembali" akun bisa **tak sengaja mengganti
@@ -102,6 +102,12 @@ role**-nya lewat `register` — itulah alasan jalur `restore` ada. Gatingnya
 SuperAdmin/Admin **saja**: Administrator Sekolah boleh mendaftarkan user tapi tidak
 boleh menghidupkan kembali akun yang sudah disingkirkan (anti-eskalasi, konsisten
 dengan `register`).
+
+Setelah dipulihkan, **user harus login ulang** — token lama dicabut. Responsnya
+membawa `tokenDicabut: true`. Ini bukan pelanggaran "pulihkan apa adanya": yang
+dijaga adalah field tersimpan (nama, role, jabatan, password), bukan sesi. Tanpa
+pencabutan, token terbitan sebelum penghapusan hidup lagi begitu `deleted_at`
+kosong, dan password baru pun tidak mengunci pemegang token lama.
 
 Aman diulang: memulihkan akun yang sudah aktif membalas **409**, bukan 500.
 Tercatat di audit log (`action = restored`, `payload.via = users/{id}/restore`).

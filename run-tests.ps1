@@ -3020,20 +3020,40 @@ if ($script:LAST_CHK) {
     # dihapus DAN menetapkan passwordnya. Jalurnya nyata: SuperAdmin menghapus
     # akun Admin, lalu Admin lain memulihkannya dengan password pilihan sendiri.
     #
-    # `akuntest.admin@example.com` memang ber-role Admin (bukan SuperAdmin) dan
-    # tidak wajib ganti password, jadi cukup satu login — penting karena login
-    # dibatasi 5/menit.
-    $admTok = (Api POST "login" @{ email = 'akuntest.admin@example.com'; password = 'AdminTest123'; device_name = 'restore-guard' }).data.token
-    if ($admTok) {
-        # Akun SuperAdmin (id 1) masih aktif. Yang diuji penjaganya, BUKAN
-        # keadaannya — karena itu penjaga role harus berjalan sebelum cek 409;
-        # kalau terbalik, Admin bisa memetakan akun mana yang ada lewat beda
-        # 409 vs 404.
-        Chk "Admin memulihkan akun SuperAdmin (harus 403, bukan 409)" (Api POST "users/1/restore" -Token $admTok) 403
+    # Akun Admin-nya dibuat sendiri di sini, BUKAN mengandalkan
+    # `akuntest.admin@example.com`: akun itu lahir dari seed-test-accounts.ps1,
+    # bukan seeder Laravel, jadi di DB yang masih bersih asersi ini akan lenyap
+    # diam-diam dan suite tetap hijau dengan jumlah lebih sedikit — persis cara
+    # celah eskalasi ini lolos pertama kali. `register` membuat akun dengan
+    # must_change_password = false, jadi tokennya langsung bisa dipakai.
+    $emAdmUji = "restore.penguji_$TS@example.com"
+    $pwAdmUji = 'PengujiAdm123'
+    $rAdm = Api POST "register" @{ name = "Penguji Adm $TS"; email = $emAdmUji; password = $pwAdmUji; confirm_password = $pwAdmUji; role = 'Admin' }
+    Chk "siapkan akun Admin penguji eskalasi (harus 201)" $rAdm 201
+    $admTok = $null
+    if ($script:LAST_CHK) {
+        $admTok = (Api POST "login" @{ email = $emAdmUji; password = $pwAdmUji; device_name = 'restore-guard' }).data.token
+    }
+    if (-not $admTok) {
+        $script:FAIL++
+        Write-Host "  [FAIL] token Admin penguji tidak didapat — asersi eskalasi TIDAK dijalankan" -ForegroundColor Red
+    } else {
+        # id SuperAdmin dicari, tidak dipatok 1: pada DB hasil restore dump
+        # id-nya bisa berbeda dan asersi gagal palsu terhadap penjaga yang sehat.
+        $sa = @((Api GET "users`?role=SuperAdmin&per_page=5").data.data)[0]
+        if ($sa) {
+            # Yang diuji penjaganya, BUKAN keadaan akunnya — karena itu penjaga
+            # role harus berjalan sebelum cek 409; kalau terbalik, Admin bisa
+            # memetakan akun mana yang ada dari beda 409 vs 404.
+            Chk "Admin memulihkan akun SuperAdmin (harus 403, bukan 409)" (Api POST "users/$($sa.id)/restore" -Token $admTok) 403
+        } else {
+            $script:FAIL++; Write-Host "  [FAIL] akun SuperAdmin tidak ditemukan untuk uji eskalasi" -ForegroundColor Red
+        }
 
         $emAdm = "restore.adm_$TS@example.com"
         $ra = Api POST "register" @{ name = "Adm $TS"; email = $emAdm; password = 'RahasiaAdm123'; confirm_password = 'RahasiaAdm123'; role = 'Admin' }
-        if ($ra.resCode -eq 201) {
+        Chk "siapkan akun Admin korban (harus 201)" $ra 201
+        if ($script:LAST_CHK) {
             $uidA = @((Api GET "users`?search=$([uri]::EscapeDataString($emAdm))&per_page=5").data.data)[0].id
             Api DELETE "users/$uidA" | Out-Null
             Chk "Admin memulihkan akun Admin lain (harus 403)" (Api POST "users/$uidA/restore" @{ password = 'Diambil123' } -Token $admTok) 403
@@ -3041,6 +3061,18 @@ if ($script:LAST_CHK) {
             Chk "SuperAdmin memulihkan akun Admin (harus 200)" (Api POST "users/$uidA/restore") 200
             Api DELETE "users/$uidA" | Out-Null
         }
+
+        # Token lama harus mati sesudah restore — kalau tidak, sesi yang sudah
+        # diputus bangkit lagi, dan password baru tidak mengunci pemegang lama.
+        $uidAdmUji = @((Api GET "users`?search=$([uri]::EscapeDataString($emAdmUji))&per_page=5").data.data)[0].id
+        Api DELETE "users/$uidAdmUji" | Out-Null
+        $rp = Api POST "users/$uidAdmUji/restore"
+        Chk "pulihkan akun penguji (harus 200)" $rp 200; if ($script:LAST_CHK) {
+            if ($rp.data.tokenDicabut -eq $true) { $script:PASS++; Write-Host "  [PASS] respons menyatakan token dicabut" -ForegroundColor Green }
+            else { $script:FAIL++; Write-Host "  [FAIL] tokenDicabut=$($rp.data.tokenDicabut)" -ForegroundColor Red }
+        }
+        Chk "token LAMA mati setelah restore (harus 401)" (Api GET "user" -Token $admTok) 401
+        Api DELETE "users/$uidAdmUji" | Out-Null
     }
 
     Chk "users/terhapus?search[]= (harus 422, bukan 500)" (Api GET "users/terhapus`?search[]=a") 422

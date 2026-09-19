@@ -245,7 +245,7 @@ dua jalur, dan bedanya menentukan apakah layar ini perlu ada:
 |---|---|---|
 | Nama, role | **DITIMPA** isi form | tidak disentuh |
 | Password | **DITIMPA** | tetap lama |
-| Token lama | dicabut | tidak disentuh |
+| Token lama | dicabut | **juga dicabut** — sesi yang sudah diputus tidak boleh bangkit sendiri |
 | id & riwayat akademik | dipertahankan | dipertahankan |
 
 Operator yang cuma ingin menghidupkan akun bisa **tak sengaja mengganti role**-nya
@@ -257,6 +257,10 @@ lewat register. Karena itu sediakan layar terpisah:
 3. Opsional: kirim `{ "password": "..." }` kalau passwordnya perlu diganti
    (plaintext lama tidak bisa dikembalikan). Min 8 karakter, huruf + angka,
    kalau tidak **422**.
+
+**Sesudah restore, user itu harus login ulang** — token lamanya dicabut (respons
+membawa `tokenDicabut: true`). Kalau kebetulan operator memulihkan akunnya sendiri
+di perangkat lain, sesi itu ikut mati.
 
 **Kode yang perlu ditangani:**
 
