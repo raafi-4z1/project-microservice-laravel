@@ -262,6 +262,12 @@ lewat register. Karena itu sediakan layar terpisah:
 membawa `tokenDicabut: true`). Kalau kebetulan operator memulihkan akunnya sendiri
 di perangkat lain, sesi itu ikut mati.
 
+Bila operator mengirim `password`, target **wajib ganti password** saat login
+berikutnya — login-nya membalas `mustChangePassword: true` dan seluruh endpoint
+lain diblokir 403 sampai `POST /password` dilakukan. Alur ini sudah ada di app
+(layar Ganti Password wajib); yang baru hanyalah ia kini juga terpicu setelah
+`restore` **dan** setelah `POST /users/{id}/password`.
+
 **Kode yang perlu ditangani:**
 
 - **409** — akun sudah aktif. Bukan error; tampilkan "akun ini sudah aktif" lalu

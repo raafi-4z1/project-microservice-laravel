@@ -3091,6 +3091,81 @@ if ($script:LAST_CHK) {
     if ($rx.resCode -eq 200) { Api DELETE "users/$uidP" | Out-Null }
 }
 
+
+# ──────────────────────────────────────────────
+#  Fase 20 — Kebocoran penanda & higiene paginasi
+# ──────────────────────────────────────────────
+Write-Host ""
+Write-Host "== Fase 20: Kebocoran penanda & higiene paginasi ==" -ForegroundColor Cyan
+
+# Penanda Administrator Sekolah TIDAK pernah diberikan lewat `register` — asalnya
+# hanya record karyawan. Dulu jalur pemulihan di register tidak menyentuh kolom
+# itu sama sekali, sehingga menghapus akun Adm. Sekolah lalu mendaftarkan ulang
+# emailnya sebagai Karyawan BIASA menghasilkan akun yang tetap berpenanda: hak
+# manajemen akademik berpindah ke orang baru tanpa ada yang memberikannya.
+$emBocor = "flagbocor_$TS@example.com"
+$rk = Api POST "karyawan" @{ email = $emBocor; nip = "93$TS"; namaLengkap = "AS Asli $TS"; jabatan = 'Tata Usaha'; isAdminSekolah = $true }
+Chk "siapkan karyawan Administrator Sekolah (harus 201)" $rk 201
+if ($script:LAST_CHK) {
+    $idKB = $rk.data.idKaryawan
+    $uB = @((Api GET "users`?search=$([uri]::EscapeDataString($emBocor))&per_page=5").data.data)[0]
+    if ($uB.isAdminSekolah -eq $true) { $script:PASS++; Write-Host "  [PASS] penanda menyala pada pemilik asli" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] penanda tidak menyala — fixture tidak sahih, uji berikutnya jadi hampa" -ForegroundColor Red }
+
+    Api DELETE "users/$($uB.id)" | Out-Null
+    $rr = Api POST "register" @{ name = "Orang Baru $TS"; email = $emBocor; password = 'OrangBaru123'; confirm_password = 'OrangBaru123'; role = 'Karyawan' }
+    Chk "daftar ulang email bekas Adm. Sekolah (harus 201)" $rr 201; if ($script:LAST_CHK) {
+        $uB2 = @((Api GET "users`?search=$([uri]::EscapeDataString($emBocor))&per_page=5").data.data)[0]
+        if ($uB2.isAdminSekolah -eq $false) {
+            $script:PASS++; Write-Host "  [PASS] penanda Adm. Sekolah TIDAK terbawa ke pemilik baru" -ForegroundColor Green
+        } else {
+            $script:FAIL++; Write-Host "  [FAIL] penanda BOCOR — pemilik baru dapat hak manajemen akademik" -ForegroundColor Red
+        }
+    }
+    if ($idKB) { Api DELETE "karyawan/$idKB" | Out-Null }
+    $ux = @((Api GET "users`?search=$([uri]::EscapeDataString($emBocor))&per_page=5").data.data)[0]
+    if ($ux) { Api DELETE "users/$($ux.id)" | Out-Null }
+}
+
+# Tautan paginasi harus membawa parameter aslinya. Tanpa itu klien yang mengikuti
+# `next_page_url` diam-diam kembali ke 10/halaman DAN kehilangan filternya —
+# melompati baris sekaligus menampilkan data yang sengaja disaring.
+foreach ($ep in @("users`?per_page=3&role=Guru", "users/terhapus`?per_page=3&role=Karyawan")) {
+    $rp = Api GET $ep
+    if ($rp.resCode -eq 200) {
+        $nx = "$($rp.data.next_page_url)"
+        if ($nx -eq '') {
+            $script:PASS++; Write-Host "  [PASS] $ep - satu halaman saja, tak ada tautan untuk diperiksa" -ForegroundColor Green
+        } elseif ($nx -match 'per_page=3' -and $nx -match 'role=') {
+            $script:PASS++; Write-Host "  [PASS] next_page_url mempertahankan per_page & role" -ForegroundColor Green
+        } else {
+            $script:FAIL++; Write-Host "  [FAIL] next_page_url kehilangan parameter: $nx" -ForegroundColor Red
+        }
+    } else { $script:FAIL++; Write-Host "  [FAIL $($rp.resCode)] GET $ep" -ForegroundColor Red }
+}
+
+# Password yang dipilih admin sudah diketahui admin; pemiliknya harus menggantinya
+# saat login pertama, memakai mekanisme force.pwd yang sudah ada.
+$emWajib = "wajibganti_$TS@example.com"
+$rw = Api POST "register" @{ name = "Wajib $TS"; email = $emWajib; password = 'AwalnyaBebas123'; confirm_password = 'AwalnyaBebas123'; role = 'Guru' }
+Chk "siapkan akun uji wajib-ganti (harus 201)" $rw 201
+if ($script:LAST_CHK) {
+    $uW = @((Api GET "users`?search=$([uri]::EscapeDataString($emWajib))&per_page=5").data.data)[0]
+    Api DELETE "users/$($uW.id)" | Out-Null
+    $rr = Api POST "users/$($uW.id)/restore" @{ password = 'DitentukanAdmin123' }
+    Chk "restore + password dari admin (harus 200)" $rr 200; if ($script:LAST_CHK) {
+        if ($rr.data.wajibGantiPassword -eq $true) { $script:PASS++; Write-Host "  [PASS] respons menandai wajib ganti password" -ForegroundColor Green }
+        else { $script:FAIL++; Write-Host "  [FAIL] wajibGantiPassword=$($rr.data.wajibGantiPassword)" -ForegroundColor Red }
+    }
+    $lgW = Api POST "login" @{ email = $emWajib; password = 'DitentukanAdmin123'; device_name = 'wajib' }
+    if ($lgW.data.mustChangePassword -eq $true) {
+        $script:PASS++; Write-Host "  [PASS] login menuntut ganti password (kredensial pilihan admin tidak dipakai selamanya)" -ForegroundColor Green
+    } else {
+        $script:FAIL++; Write-Host "  [FAIL] mustChangePassword=$($lgW.data.mustChangePassword) — password yang diketahui admin berlaku terus" -ForegroundColor Red
+    }
+    Api DELETE "users/$($uW.id)" | Out-Null
+}
+
 Section "Phase 17: Cleanup"
 
 if ($CFG.SkipCleanup) {

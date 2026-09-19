@@ -95,7 +95,11 @@ class UserManagementController extends Controller
             });
         }
 
-        $users = $query->paginate((int) $request->input('per_page', 10));
+        // withQueryString: tanpa ini `next_page_url` dan `links[]` kehilangan
+        // `per_page`, `role`, dan `search`. Klien yang mengikuti tautannya
+        // diam-diam kembali ke 10/halaman DAN kehilangan filternya — melompati
+        // baris dan menampilkan data yang sengaja disaring.
+        $users = $query->paginate((int) $request->input('per_page', 10))->withQueryString();
 
         return $this->response('Data users.', Response::HTTP_OK, $users);
     }
@@ -222,7 +226,11 @@ class UserManagementController extends Controller
             );
         }
 
-        $target->update(['password' => Hash::make($request->new_password)]);
+        // Sama seperti restore(): password pilihan admin harus diganti pemiliknya.
+        $target->update([
+            'password'             => Hash::make($request->new_password),
+            'must_change_password' => true,
+        ]);
 
         // Cabut semua token aktif agar target wajib login ulang
         $target->tokens()->where('revoked', false)->each(fn ($t) => $t->revoke());
@@ -297,7 +305,16 @@ class UserManagementController extends Controller
 
         // Terbaru dihapus di atas: yang barusan salah hapus itulah yang paling
         // mungkin sedang dicari operator.
-        $users = $query->orderByDesc('deleted_at')->paginate($perPage);
+        // Tie-break `id` wajib: `deleted_at` berpresisi detik, dan menghapus
+        // guru/siswa/karyawan ikut menghapus akunnya — jadi penghapusan massal
+        // menghasilkan banyak baris berstempel detik yang sama. Tanpa urutan
+        // kedua yang pasti, MySQL boleh mengurutkannya berbeda tiap query:
+        // satu baris bisa muncul dua kali sementara baris lain tak pernah
+        // muncul di halaman mana pun.
+        $users = $query->orderByDesc('deleted_at')
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->withQueryString();
 
         $users->through(fn (User $u) => [
             'id'             => $u->id,
@@ -399,7 +416,15 @@ class UserManagementController extends Controller
         $target->restore();
 
         if ($gantiPassword) {
-            $target->update(['password' => Hash::make($request->input('password'))]);
+            // Password yang dipilih admin sudah diketahui admin. Biarkan begitu
+            // dan kredensial itu dipakai selamanya oleh dua orang. `must_change_password`
+            // memaksa pemiliknya menggantinya saat login pertama — mekanisme yang
+            // sudah ada (`force.pwd`) dan sudah dipakai `UserService::create()`
+            // untuk kasus yang sama persis.
+            $target->update([
+                'password'             => Hash::make($request->input('password')),
+                'must_change_password' => true,
+            ]);
         }
 
         // Token lama HARUS mati. Ketiga jalur sejenis sudah melakukannya
@@ -441,6 +466,7 @@ class UserManagementController extends Controller
             'isPetugasAcara' => $target->isPetugasAcara(),
             'passwordDiubah' => $gantiPassword,
             'tokenDicabut'   => true,
+            'wajibGantiPassword' => $gantiPassword,
         ];
 
         // Menghapus guru/siswa/karyawan ikut menghapus akunnya, tapi TIDAK

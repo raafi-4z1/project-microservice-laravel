@@ -81,7 +81,7 @@ Base URL: `https://gateway.test/api`
 |--------|----------|------|------------|
 | GET | `/users` | SuperAdmin, Admin | List semua akun user. Query: `page`, `per_page`, `role` (filter exact), `search` (cari di nama/email) |
 | GET | `/users/{id}` | SuperAdmin, Admin | Detail akun user by ID |
-| POST | `/users/{id}/password` | SuperAdmin, Admin | Reset password user lain (token target dicabut) |
+| POST | `/users/{id}/password` | SuperAdmin, Admin | Reset password user lain (token target dicabut; target **wajib ganti password** saat login berikutnya) |
 | DELETE | `/users/{id}` | SuperAdmin, Admin | Hapus akun user (soft delete) |
 | GET | `/users/terhapus` | SuperAdmin, Admin **saja** | Daftar akun yang di-soft-delete: `id`, `name`, `email`, `role`, `isAdminSekolah`, `isPetugasAcara`, `deletedAt`. Query: `page`, `per_page` (1–200), `role`, `search`. Terbaru dihapus di atas |
 | POST | `/users/{id}/restore` | SuperAdmin, Admin **saja** | Aktifkan ulang akun **apa adanya**. Body opsional `{ "password": "..." }` |
@@ -102,6 +102,12 @@ role**-nya lewat `register` — itulah alasan jalur `restore` ada. Gatingnya
 SuperAdmin/Admin **saja**: Administrator Sekolah boleh mendaftarkan user tapi tidak
 boleh menghidupkan kembali akun yang sudah disingkirkan (anti-eskalasi, konsisten
 dengan `register`).
+
+Bila `password` dikirim, target juga **wajib mengganti password** saat login
+berikutnya (`mustChangePassword: true`, respons membawa `wajibGantiPassword`).
+Alasannya: password pilihan admin sudah diketahui admin; membiarkannya berarti
+satu kredensial dipakai dua orang selamanya. Berlaku sama di
+`POST /users/{id}/password`.
 
 Setelah dipulihkan, **user harus login ulang** — token lama dicabut. Responsnya
 membawa `tokenDicabut: true`. Ini bukan pelanggaran "pulihkan apa adanya": yang

@@ -76,6 +76,15 @@ class AuthController extends Controller
                     'password'         => $request->password,
                     'role'             => $request->role,
                     'is_petugas_acara' => $petugasAcara,
+                    // WAJIB ikut ditimpa. Penanda Administrator Sekolah TIDAK
+                    // pernah diberikan lewat register — asalnya hanya dari record
+                    // karyawan. Sebelumnya field ini tidak disentuh sama sekali,
+                    // sehingga menghapus akun Adm. Sekolah lalu mendaftarkan ulang
+                    // emailnya sebagai Karyawan biasa menghasilkan akun yang tetap
+                    // `isAdminSekolah: true` — hak manajemen akademik berpindah ke
+                    // orang baru tanpa ada yang memberikannya. Terbukti bisa
+                    // direproduksi sebelum baris ini ada.
+                    'is_admin_sekolah' => false,
                 ]);
                 // Token sebelum penghapusan harus mati: akun ini kini milik
                 // pendaftaran yang baru, bukan pemilik lamanya.
