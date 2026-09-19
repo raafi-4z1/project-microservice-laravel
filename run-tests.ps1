@@ -2981,6 +2981,17 @@ if ($script:LAST_CHK) {
         }
         if ($rr.data.catatan) { $script:PASS++; Write-Host "  [PASS] menyertakan catatan record domain" -ForegroundColor Green }
         else { $script:FAIL++; Write-Host "  [FAIL] catatan record domain hilang — operator bisa salah kira 404 = bug izin" -ForegroundColor Red }
+
+        # Catatannya harus MELARANG memakai endpoint ini lebih dulu, bukan sekadar
+        # memberi tahu. Versi pertama menyuruh "buat ulang lewat POST /{modul}"
+        # SESUDAH restore — dan itu buntu: begitu akunnya aktif, POST /{modul}
+        # ditolak 422 "email dipakai akun aktif", sehingga restore justru memblokir
+        # satu-satunya jalan memulihkan record domain. Terbukti saat diuji.
+        if ("$($rr.data.catatan)" -match 'JANGAN pakai endpoint ini' -and "$($rr.data.catatan)" -match 'masih terhapus') {
+            $script:PASS++; Write-Host "  [PASS] catatan memperingatkan urutan yang benar, bukan menyesatkan" -ForegroundColor Green
+        } else {
+            $script:FAIL++; Write-Host "  [FAIL] catatan tidak memperingatkan urutan — operator diarahkan ke 422 buntu" -ForegroundColor Red
+        }
     }
 
     # Pembeda inti dari register: kredensial lama harus selamat.

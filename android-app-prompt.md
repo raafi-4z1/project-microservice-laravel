@@ -277,11 +277,13 @@ lain diblokir 403 sampai `POST /password` dilakukan. Alur ini sudah ada di app
   role-nya di luar Guru/Siswa/Karyawan bila operator ber-role Admin.
 - **404** — id tidak ada.
 
-⚠️ **`data.catatan`** muncul bila role-nya Guru/Siswa/Karyawan. Endpoint ini hanya
-memulihkan **akun login**; kalau dulu dihapus lewat `DELETE /{modul}/{id}`, record
-domainnya masih terhapus dan endpoint layan-diri (mis. `rekap/pegawai/saya`) akan
-membalas **404** — bukan 403. Tampilkan `catatan` itu apa adanya supaya operator
-tidak menyangka izinnya yang bermasalah.
+⚠️ **`data.catatan`** muncul bila role-nya Guru/Siswa/Karyawan — **tampilkan apa
+adanya**. Isinya memperingatkan bahwa endpoint ini hanya memulihkan akun login.
+Kalau akun itu dulu dihapus lewat `DELETE /{modul}/{id}`, urutan yang benar adalah
+`POST /{modul}` dengan email yang sama **selagi akunnya masih terhapus** — itu
+memulihkan record domain dan akunnya sekaligus. Memulihkan akunnya lebih dulu
+memblokir jalan itu (`POST /{modul}` jadi **422**), dan akunnya harus dihapus lagi
+untuk keluar dari keadaan itu.
 
 ## Modul & Endpoint (semua relatif ke base URL)
 

@@ -118,11 +118,16 @@ kosong, dan password baru pun tidak mengunci pemegang token lama.
 Aman diulang: memulihkan akun yang sudah aktif membalas **409**, bukan 500.
 Tercatat di audit log (`action = restored`, `payload.via = users/{id}/restore`).
 
-> **Hanya akun login yang dipulihkan.** Menghapus guru/siswa/karyawan ikut menghapus
-> akunnya, tapi tidak sebaliknya — endpoint ini cuma menyentuh tabel `users`. Kalau
-> akun dulu dihapus lewat `DELETE /{modul}/{id}`, record domainnya masih terhapus dan
-> endpoint layan-diri membalas **404** (bukan 403). Responsnya menyertakan `catatan`
-> yang menjelaskan ini supaya tidak didiagnosis sebagai bug izin.
+> **Hanya akun login yang dipulihkan, bukan record domainnya.** Menghapus
+> guru/siswa/karyawan ikut menghapus akunnya, tapi tidak sebaliknya. Kalau akun
+> dulu dihapus lewat `DELETE /{modul}/{id}`, **jangan pakai endpoint ini**:
+> panggil `POST /{modul}` dengan email yang sama **selagi akunnya masih terhapus**
+> — satu panggilan itu memulihkan record domain DAN akunnya sekaligus, dengan id
+> lama. Memulihkan akunnya lebih dulu justru **memblokir** jalan itu: `POST
+> /{modul}` lalu ditolak **422** karena emailnya dianggap milik akun yang masih
+> hidup, dan akunnya harus dihapus lagi untuk keluar dari keadaan itu.
+> Terverifikasi: mengikuti urutan yang salah membalas
+> *"Email sudah terpakai akun lain yang masih aktif"*.
 
 ### Kartu Absensi
 

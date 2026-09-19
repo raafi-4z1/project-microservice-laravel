@@ -8,6 +8,7 @@ use App\Traits\LogsAudit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 
@@ -51,6 +52,26 @@ class UserManagementController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Susun payload update password + penanda wajib-ganti.
+     *
+     * `Schema::hasColumn` mengikuti konvensi `UserService` dan
+     * `ForcePasswordChange`, yang sengaja ditulis agar tetap hidup di deployment
+     * yang kodenya sudah ditarik tapi migrasinya belum jalan. Menulis kolom itu
+     * tanpa penjaga membuat reset & restore password gagal 500 "Unknown column"
+     * di keadaan yang justru sudah diantisipasi bagian kode lain.
+     */
+    private function payloadPasswordBaru(string $passwordPolos): array
+    {
+        $payload = ['password' => Hash::make($passwordPolos)];
+
+        if (Schema::hasColumn('users', 'must_change_password')) {
+            $payload['must_change_password'] = true;
+        }
+
+        return $payload;
     }
 
     /** Batas atas per_page, seragam dengan endpoint berpaginasi lainnya. */
@@ -227,10 +248,7 @@ class UserManagementController extends Controller
         }
 
         // Sama seperti restore(): password pilihan admin harus diganti pemiliknya.
-        $target->update([
-            'password'             => Hash::make($request->new_password),
-            'must_change_password' => true,
-        ]);
+        $target->update($this->payloadPasswordBaru($request->new_password));
 
         // Cabut semua token aktif agar target wajib login ulang
         $target->tokens()->where('revoked', false)->each(fn ($t) => $t->revoke());
@@ -421,10 +439,7 @@ class UserManagementController extends Controller
             // memaksa pemiliknya menggantinya saat login pertama — mekanisme yang
             // sudah ada (`force.pwd`) dan sudah dipakai `UserService::create()`
             // untuk kasus yang sama persis.
-            $target->update([
-                'password'             => Hash::make($request->input('password')),
-                'must_change_password' => true,
-            ]);
+            $target->update($this->payloadPasswordBaru($request->input('password')));
         }
 
         // Token lama HARUS mati. Ketiga jalur sejenis sudah melakukannya
@@ -477,9 +492,13 @@ class UserManagementController extends Controller
         // izin, kesalahpahaman yang sudah pernah terjadi.
         if (in_array($target->role, ['Guru', 'Siswa', 'Karyawan'], true)) {
             $modul = $this->modulDomain($target->role);
-            $data['catatan'] = 'Hanya akun login yang dipulihkan. Bila dulu dihapus lewat '
-                . "DELETE /{$modul}/{id}, record domainnya masih terhapus — buat ulang lewat "
-                . "POST /{$modul} dengan email yang sama; record lama akan dipulihkan, bukan dibuat baru.";
+            $data['catatan'] = 'Hanya akun login yang dipulihkan, bukan record domainnya. '
+                . "Bila akun ini dulu dihapus lewat DELETE /{$modul}/{id}, JANGAN pakai endpoint ini: "
+                . "panggil POST /{$modul} dengan email yang sama selagi akunnya masih terhapus — "
+                . 'satu panggilan itu memulihkan record domain DAN akunnya sekaligus, dengan id lama. '
+                . "Kalau terlanjur dipulihkan di sini, hapus lagi akunnya (DELETE /users/{$target->id}) "
+                . "lalu jalankan POST /{$modul}; selama akunnya aktif, POST /{$modul} ditolak 422 "
+                . 'karena emailnya dianggap milik akun yang masih hidup.';
         }
 
         $pesan = $gantiPassword

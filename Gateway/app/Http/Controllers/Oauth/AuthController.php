@@ -9,6 +9,7 @@ use App\Traits\ApiResponser;
 use App\Traits\LogsAudit;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -71,36 +72,43 @@ class AuthController extends Controller
 
             if ($terhapus) {
                 $terhapus->restore();
-                $terhapus->update([
+                // Penanda ditulis lewat array dinamis + Schema::hasColumn,
+                // mengikuti konvensi UserService/ForcePasswordChange yang sengaja
+                // dibuat tahan terhadap deployment yang kodenya sudah ditarik tapi
+                // migrasinya belum jalan. Tanpa penjaga, pendaftaran ulang email
+                // terhapus gagal 500 "Unknown column" justru di keadaan yang sudah
+                // diantisipasi bagian kode lain.
+                $timpa = [
                     'name'             => $request->name,
                     'password'         => $request->password,
                     'role'             => $request->role,
                     'is_petugas_acara' => $petugasAcara,
-                    // WAJIB ikut ditimpa. Penanda Administrator Sekolah TIDAK
-                    // pernah diberikan lewat register — asalnya hanya dari record
-                    // karyawan. Sebelumnya field ini tidak disentuh sama sekali,
-                    // sehingga menghapus akun Adm. Sekolah lalu mendaftarkan ulang
-                    // emailnya sebagai Karyawan biasa menghasilkan akun yang tetap
-                    // `isAdminSekolah: true` — hak manajemen akademik berpindah ke
-                    // orang baru tanpa ada yang memberikannya. Terbukti bisa
-                    // direproduksi sebelum baris ini ada.
-                    'is_admin_sekolah' => false,
-                    // Sama kelasnya dengan penanda di atas: penanda wajib-ganti
-                    // milik pemilik LAMA. `register` menentukan passwordnya secara
-                    // eksplisit, jadi tidak ada yang perlu dirotasi. Tanpa baris ini
-                    // pemilik baru login sukses lalu kena 403 di hampir semua
-                    // fitur ("wajib mengganti password") padahal admin baru saja
-                    // menetapkannya — terbukti bisa direproduksi. (`force.pwd`
-                    // masih meloloskan `user`, `logout`, dan `password`, jadi ia
-                    // terdampar di layar ganti-password, bukan terkunci total.)
-                    //
-                    // Nilainya `false`, sama dengan cabang `User::create()` di
-                    // bawah: pada `register` password memang ditentukan admin
-                    // secara eksplisit. Beda dengan `resetPassword()`/`restore()`
-                    // yang memaksanya `true` — di sana akunnya milik orang yang
-                    // sudah ada dan kredensial pilihan admin tidak boleh menetap.
-                    'must_change_password' => false,
-                ]);
+                ];
+
+                // WAJIB ikut ditimpa. Penanda Administrator Sekolah TIDAK pernah
+                // diberikan lewat register — asalnya hanya record karyawan.
+                // Sebelumnya field ini tidak disentuh sama sekali, sehingga
+                // menghapus akun Adm. Sekolah lalu mendaftarkan ulang emailnya
+                // sebagai Karyawan biasa menghasilkan akun yang tetap
+                // `isAdminSekolah: true` — hak manajemen akademik berpindah ke
+                // orang baru tanpa ada yang memberikannya. Terbukti direproduksi.
+                if (Schema::hasColumn('users', 'is_admin_sekolah')) {
+                    $timpa['is_admin_sekolah'] = false;
+                }
+
+                // Kelas yang sama: penanda wajib-ganti milik pemilik LAMA.
+                // Nilainya `false`, sama dengan cabang `User::create()` di bawah —
+                // pada `register` password memang ditentukan admin secara eksplisit.
+                // Beda dengan `resetPassword()`/`restore()` yang memaksanya `true`:
+                // di sana akunnya milik orang yang sudah ada dan kredensial pilihan
+                // admin tidak boleh menetap. Tanpa baris ini pemilik baru login
+                // sukses lalu terdampar di layar ganti-password padahal admin baru
+                // saja menetapkan passwordnya.
+                if (Schema::hasColumn('users', 'must_change_password')) {
+                    $timpa['must_change_password'] = false;
+                }
+
+                $terhapus->update($timpa);
                 // Token sebelum penghapusan harus mati: akun ini kini milik
                 // pendaftaran yang baru, bukan pemilik lamanya.
                 $terhapus->tokens()->where('revoked', false)->each(fn($t) => $t->revoke());
