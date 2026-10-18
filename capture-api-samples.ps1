@@ -163,10 +163,11 @@ sebagai referensi bentuk DTO untuk pengembangan aplikasi client (Android, dsb).
 | Role | Email | Password | Keterangan |
 |---|---|---|---|
 | Admin | akuntest.admin@example.com | AdminTest123 | Akun baru |
-| Karyawan | akuntest.karyawan@example.com | KaryawanTest123 | Karyawan BIASA — tanpa hak manajemen (pembanding) |
+| Karyawan | akuntest.karyawan@example.com | KaryawanTest123 | Karyawan BIASA — tanpa hak manajemen (pembanding). **Tertaut ke record karyawan**, jadi ``rekap/pegawai/saya`` membalas 200 |
 | **Administrator Sekolah** | akuntest.adminsekolah@example.com | AdminSekolahTest123 | Karyawan bertanda `isAdminSekolah: true` — boleh manajemen akademik. Pakai untuk menguji gating menu |
 | Guru | andi.susanto2@sekolah.com | GuruTest123 | Terhubung record guru id=1 (punya pengampu) |
-| Siswa | andi.siswa1@sekolah.com | SiswaTest123 | Terhubung record siswa id=1 (terdaftar di kelas) |
+| Siswa | andi.siswa1@sekolah.com | SiswaTest123 | Terhubung record siswa id=1 (terdaftar di kelas, **punya nilai di semester aktif** — 2 mapel, slot ulangan sebagian terisi) |
+| **Petugas Acara** | akuntest.petugasacara@example.com | PetugasAcaraTest123 | Karyawan bertanda ``isPetugasAcara: true`` — **403 di hampir semua endpoint** kecuali ``akademik/acara*``, baca periode/semester, dan profil sendiri. Jangan di-warm-up cache |
 
 ## PENTING: bentuk response berbeda per role
 

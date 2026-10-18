@@ -236,8 +236,9 @@ induk (siswa, guru, karyawan, kelas, mapel, bobot nilai), kartu absensi + QR,
 membuka jendela PIN, **rekap absensi pegawai lain**, laporan peringkat se-angkatan
 + ekspornya, dan `POST /register` untuk Guru/Siswa/Karyawan.
 
-Singkatnya: seluruh operasional harian sekolah. Yang tersisa hanya urusan **akun
-istimewa** — itulah satu-satunya batas yang dijaga.
+Singkatnya: seluruh operasional harian sekolah. Batas yang tersisa ada dua
+kelompok — urusan **akun istimewa**, dan **tindakan yang melekat pada peran
+mengajar** (menilai, mencatat siswa keluar) yang tetap milik guru.
 
 **Yang TETAP DIKUNCI** (diuji di suite):
 
@@ -248,6 +249,14 @@ istimewa** — itulah satu-satunya batas yang dijaga.
 | Menghapus / reset password sesama Administrator Sekolah | ❌ 403 |
 | Menghapus karyawan yang juga Administrator Sekolah | ❌ 403 |
 | Menandai dirinya/orang lain sebagai Administrator Sekolah | ❌ flag diabaikan |
+| Memulihkan akun terhapus (`users/terhapus`, `users/{id}/restore`) | ❌ 403 |
+| Input / ubah / hapus nilai (`POST/PATCH/DELETE akademik/nilai`) | ❌ 403 — **baca** nilai & raport tetap boleh |
+| Mencatat siswa keluar (`POST akademik/absensi/keluar`) | ❌ 403 |
+
+Sempat ada klaim "satu-satunya batas adalah akun istimewa" di bagian ini. Itu tidak
+pernah benar untuk tiga baris terakhir, dan dokumen app ikut keliru karenanya —
+ditambah satu kesalahan sebaliknya: menyebut pergantian semester terkunci, padahal
+sudah dibuka sejak 2026-08-17.
 
 Mencabut penanda otomatis **mencabut seluruh token aktif** akun tersebut, agar hak
 tulis yang sudah dicabut tidak terus dipakai sampai token kedaluwarsa.

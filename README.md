@@ -114,11 +114,20 @@ diakses lewat IP:
 
 ```powershell
 cd C:\laragon\etc\ssl\mkcert
-mkcert gateway.test 192.168.12.173     # ganti dengan IP server
+..\mkcert.exe -cert-file gateway-lan.pem -key-file gateway-lan-key.pem `
+  gateway.test localhost 127.0.0.1 192.168.12.162 192.168.12.173 192.168.12.185
 ```
 
-Hasilnya bernama **`gateway.test+1.pem`** dan **`gateway.test+1-key.pem`**
-(akhiran `+1` karena ada dua nama) — sesuaikan path di vhost, lalu restart Apache.
+**Pakai nama berkas tetap** (`-cert-file`/`-key-file`), bukan nama bawaan mkcert:
+nama bawaan berubah mengikuti jumlah nama (`gateway.test+1.pem`, `+4.pem`, …),
+sehingga tiap penerbitan ulang memaksa vhost ikut diedit. Dengan nama tetap, vhost
+cukup menunjuk `gateway-lan.pem` sekali dan seterusnya hanya perlu restart Apache.
+
+**Cantumkan semua IP yang pernah dipakai server**, bukan hanya yang sekarang. IP
+LAN-nya berasal dari DHCP dan sudah berpindah `.185` → `.173` → `.162`; tiap IP
+yang tidak tercantum membuat app Android ditolak *hostname mismatch* — sementara
+`curl -k` dan skrip uji tetap hijau, jadi kerusakannya baru ketahuan di HP. Solusi
+sebenarnya tetap **DHCP reservation** di router.
 
 > **Penting:** ini hanya mengatasi *hostname mismatch*. CA milik mkcert tetap
 > tidak dikenal perangkat lain, jadi HP/app Android masih akan menolak dengan
@@ -634,8 +643,8 @@ Selalu jalankan `run-tests.ps1` sesudahnya. Kalau ada regresi,
 
 ### Testing Otomatis (PowerShell)
 
-Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**474 asersi**,
-terakhir 474 PASS / 0 FAIL / 0 SKIP — tanpa SKIP bila `TEST_TERMINAL_ID/TOKEN` diset) mencakup auth, CRUD semua service, akademik,
+Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**478 asersi**,
+terakhir 478 PASS / 0 FAIL / 0 SKIP — tanpa SKIP bila `TEST_TERMINAL_ID/TOKEN` diset) mencakup auth, CRUD semua service, akademik,
 **absensi** (kartu/QR, keluar, rekap, jendela PIN, wali kelas, autentikasi
 terminal), RBAC 5 akun (termasuk pasangan pembanding karyawan biasa vs
 Administrator Sekolah), **privasi baca** (penyaringan PII direktori + oracle

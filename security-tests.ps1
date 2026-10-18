@@ -6,7 +6,7 @@
 #
 #  Usage (dari PC penguji):
 #    $env:TEST_BASE_URL       = "https://gateway.test/api"   # via hosts entry ke IP backend
-#    $env:TEST_BACKEND_HOST   = "192.168.12.173"             # IP backend (untuk probe Host-spoof)
+#    $env:TEST_BACKEND_HOST   = "192.168.12.162"             # IP backend saat ini (DHCP - cek ulang)
 #    $env:TEST_ADMIN_PASSWORD = "PasswordSuperAdmin"
 #    powershell -ExecutionPolicy Bypass -File security-tests.ps1
 #

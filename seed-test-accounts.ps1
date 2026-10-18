@@ -18,7 +18,13 @@ if (-not $env:TEST_ADMIN_PASSWORD) {
     exit 1
 }
 
-$BaseUrl = "https://192.168.12.173/api"
+# Default ke gateway.test, BUKAN IP LAN: skrip ini dijalankan di mesin server,
+# tempat gateway.test selalu menunjuk 127.0.0.1 lewat hosts Laragon. IP LAN
+# berasal dari DHCP dan sudah berpindah .173 -> .162; mematoknya membuat skrip
+# gagal "Unable to connect" setiap kali router membagi IP berbeda.
+# Untuk menyeed server lain dari PC berbeda: $env:TEST_BASE_URL = "https://<IP>/api"
+$script:GAGAL = 0
+$BaseUrl = if ($env:TEST_BASE_URL) { $env:TEST_BASE_URL } else { "https://gateway.test/api" }
 
 try {
     Add-Type @"
@@ -44,18 +50,34 @@ function Api {
         $headers['Content-Type'] = 'application/json'
         $params['Body'] = ($Body | ConvertTo-Json -Depth 6)
     }
-    try {
-        return (Invoke-WebRequest @params).Content | ConvertFrom-Json
-    } catch {
-        $er = $_.Exception.Response
-        if ($er) {
-            try {
-                $rd = [System.IO.StreamReader]::new($er.GetResponseStream())
-                $tx = $rd.ReadToEnd(); $rd.Close(); $er.Close()
-                if ($tx) { return $tx | ConvertFrom-Json }
-            } catch {}
+    # Login, refresh, dan ganti password dibatasi 5/menit, dan skrip ini melakukan
+    # belasan login beruntun (tiap akun: cek penanda + lepas penanda). Tanpa
+    # menunggu, login ke-6 dan seterusnya membalas 429 — dan dulu 429 itu terbaca
+    # sebagai "login gagal" yang diam-diam dilewati, meninggalkan akun test dengan
+    # penanda wajib-ganti masih menyala sambil mencetak baris sukses.
+    for ($coba = 1; $coba -le 3; $coba++) {
+        try {
+            return (Invoke-WebRequest @params).Content | ConvertFrom-Json
+        } catch {
+            $er = $_.Exception.Response
+            $hasil = $null
+            if ($er) {
+                try {
+                    $rd = [System.IO.StreamReader]::new($er.GetResponseStream())
+                    $tx = $rd.ReadToEnd(); $rd.Close(); $er.Close()
+                    if ($tx) { $hasil = $tx | ConvertFrom-Json }
+                } catch {}
+            }
+            if ($hasil -and $hasil.resCode -eq 429 -and $coba -lt 3) {
+                $tunggu = 61
+                if ($hasil.data -and $hasil.data.retryAfter) { $tunggu = [int]$hasil.data.retryAfter + 1 }
+                Write-Host "           (429 di $Path - tunggu ${tunggu}s lalu ulangi)" -ForegroundColor DarkGray
+                Start-Sleep -Seconds $tunggu
+                continue
+            }
+            if ($hasil) { return $hasil }
+            return [PSCustomObject]@{ resCode = 0; resMsg = $_.Exception.Message; data = $null }
         }
-        return [PSCustomObject]@{ resCode = 0; resMsg = $_.Exception.Message; data = $null }
     }
 }
 
@@ -68,8 +90,9 @@ function Find-UserId([string]$Email) {
 
 # Pastikan akun ada dengan password yang diketahui: reset jika ada, register jika belum
 # Akun yang dibuat lewat CRUD domain (POST /karyawan, /guru, /siswa) lahir dengan
-# must_change_password = true, dan reset password oleh admin TIDAK melepasnya —
-# itu memang disengaja demi keamanan. Tapi untuk akun TEST hasilnya bikin repot:
+# must_change_password = true, dan reset password oleh admin JUGA menyalakannya
+# (password pilihan admin wajib dirotasi pemiliknya) — disengaja demi keamanan.
+# Tapi untuk akun TEST hasilnya bikin repot:
 # login berhasil namun endpoint lain 403 sampai passwordnya diganti sendiri.
 # Jadi di sini flag-nya dilepas lewat alur resmi: reset ke password sementara,
 # login, lalu ganti ke password final.
@@ -90,13 +113,24 @@ function Ensure-Account([string]$Name, [string]$Email, [string]$Role, [string]$P
         if ($r.resCode -ne 200) {
             Write-Host "  [GAGAL   ] Reset $Email -- $($r.resMsg)" -ForegroundColor Red; return $false
         }
-        # Kalau akun masih ber-flag, lepaskan supaya langsung bisa dipakai menguji
+        # Kalau akun masih ber-flag, lepaskan supaya langsung bisa dipakai menguji.
+        # Sejak reset password oleh admin MENYALAKAN penanda wajib-ganti, langkah
+        # ini bukan lagi sesekali — ia selalu terjadi. Karena itu kegagalan cek
+        # login TIDAK boleh lagi jatuh ke cabang sukses: itulah yang dulu membuat
+        # dua akun test tertinggal rusak sambil skrip mencetak [RESET].
         $cek = Api POST "login" @{ email = $Email; password = $Password; device_name = "seed-script" }
-        if ($cek.resCode -eq 200 -and $cek.data.mustChangePassword) {
+        if ($cek.resCode -ne 200) {
+            Write-Host "  [GAGAL   ] $Role : $Email -- login verifikasi $($cek.resCode) $($cek.resMsg)" -ForegroundColor Red
+            $script:GAGAL++
+            return $false
+        }
+        if ($cek.data.mustChangePassword) {
             if (Clear-MustChangePassword $Email $id $Password) {
                 Write-Host "  [RESET   ] $Role : $Email (flag ganti-password dilepas)" -ForegroundColor Green
             } else {
-                Write-Host "  [RESET   ] $Role : $Email (PERINGATAN: masih wajib ganti password)" -ForegroundColor Yellow
+                Write-Host "  [GAGAL   ] $Role : $Email -- masih WAJIB ganti password" -ForegroundColor Red
+                $script:GAGAL++
+                return $false
             }
         } else {
             Write-Host "  [RESET   ] $Role : $Email" -ForegroundColor Green
@@ -134,38 +168,50 @@ Ensure-Account "Akun Test Admin" "akuntest.admin@example.com" "Admin" "AdminTest
 # hasilnya 404 — gate role-nya lolos, tapi tidak ada yang bisa diuji, dan capture
 # API pun merekam 404 seolah karyawan biasa memang tidak berhak.
 $kwBiasaEmail = "akuntest.karyawan@example.com"
-$adaKB = @((Api GET "karyawan/all`?per_page=100&search=$([uri]::EscapeDataString($kwBiasaEmail))").data.data)
+$adaKB = @((Api GET "karyawan/all`?per_page=100&search=$([uri]::EscapeDataString($kwBiasaEmail))").data.data |
+           Where-Object { $_.email -eq $kwBiasaEmail })
 if (@($adaKB).Count -eq 0) {
-    # Kalau akun user-nya SUDAH ADA tapi record karyawannya belum, `POST /karyawan`
-    # akan ditolak 422 oleh guard email — dan itu memang benar. JANGAN coba
-    # menghapus akunnya lebih dulu: `users` memakai soft delete sedangkan
-    # `users.email` unik di level DB, jadi akun yang dihapus TETAP memegang
-    # emailnya. Menghapus hanya mengubah "akun ada tanpa record" (yang masih bisa
-    # login) menjadi "email terkunci selamanya" (yang tidak bisa dipulihkan lewat
-    # API sama sekali). Sudah pernah dicoba dan justru merusak akun uji.
+    # Akun user-nya SUDAH ADA tapi record karyawannya belum. Selama akunnya
+    # AKTIF, `POST /karyawan` ditolak 422 oleh guard anti data-yatim ("email
+    # dipakai akun aktif") — dan itu memang benar.
     #
-    # Jadi: laporkan apa adanya, biarkan akunnya tetap bisa dipakai.
+    # Dulu ini jalan buntu: `users` memakai soft delete sedangkan `users.email`
+    # unik di level DB, sehingga menghapus akunnya membuat emailnya terkunci
+    # selamanya. Sejak email bisa dipakai ulang, `POST /karyawan` untuk email
+    # milik akun TERHAPUS justru memulihkan baris akun yang SAMA (id tetap)
+    # sekaligus membuat record karyawannya. Jadi urutannya: hapus akunnya dulu,
+    # baru POST /karyawan. Tanpa perubahan perilaku API apa pun.
     $uLama = @((Api GET "users`?search=$([uri]::EscapeDataString($kwBiasaEmail))&per_page=5").data.data |
                Where-Object { $_.email -eq $kwBiasaEmail })
+    $idLama = $null
     if ($uLama.Count -gt 0) {
-        Write-Host "  [CATATAN ] $kwBiasaEmail punya akun tapi TANPA record karyawan." -ForegroundColor Yellow
-        Write-Host "             Akibatnya rekap/pegawai/saya balas 404 (bukan 403 - gate role lolos)." -ForegroundColor Yellow
-        Write-Host "             Tidak bisa diperbaiki lewat API: soft delete menahan emailnya." -ForegroundColor Yellow
+        $idLama = $uLama[0].id
+        $del = Api DELETE "users/$idLama"
+        if ($del.resCode -ne 202) {
+            Write-Host "  [GAGAL   ] Lepas akun $kwBiasaEmail untuk ditautkan ulang: $($del.resCode) $($del.resMsg)" -ForegroundColor Red
+        }
     }
     $stampKB = Get-Date -Format "HHmmss"
     $mkKB = Api POST "karyawan" @{
         email = $kwBiasaEmail; nip = "8$stampKB"; namaLengkap = "Akun Test Karyawan Biasa"
         jabatan = "Satpam"; isAdminSekolah = $false
     }
-    if ($mkKB.resCode -eq 201) { Write-Host "  [BUAT    ] Record karyawan biasa : $kwBiasaEmail (karyawan id=$($mkKB.data.idKaryawan))" }
-    else { Write-Host "  [GAGAL   ] Record karyawan biasa : $($mkKB.resCode) $($mkKB.resMsg)" -ForegroundColor Yellow }
+    if ($mkKB.resCode -eq 201) {
+        $idBaru = Find-UserId $kwBiasaEmail
+        $catatanId = if ($idLama -and "$idBaru" -eq "$idLama") { " -- akun id=$idLama dipulihkan, bukan dibuat baru" } else { "" }
+        Write-Host "  [TAUTKAN ] Record karyawan biasa : $kwBiasaEmail (karyawan id=$($mkKB.data.idKaryawan))$catatanId" -ForegroundColor Green
+    } else {
+        Write-Host "  [GAGAL   ] Record karyawan biasa : $($mkKB.resCode) $($mkKB.resMsg)" -ForegroundColor Red
+        # Jangan tinggalkan akun dalam keadaan terhapus: pulihkan apa adanya.
+        if ($idLama) { Api POST "users/$idLama/restore" | Out-Null }
+    }
 } else {
     # Pastikan penandanya TETAP mati — akun ini gunanya sebagai pembanding
     Api POST "karyawan/update" @{ idKaryawan = $adaKB[0].idKaryawan; isAdminSekolah = $false } | Out-Null
     Write-Host "  [ADA     ] Record karyawan biasa : $kwBiasaEmail (karyawan id=$($adaKB[0].idKaryawan))"
 }
-# Membuat karyawan otomatis membuat/mereset akun user-nya, jadi passwordnya
-# dipastikan ulang setelah blok di atas.
+# Membuat karyawan otomatis membuat/memulihkan akun user-nya dengan password
+# turunan email + wajib-ganti, jadi passwordnya dipastikan ulang di sini.
 Ensure-Account "Akun Test Karyawan" $kwBiasaEmail "Karyawan" "KaryawanTest123" | Out-Null
 
 # -- 2b. Administrator Sekolah: karyawan NYATA bertanda isAdminSekolah --
@@ -245,9 +291,64 @@ if ($siswaPick) {
     Write-Host "           (siswa id=$($siswaPick.idSiswa) - $($siswaPick.namaLengkap))"
 } else { Write-Host "  [SKIP] Tidak ada siswa di database" -ForegroundColor Yellow }
 
+
+# ── 5. Nilai siswa test di semester AKTIF ──
+# Tanpa ini layar "Nilai Saya" / raport di app hanya pernah diuji dalam keadaan
+# KOSONG — tampilan berisi data (rata-rata, slot ulangan yang sebagian terisi,
+# nilai akhir) tidak pernah terlihat. Diisi lewat API, bukan DB, supaya rata-rata
+# harian dan nilai akhir dihitung oleh logika yang sama dengan produksi.
+#
+# HANYA mengisi pasangan (siswa_kelas, pengampu) yang BELUM punya nilai.
+# `POST /akademik/nilai` untuk slot yang sudah ada melakukan upsert, jadi kalau
+# dikirim ulang tiap run, nilai yang sengaja diedit penguji akan tertimpa diam-diam.
+if ($siswaPick) {
+    $kSaya = @((Api GET "akademik/siswa/$($siswaPick.idSiswa)/kelas").data |
+               Where-Object { $_.tahunAjaran -eq $tahun -and "$($_.semester)" -eq "$semester" })[0]
+    if (-not $kSaya) {
+        Write-Host "  [SKIP    ] Nilai siswa: $siswaEmail tidak terdaftar di kelas mana pun pada $tahun sem $semester" -ForegroundColor Yellow
+    } else {
+        $pengampuKelas = @((Api GET "akademik/kelas/$($kSaya.kelasId)/pengampu").data |
+                           Where-Object { $_.tahunAjaran -eq $tahun -and "$($_.semester)" -eq "$semester" })
+        $sudahAda = @((Api GET "akademik/nilai/siswa/$($siswaPick.idSiswa)`?tahun_ajaran=$([uri]::EscapeDataString($tahun))&semester=$semester").data)
+        $pengampuTerisi = @($sudahAda | ForEach-Object {
+            if ($_.pengampuMapelId) { "$($_.pengampuMapelId)" } elseif ($_.pengampu_mapel_id) { "$($_.pengampu_mapel_id)" }
+        })
+
+        # Pola sengaja bervariasi: slot ulangan tidak penuh (yang kosong = null)
+        # supaya tampilan "5 slot, sebagian belum ada" ikut teruji.
+        $pola = @(
+            @{ nilai_harian_1 = 80; nilai_harian_2 = 85; nilai_harian_3 = 78; nilai_uts = 82; nilai_uas = 88 },
+            @{ nilai_harian_1 = 75; nilai_harian_2 = 90; nilai_uts = 70; nilai_uas = 85 },
+            @{ nilai_harian_1 = 92; nilai_harian_2 = 88; nilai_harian_3 = 95; nilai_harian_4 = 90; nilai_uts = 89; nilai_uas = 93 }
+        )
+        if ($pengampuKelas.Count -eq 0) {
+            Write-Host "  [SKIP    ] Nilai siswa: kelas $($kSaya.namaKelas) belum punya pengampu di $tahun sem $semester" -ForegroundColor Yellow
+        }
+        $i = 0
+        foreach ($pm in $pengampuKelas) {
+            $nama = "$($pm.namaMapel)"
+            if ($pengampuTerisi -contains "$($pm.idPengampuMapel)") {
+                Write-Host "  [ADA     ] Nilai $nama untuk $($siswaPick.namaLengkap) (tidak ditimpa)"
+            } else {
+                $body = @{ siswa_kelas_id = $kSaya.idSiswaKelas; pengampu_mapel_id = $pm.idPengampuMapel } + $pola[$i % $pola.Count]
+                $rn = Api POST "akademik/nilai" $body
+                if ($rn.resCode -eq 201) {
+                    Write-Host "  [BUAT    ] Nilai $nama untuk $($siswaPick.namaLengkap) (akhir=$($rn.data.nilaiAkhir))" -ForegroundColor Green
+                } else {
+                    Write-Host "  [GAGAL   ] Nilai $nama : $($rn.resCode) $($rn.resMsg)" -ForegroundColor Red
+                }
+            }
+            $i++
+        }
+    }
+}
+
 # ── Ringkasan ──
 Write-Host ""
 Write-Host "=============================================================="
+if ($script:GAGAL -gt 0) {
+    Write-Host "  PERHATIAN: $($script:GAGAL) akun GAGAL disiapkan - lihat baris [GAGAL] di atas" -ForegroundColor Red
+}
 Write-Host "  AKUN TEST SIAP DIPAKAI"
 Write-Host "  Admin    : akuntest.admin@example.com    / AdminTest123"
 Write-Host "  Karyawan : akuntest.karyawan@example.com / KaryawanTest123"

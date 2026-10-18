@@ -104,16 +104,20 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
 ## Backend / API
 
 - Satu base URL Gateway. Untuk deployment ini backend ada di SERVER LAN, bukan PC
-  dev, jadi debug default = `https://192.168.12.173/api` (HP fisik & emulator sama-
-  sama menjangkaunya di LAN). Buat base URL configurable via BuildConfig/setting.
-  Sertifikat server untuk `gateway.test` diakses lewat IP → sediakan opsi trust-all
-  HANYA untuk build debug.
+  dev, jadi debug default = `https://192.168.12.162/api` (HP fisik & emulator sama-
+  sama menjangkaunya di LAN). **IP-nya dari DHCP dan sudah berpindah**
+  (`.185` → `.173` → `.162`), jadi base URL WAJIB configurable via
+  BuildConfig/setting — jangan dipatok. Sediakan opsi trust-all HANYA untuk build
+  debug.
   **DUA masalah TLS terpisah — sering tertukar:**
-  1. *Hostname mismatch*: cert untuk `gateway.test`, app menembak `192.168.12.173`
-     → `SSLPeerUnverifiedException: Hostname 192.168.12.173 not verified`.
-     Solusi permanen: terbitkan ulang cert di server memuat IP
-     (`mkcert gateway.test 192.168.12.173`), atau matikan hostname verification
-     di build debug (OkHttp: `hostnameVerifier { _, _ -> true }`).
+  1. *Hostname mismatch*: app menembak IP yang tidak tercantum di sertifikat
+     → `SSLPeerUnverifiedException: Hostname 192.168.12.x not verified`.
+     **Sudah diselesaikan di server:** sertifikat kini memuat `gateway.test`,
+     `localhost`, `127.0.0.1`, `192.168.12.162`, `.173`, `.185`, `.186`. Masalah ini
+     hanya muncul lagi kalau DHCP memberi IP **baru** di luar daftar itu — backend
+     lalu harus menerbitkan ulang sertifikatnya (`mkcert gateway.test <IP>`).
+     Mematikan hostname verification di build debug (OkHttp:
+     `hostnameVerifier { _, _ -> true }`) tetap mungkin, tapi kini tidak perlu.
   2. *CA tidak dipercaya*: mkcert memakai CA lokal yang HANYA ter-install di PC dev.
      Perangkat Android tidak mengenalnya → `Trust anchor for certification path not
      found`, **bahkan setelah cert memuat IP**. Menerbitkan ulang cert TIDAK
@@ -210,12 +214,25 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
   dan **`GET /user`**.
   Ia berhak **menulis** seperti Admin untuk urusan operasional: manajemen akademik
   (pembagian kelas, pengampu, jadwal, jam, periode, pengaturan absensi, wali kelas),
-  CRUD data induk (siswa, guru, karyawan, kelas, mapel, bobot nilai), kartu absensi
-  + QR, membuka jendela PIN, laporan peringkat se-angkatan + ekspor, serta
-  `POST /register` untuk Guru/Siswa/Karyawan.
-  **Tetap dikunci** (server menolak, jangan tampilkan menunya): membuat/menghapus/
-  mereset akun Admin & SuperAdmin, menyentuh sesama Administrator Sekolah,
-  menandai orang sebagai Administrator Sekolah, dan mengubah semester aktif.
+  **pergantian semester aktif** (`POST /akademik/semester/aktif`), CRUD data induk
+  (siswa, guru, karyawan, kelas, mapel, bobot nilai), kartu absensi + QR, membuka
+  jendela PIN, rekap absensi pegawai lain, laporan peringkat se-angkatan + ekspor,
+  serta `POST /register` untuk Guru/Siswa/Karyawan.
+  **Tetap dikunci** (server menolak **403** — jangan tampilkan menunya):
+  - urusan akun istimewa: membuat/menghapus/mereset akun Admin & SuperAdmin,
+    menyentuh sesama Administrator Sekolah, menandai orang sebagai Administrator
+    Sekolah;
+  - **pemulihan akun** (`GET /users/terhapus`, `POST /users/{id}/restore`);
+  - **input/ubah/hapus nilai** (`POST/PATCH/DELETE /akademik/nilai`) — tetap
+    SuperAdmin/Admin/Guru pengampu; Adm. Sekolah hanya **membaca** nilai & raport;
+  - **mencatat siswa keluar** (`POST /akademik/absensi/keluar`) — tetap
+    SuperAdmin/Admin/Guru wali.
+
+  > Versi lama dokumen ini menyebut "mengubah semester aktif" sebagai terkunci. Itu
+  > keliru sejak 2026-08-17: route-nya dibuka untuk Adm. Sekolah **atas permintaan
+  > sekolah**, karena pergantian semester memang pekerjaan TU. Terverifikasi LIVE:
+  > Adm. Sekolah lolos ke validasi (body kosong → **422**), Guru & karyawan biasa
+  > **403**. Tampilkan formnya untuk `isAdminSekolah == true`.
   Konsekuensi UI: menu **Akademik** yang sekarang admin-only harus ditampilkan
   juga ketika `isAdminSekolah == true`.
 - **Petugas Acara** (`isPetugasAcara: true`, role tetap mis. `Karyawan`): HANYA

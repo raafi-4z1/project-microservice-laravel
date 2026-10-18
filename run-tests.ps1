@@ -1990,6 +1990,21 @@ if ($asTU -and $asBiasa) {
         Chk "Karyawan biasa -> POST $($ep[0]) (harus 403)" $rBi 403
     }
 
+    # Pergantian semester aktif DIBUKA untuk TU atas permintaan sekolah (commit
+    # 0238679). Dokumen app sempat menyebutnya terkunci, sehingga app dan route
+    # berselisih tanpa ada yang gagal. Body sengaja KOSONG: 422 membuktikan gate
+    # role terlewati tanpa benar-benar mengganti semester aktif server.
+    $rS = Api POST "akademik/semester/aktif" @{} -Token $asTU.tok
+    if ($rS.resCode -eq 422) { $script:PASS++; Write-Host "  [PASS] TU -> POST semester/aktif lolos gate role (422 validasi, semester tidak berubah)" -ForegroundColor Green }
+    else { $script:FAIL++; Write-Host "  [FAIL] TU -> POST semester/aktif = $($rS.resCode) (harus 422: lolos gate, ditolak validasi)" -ForegroundColor Red }
+    Chk "Karyawan biasa -> POST semester/aktif (harus 403)" (Api POST "akademik/semester/aktif" @{} -Token $asBiasa.tok) 403
+
+    # Yang TETAP milik peran mengajar, bukan TU. Dulu README menyatakan "satu-
+    # satunya batas adalah akun istimewa" — dua baris ini membuktikan sebaliknya,
+    # dan dokumen app tidak pernah menyebut keduanya.
+    Chk "TU -> POST nilai (harus 403 — menilai tetap milik guru)" (Api POST "akademik/nilai" @{} -Token $asTU.tok) 403
+    Chk "TU -> POST absensi/keluar (harus 403 — tetap milik guru wali)" (Api POST "akademik/absensi/keluar" @{} -Token $asTU.tok) 403
+
     # Guard anti-eskalasi
     $r = Api POST "register" @{ name = "X"; email = "esc.$tsAS@sekolah.test"; password = "Rahasia123"; confirm_password = "Rahasia123"; role = "Admin" } -Token $asTU.tok
     Chk "TU -> register role=Admin (harus 422)" $r 422

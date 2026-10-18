@@ -17,9 +17,10 @@ menggunakan Claude Code (model: Claude Opus 4.8, reasoning effort `xhigh`).
    setujui → baru eksekusi.
 3. **Gate wajib lulus sebelum lanjut fase berikutnya.** Kalau gagal, perbaiki di
    sesi itu juga — jangan menumpuk utang ke fase berikutnya.
-4. **Verifikasi selalu terhadap backend sungguhan** (`https://192.168.12.173/api`
-   — server sekolah di LAN, dari emulator maupun HP fisik) memakai akun test per
+4. **Verifikasi selalu terhadap backend sungguhan** (`https://192.168.12.162/api`,
+   server sekolah di LAN, dari emulator maupun HP fisik) memakai akun test per
    role — bukan mock. Daftar akun: tabel di `docs/api-sample-responses.md`.
+   IP-nya dari DHCP dan bisa berpindah, jadi jangan dipatok di kode.
 5. Setiap pesan fase diawali instruksi baca ulang dokumen — sesi baru tidak
    membawa ingatan sesi sebelumnya.
 6. Kalau AI membuat asumsi bentuk request/response, suruh cek
@@ -97,7 +98,7 @@ menggunakan Claude Code (model: Claude Opus 4.8, reasoning effort `xhigh`).
         **Gradle Sync** di Android Studio (tidak selalu otomatis)
       - Jangan mengedit file yang sama di dua editor bersamaan; biarkan Claude
         Code yang menulis, Android Studio untuk melihat/preview/menjalankan
-- [ ] Emulator/HP bisa mengakses backend: buka `https://192.168.12.173/api` dari
+- [ ] Emulator/HP bisa mengakses backend: buka `https://192.168.12.162/api` dari
       browser (respons JSON 404 "route api could not be found" = BERHASIL tembus;
       abaikan warning sertifikat — cert untuk gateway.test diakses lewat IP)
 
@@ -139,7 +140,7 @@ Preview/emulator/Logcat; penulisan kode lewat Claude Code di VS Code.)
 > (Compose M3, Navigation, Ktor + kotlinx.serialization, Koin, Coil 3,
 > multiplatform-settings), NavHost kosong dengan route sealed class, dan satu
 > layar placeholder. Base URL via BuildConfig (debug:
-> https://192.168.12.173/api). JANGAN implement fitur apa pun dulu.
+> https://192.168.12.162/api). JANGAN implement fitur apa pun dulu.
 > Naikkan versi dependensi hanya ke kombinasi stabil yang kompatibel — verifikasi
 > lewat build, bukan asumsi. Kalau build pecah setelah menaikkan versi, kembalikan.
 >
