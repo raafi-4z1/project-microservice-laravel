@@ -66,7 +66,8 @@ menggunakan Claude Code (model: Claude Opus 4.8, reasoning effort `xhigh`).
 - [ ] **Backend hidup: Gateway + 6 service** (Class, Mapel, Guru, Siswa, Karyawan,
       Akademik) jalan, bisa di-curl dari mesin dev. Install ikuti **README.md root**
       (Prasyarat + langkah 1–10). PASTIKAN KaryawanService ikut ter-setup.
-- [ ] `seed-test-accounts.ps1` sudah dijalankan (akun 4 role tersedia)
+- [ ] `seed-test-accounts.ps1` sudah dijalankan (6 akun test: Admin, Karyawan biasa,
+      Adm. Sekolah, Petugas Acara, Guru, Siswa — lihat tabel di `api-sample-responses.md`)
 - [ ] `api-sample-responses.md` sudah di-generate di sisi backend:
       `$env:TEST_ADMIN_PASSWORD="..."; .\capture-api-samples.ps1`
 - [ ] **Rakit bundle otomatis** dari repo backend (buat folder + CLAUDE.md +

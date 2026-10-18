@@ -401,7 +401,7 @@
                 "password"
               ]
             },
-            "description": "Reset password akun user lain. Tidak memerlukan password lama.\n\n**Akses:** SuperAdmin, Admin.\n\n**Aturan:**\n- SuperAdmin → dapat reset password Admin, Guru, Siswa, Karyawan\n- Admin → hanya dapat reset password Guru, Siswa, Karyawan\n- Password SuperAdmin **tidak dapat** direset via API → resCode 403\n- Tidak dapat reset password akun sendiri lewat endpoint ini → gunakan POST /password\n- Semua token aktif milik user target **langsung dicabut** (paksa login ulang)\n\nGanti `1` di URL dengan ID user yang passwordnya ingin direset.\n\n**Target wajib ganti password** saat login berikutnya (`mustChangePassword: true`), selain token lamanya dicabut."
+            "description": "Reset password akun user lain. Tidak memerlukan password lama.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah — Admin & Administrator Sekolah hanya untuk akun Guru/Siswa/Karyawan, dan Administrator Sekolah tidak boleh menyentuh sesama Administrator Sekolah. Target **wajib ganti password** saat login berikutnya.\n\n**Aturan:**\n- SuperAdmin → dapat reset password Admin, Guru, Siswa, Karyawan\n- Admin → hanya dapat reset password Guru, Siswa, Karyawan\n- Password SuperAdmin **tidak dapat** direset via API → resCode 403\n- Tidak dapat reset password akun sendiri lewat endpoint ini → gunakan POST /password\n- Semua token aktif milik user target **langsung dicabut** (paksa login ulang)\n\nGanti `1` di URL dengan ID user yang passwordnya ingin direset.\n\n**Target wajib ganti password** saat login berikutnya (`mustChangePassword: true`), selain token lamanya dicabut."
           },
           "response": []
         },
@@ -1995,12 +1995,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseURL}}/api/users/terhapus?per_page=10",
+              "raw": "{{baseURL}}/users/terhapus?per_page=10",
               "host": [
                 "{{baseURL}}"
               ],
               "path": [
-                "api",
                 "users",
                 "terhapus"
               ],
@@ -2045,12 +2044,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseURL}}/api/users/1/restore",
+              "raw": "{{baseURL}}/users/1/restore",
               "host": [
                 "{{baseURL}}"
               ],
               "path": [
-                "api",
                 "users",
                 "1",
                 "restore"
@@ -2299,6 +2297,58 @@
               ]
             },
             "description": "Mengirim **berkas gambar** (image/webp), bukan JSON. Endpoint **ber-autentikasi** — tanpa header Authorization membalas **401**.\n\nGating sama dengan detail modulnya. Respons membawa `Cache-Control: private, max-age=86400`, jadi klien boleh menyimpannya sehari.\n\nDi Coil/OkHttp: kirim header Authorization seperti request lain.\n\nTersedia juga di `guru/foto/{id}` dan `karyawan/foto/{id}`. Ganti `1` dengan id."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Foto Guru (berkas)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/guru/foto/1",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "guru",
+                "foto",
+                "1"
+              ]
+            },
+            "description": "Mengirim **berkas gambar** (image/webp), bukan JSON. Endpoint **ber-autentikasi** — tanpa header Authorization membalas **401**.\n\n**Akses:** Semua role login — sama dengan detail guru.\n\nRespons membawa `Cache-Control: private, max-age=86400`, jadi klien boleh menyimpannya sehari. Ini URL yang dipakai mode foto `GET guru/all?foto=1`.\n\nGanti `1` dengan id."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Foto Karyawan (berkas)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/karyawan/foto/1",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "karyawan",
+                "foto",
+                "1"
+              ]
+            },
+            "description": "Mengirim **berkas gambar** (image/webp), bukan JSON. Endpoint **ber-autentikasi** — tanpa header Authorization membalas **401**.\n\n**Akses:** SuperAdmin, Admin, Guru, Karyawan (termasuk Administrator Sekolah) — sama dengan detail karyawan. Siswa **403**.\n\nRespons membawa `Cache-Control: private, max-age=86400`, jadi klien boleh menyimpannya sehari. Ini URL yang dipakai mode foto `GET karyawan/all?foto=1`.\n\nGanti `1` dengan id."
           },
           "response": []
         }
@@ -2556,7 +2606,7 @@
                     "aktif"
                   ]
                 },
-                "description": "Set semester aktif baru. Semester sebelumnya otomatis ditutup (`is_aktif = false`) dalam satu DB transaction.\n\n**Akses:** SuperAdmin, Admin.\n\n**Field:**\n- `tahun_ajaran` (wajib) – format `YYYY/YYYY`, contoh: `2024/2025`\n- `semester` (wajib) – `1` atau `2`\n- `tanggal_mulai` (wajib) – format `YYYY-MM-DD`\n- `tanggal_selesai` (wajib) – format `YYYY-MM-DD`, harus setelah `tanggal_mulai`\n\n**Catatan:** Hanya satu semester yang bisa aktif di waktu yang sama."
+                "description": "Set semester aktif baru. Semester sebelumnya otomatis ditutup (`is_aktif = false`) dalam satu DB transaction.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah — dibuka untuk TU atas permintaan sekolah (pergantian semester memang pekerjaan TU). Guru & karyawan biasa **403**.\n\n**Field:**\n- `tahun_ajaran` (wajib) – format `YYYY/YYYY`, contoh: `2024/2025`\n- `semester` (wajib) – `1` atau `2`\n- `tanggal_mulai` (wajib) – format `YYYY-MM-DD`\n- `tanggal_selesai` (wajib) – format `YYYY-MM-DD`, harus setelah `tanggal_mulai`\n\n**Catatan:** Hanya satu semester yang bisa aktif di waktu yang sama."
               },
               "response": []
             },
@@ -2668,7 +2718,7 @@
                     "1"
                   ]
                 },
-                "description": "Pindahkan siswa ke kelas lain dalam semester yang sama. Record lama di-soft-delete dan record baru dibuat.\n\n**Akses:** SuperAdmin, Admin.\n\n**Field:**\n- `kelas_id` (wajib) – ID kelas tujuan\n\nGanti `1` di URL dengan ID record `siswa_kelas` (bukan ID siswa).\n\nGateway otomatis mengambil `limit_siswa` dari ClassMicroservices untuk memvalidasi kapasitas kelas tujuan.\n\n**Validasi:**\n- Tidak bisa pindah ke kelas yang sama (409)\n- Kelas tujuan tidak boleh melebihi kapasitas"
+                "description": "Pindahkan siswa ke kelas lain dalam semester yang sama. Record lama di-soft-delete dan record baru dibuat.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah.\n\n**Field:**\n- `kelas_id` (wajib) – ID kelas tujuan\n\nGanti `1` di URL dengan ID record `siswa_kelas` (bukan ID siswa).\n\nGateway otomatis mengambil `limit_siswa` dari ClassMicroservices untuk memvalidasi kapasitas kelas tujuan.\n\n**Validasi:**\n- Tidak bisa pindah ke kelas yang sama (409)\n- Kelas tujuan tidak boleh melebihi kapasitas"
               },
               "response": []
             },
@@ -2919,7 +2969,7 @@
                     }
                   ]
                 },
-                "description": "Ambil daftar siswa yang belum terdaftar di kelas manapun untuk semester tertentu.\n\n**Akses:** SuperAdmin, Admin.\n\nTanpa query, otomatis menggunakan semester aktif.\n\n**Response:** tahun_ajaran, semester, total_siswa, total_terdaftar, total_belum, siswa: [...]"
+                "description": "Ambil daftar siswa yang belum terdaftar di kelas manapun untuk semester tertentu.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah.\n\nTanpa query, otomatis menggunakan semester aktif.\n\n**Response:** tahun_ajaran, semester, total_siswa, total_terdaftar, total_belum, siswa: [...]"
               },
               "response": []
             }
@@ -3003,7 +3053,7 @@
                     "1"
                   ]
                 },
-                "description": "Ganti guru yang mengampu mapel di kelas tertentu. Update dilakukan in-place (bukan delete+create) untuk mempertahankan unique constraint.\n\n**Akses:** SuperAdmin, Admin.\n\n**Field:**\n- `guru_id` (wajib) – ID guru pengganti\n\nGanti `1` di URL dengan ID record `pengampu_mapel` (bukan ID guru).\n\n**Validasi:** Tidak bisa diganti ke guru yang sama (409)."
+                "description": "Ganti guru yang mengampu mapel di kelas tertentu. Update dilakukan in-place (bukan delete+create) untuk mempertahankan unique constraint.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah.\n\n**Field:**\n- `guru_id` (wajib) – ID guru pengganti\n\nGanti `1` di URL dengan ID record `pengampu_mapel` (bukan ID guru).\n\n**Validasi:** Tidak bisa diganti ke guru yang sama (409)."
               },
               "response": []
             },
@@ -3832,7 +3882,7 @@
                     }
                   ]
                 },
-                "description": "Ambil daftar pengaturan nilai (bobot komponen).\n\n**Akses:** Semua role.\n\n**Query:** tahun_ajaran dan semester opsional sebagai filter.\n\n**Response:** idPengaturan, tahunAjaran, semester, bobotHarian, bobotUts, bobotUas"
+                "description": "Ambil daftar pengaturan nilai (bobot komponen).\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah — **bukan** semua role; Guru, Siswa, dan karyawan biasa **403**. Bobot yang dipakai sebuah raport ikut di respons `raport/*` (`data.bobot`).\n\n**Query:** tahun_ajaran dan semester opsional sebagai filter.\n\n**Response:** idPengaturan, tahunAjaran, semester, bobotHarian, bobotUts, bobotUas"
               },
               "response": []
             },
@@ -3871,7 +3921,7 @@
                     "pengaturan-nilai"
                   ]
                 },
-                "description": "Buat pengaturan bobot nilai untuk semester tertentu.\n\n**Akses:** SuperAdmin, Admin.\n\n**Field:**\n- tahun_ajaran (wajib): format YYYY/YYYY\n- semester (wajib): 1 atau 2\n- bobot_harian (wajib): bobot nilai harian (0-100)\n- bobot_uts (wajib): bobot nilai UTS (0-100)\n- bobot_uas (wajib): bobot nilai UAS (0-100)\n\n**Catatan:** Total bobot_harian + bobot_uts + bobot_uas harus = 100. Unik per tahun_ajaran + semester."
+                "description": "Buat pengaturan bobot nilai untuk semester tertentu.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah.\n\n**Field:**\n- tahun_ajaran (wajib): format YYYY/YYYY\n- semester (wajib): 1 atau 2\n- bobot_harian (wajib): bobot nilai harian (0-100)\n- bobot_uts (wajib): bobot nilai UTS (0-100)\n- bobot_uas (wajib): bobot nilai UAS (0-100)\n\n**Catatan:** Total bobot_harian + bobot_uts + bobot_uas harus = 100. Unik per tahun_ajaran + semester."
               },
               "response": []
             },
@@ -3911,7 +3961,7 @@
                     "1"
                   ]
                 },
-                "description": "Update bobot komponen nilai untuk pengaturan tertentu.\n\n**Akses:** SuperAdmin, Admin.\n\nGanti 1 di URL dengan idPengaturan. Kirim hanya field yang berubah."
+                "description": "Update bobot komponen nilai untuk pengaturan tertentu.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah.\n\nGanti 1 di URL dengan idPengaturan. Kirim hanya field yang berubah."
               },
               "response": []
             }
@@ -4021,7 +4071,7 @@
                     "1"
                   ]
                 },
-                "description": "Hapus record nilai siswa.\n\n**Akses:** SuperAdmin, Admin.\n\nGanti 1 di URL dengan idNilai."
+                "description": "Hapus record nilai siswa.\n\n**Akses:** SuperAdmin, Admin, Guru (pengampu mapel tersebut — guru lain **403**). Administrator Sekolah **403**: menilai tetap milik guru.\n\nGanti 1 di URL dengan idNilai."
               },
               "response": []
             },
@@ -4048,7 +4098,7 @@
                     "1"
                   ]
                 },
-                "description": "Ambil daftar nilai seluruh siswa untuk satu pengampu mapel.\n\n**Akses:** Semua role (Guru hanya bisa akses mapel yang diampu sendiri).\n\nGanti 1 di URL dengan idPengampuMapel.\n\n**Response per item:** idNilai, siswaKelasId, pengampuMapelId, nilaiHarian, nilaiUts, nilaiUas, nilaiAkhir (null jika belum lengkap)"
+                "description": "Ambil daftar nilai seluruh siswa untuk satu pengampu mapel.\n\n**Akses:** SuperAdmin, Admin, Administrator Sekolah, Guru **pengampunya** (guru lain **403**) — **bukan** semua role; Siswa & karyawan biasa **403**.\n\nGanti 1 di URL dengan idPengampuMapel.\n\n**Response per item:** idNilai, siswaKelasId, pengampuMapelId, nilaiHarian, nilaiUts, nilaiUas, nilaiAkhir (null jika belum lengkap)"
               },
               "response": []
             },

@@ -115,7 +115,7 @@ diakses lewat IP:
 ```powershell
 cd C:\laragon\etc\ssl\mkcert
 ..\mkcert.exe -cert-file gateway-lan.pem -key-file gateway-lan-key.pem `
-  gateway.test localhost 127.0.0.1 192.168.12.162 192.168.12.173 192.168.12.185
+  gateway.test localhost 127.0.0.1 192.168.12.162 192.168.12.173 192.168.12.185 192.168.12.186
 ```
 
 **Pakai nama berkas tetap** (`-cert-file`/`-key-file`), bukan nama bawaan mkcert:
@@ -171,8 +171,11 @@ Define BASE "C:/path/to/project-microservice-laravel"
     ServerName gateway.test
     DocumentRoot "${BASE}/Gateway/public"
     SSLEngine on
-    SSLCertificateFile    "C:/laragon/etc/ssl/mkcert/gateway.test.pem"
-    SSLCertificateKeyFile "C:/laragon/etc/ssl/mkcert/gateway.test-key.pem"
+    # gateway-lan.pem: memuat gateway.test DAN IP LAN (lihat 2a). Pakai
+    # gateway.test.pem hanya kalau server memang tidak pernah diakses dari LAN —
+    # sertifikat itu tidak memuat IP, dan app Android akan ditolak.
+    SSLCertificateFile    "C:/laragon/etc/ssl/mkcert/gateway-lan.pem"
+    SSLCertificateKeyFile "C:/laragon/etc/ssl/mkcert/gateway-lan-key.pem"
 </VirtualHost>
 
 # ─── SERVICE INTERNAL: hanya localhost (127.0.0.1), TIDAK diekspos ke LAN ──────
@@ -651,8 +654,8 @@ Administrator Sekolah), **privasi baca** (penyaringan PII direktori + oracle
 pencarian NISN), **batas paginasi**, sesi multi-device, dan validasi
 cross-service. Kredensial dibaca dari environment variable (tidak ditulis di file).
 
-Satu SKIP yang wajar: uji scan terminal, butuh `php artisan terminal:register`
-manual — lihat di bawah.
+Tanpa variabel terminal di bawah, ada **satu SKIP yang wajar** — uji scan
+terminal, yang butuh `php artisan terminal:register` manual.
 
 ```powershell
 $env:TEST_ADMIN_PASSWORD = "PasswordSuperAdmin"
@@ -680,6 +683,38 @@ $env:TEST_BASE_URL       = "https://192.168.x.x/api"
 $env:TEST_ADMIN_PASSWORD = "PasswordSuperAdmin"
 powershell -ExecutionPolicy Bypass -File run-tests.ps1
 ```
+
+### Akun Test untuk App (`seed-test-accounts.ps1`)
+
+Menyiapkan **6 akun test** yang dipakai sesi app Android dan `capture-api-samples.ps1`
+— idempoten, aman dijalankan berulang:
+
+| Akun | Password | Untuk menguji |
+|---|---|---|
+| `akuntest.admin@example.com` | `AdminTest123` | Admin |
+| `akuntest.karyawan@example.com` | `KaryawanTest123` | Karyawan **biasa** (pembanding), tertaut ke record karyawan |
+| `akuntest.adminsekolah@example.com` | `AdminSekolahTest123` | Karyawan bertanda **Administrator Sekolah** |
+| `akuntest.petugasacara@example.com` | `PetugasAcaraTest123` | Karyawan bertanda **Petugas Acara** |
+| guru asli pertama yang punya pengampu | `GuruTest123` | Guru (endpoint `/saya`, nilai) |
+| siswa asli pertama yang terdaftar di kelas | `SiswaTest123` | Siswa |
+
+```powershell
+$env:TEST_ADMIN_PASSWORD = "PasswordSuperAdmin"
+$env:SEED_NILAI          = "1"     # opsional: isi nilai siswa test di semester aktif
+powershell -ExecutionPolicy Bypass -File seed-test-accounts.ps1
+```
+
+> **HANYA untuk server pengembangan/uji.** Skrip ini **mereset password** guru &
+> siswa *asli* pertama yang ditemukannya, dan dengan `SEED_NILAI=1` menulis nilai
+> karangan ke siswa asli itu — masuk raport dan menggeser peringkat seluruh teman
+> sekelasnya. Jangan pernah dijalankan di server sekolah yang sudah dipakai.
+
+Kode keluar **0** bila semua langkah berhasil, **1** bila ada baris `[GAGAL]` —
+ringkasan akhirnya menyatakan `BELUM SIAP` alih-alih `SIAP DIPAKAI`. Skrip ini
+bertahan terhadap batas login 5/menit (menunggu `Retry-After`), dan tidak pernah
+menghapus atau menimpa apa pun berdasarkan pencarian yang gagal: GET yang gagal
+dilaporkan, bukan dibaca sebagai "data belum ada". Nilai yang sudah ada tidak
+ditimpa, sehingga editan penguji selamat saat skrip dijalankan ulang.
 
 ---
 
@@ -760,12 +795,14 @@ Checklist lain:
       di SAN, setiap klien menolak koneksi dengan `RemoteCertificateNameMismatch` —
       app Android tidak bisa konek sama sekali, sementara `curl -k` tetap jalan
       sehingga mudah dikira backend baik-baik saja. Regenerasi:
-      ```sh
-      cd C:/laragon/etc/ssl/mkcert
-      ./../mkcert.exe -cert-file gateway-lan.pem -key-file gateway-lan-key.pem         gateway.test localhost 127.0.0.1 <IP-SERVER>
+      ```powershell
+      cd C:\laragon\etc\ssl\mkcert
+      ..\mkcert.exe -cert-file gateway-lan.pem -key-file gateway-lan-key.pem `
+        gateway.test localhost 127.0.0.1 <SEMUA-IP-LAN-YANG-PERNAH-DIPAKAI>
       ```
-      lalu arahkan `SSLCertificateFile`/`SSLCertificateKeyFile` di vhost ke berkas
-      itu dan reload Apache. **Lebih baik lagi: kunci IP server lewat DHCP
+      Cantumkan **semua** IP yang pernah dipakai, bukan hanya yang sekarang (lihat
+      bagian 2a). Nama berkasnya tetap, jadi vhost tidak perlu disunting — cukup
+      reload Apache. **Lebih baik lagi: kunci IP server lewat DHCP
       reservation** supaya tidak perlu diulang.
 - [ ] **CA mkcert harus dipercaya perangkat klien.** Android tidak mempercayai CA
       mkcert secara bawaan. Pasang `rootCA.pem`

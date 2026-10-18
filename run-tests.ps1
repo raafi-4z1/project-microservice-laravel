@@ -1994,9 +1994,7 @@ if ($asTU -and $asBiasa) {
     # 0238679). Dokumen app sempat menyebutnya terkunci, sehingga app dan route
     # berselisih tanpa ada yang gagal. Body sengaja KOSONG: 422 membuktikan gate
     # role terlewati tanpa benar-benar mengganti semester aktif server.
-    $rS = Api POST "akademik/semester/aktif" @{} -Token $asTU.tok
-    if ($rS.resCode -eq 422) { $script:PASS++; Write-Host "  [PASS] TU -> POST semester/aktif lolos gate role (422 validasi, semester tidak berubah)" -ForegroundColor Green }
-    else { $script:FAIL++; Write-Host "  [FAIL] TU -> POST semester/aktif = $($rS.resCode) (harus 422: lolos gate, ditolak validasi)" -ForegroundColor Red }
+    Chk "TU -> POST semester/aktif (harus 422 = lolos gate, semester tidak berubah)" (Api POST "akademik/semester/aktif" @{} -Token $asTU.tok) 422
     Chk "Karyawan biasa -> POST semester/aktif (harus 403)" (Api POST "akademik/semester/aktif" @{} -Token $asBiasa.tok) 403
 
     # Yang TETAP milik peran mengajar, bukan TU. Dulu README menyatakan "satu-
