@@ -213,9 +213,13 @@ if ($r.headers) {
         if ($r.headers[$hn]) { Pass "Header $hn ada" }
         else { Warn "Header $hn tidak ada -- $($checks[$hn])" }
     }
-    if ($r.headers['X-Powered-By'] -or $r.headers['Server']) {
-        Warn "Header versi server terekspos (X-Powered-By/Server) -- sebaiknya disembunyikan"
-    } else { Pass "Header versi server tidak terekspos" }
+    # Yang dinilai VERSI-nya, bukan keberadaan header: Apache selalu mengirim `Server`
+    # (ServerTokens Prod -> "Apache" saja) dan itu tak bisa dihapus tanpa modul tambahan,
+    # jadi cek lama memberi WARN abadi -- peringatan yang selalu muncul lama-lama diabaikan.
+    $sv = "$($r.headers['Server'])"
+    if ($r.headers['X-Powered-By'] -or $sv -match '\d') {
+        Warn "Header versi server terekspos (X-Powered-By='$($r.headers['X-Powered-By'])', Server='$sv') -- sebaiknya disembunyikan"
+    } else { Pass "Header versi server tidak terekspos (Server='$sv')" }
 } else { Skip "Security headers (tidak dapat membaca header)" }
 
 # APP_DEBUG leak: picu error, cek apakah 'data' membocorkan pesan internal

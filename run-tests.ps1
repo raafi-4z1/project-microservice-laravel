@@ -228,6 +228,46 @@ file_put_contents($out, "\x89PNG\r\n\x1a\n" . $chunk('IHDR', $ihdr) . $chunk('IE
     Remove-Item $tmp -ErrorAction SilentlyContinue
 }
 
+# JPEG NYATA NxN ber-EXIF Orientation=6: separuh KIRI putih, KANAN hitam. Orientasi 6
+# = kolom kiri tersimpan adalah sisi ATAS tampilan, jadi foto yang diproses benar
+# beratas putih & berbawah hitam; kalau orientasi diabaikan, bawahnya ikut putih.
+function New-JpegExif6([string]$Path, [int]$N) {
+    $php = @'
+<?php
+$out = $argv[1]; $n = (int)$argv[2];
+$im = imagecreatetruecolor($n, $n);
+imagefilledrectangle($im, 0, 0, intdiv($n, 2) - 1, $n - 1, 0xFFFFFF);
+ob_start(); imagejpeg($im, null, 90); $jpg = ob_get_clean();
+$app1 = "Exif\x00\x00" . "MM\x00\x2A\x00\x00\x00\x08\x00\x01"
+      . "\x01\x12\x00\x03\x00\x00\x00\x01\x00\x06\x00\x00" . "\x00\x00\x00\x00";
+file_put_contents($out, substr($jpg, 0, 2) . "\xFF\xE1" . pack('n', strlen($app1) + 2) . $app1 . substr($jpg, 2));
+'@
+    $tmp = [System.IO.Path]::GetTempFileName() + '.php'
+    Set-Content -LiteralPath $tmp -Value $php -Encoding UTF8
+    & php -d memory_limit=-1 $tmp $Path $N | Out-Null
+    Remove-Item $tmp -ErrorAction SilentlyContinue
+}
+
+# Ukuran WebP + kecerahan rata-rata di tengah-atas dan tengah-bawah (0-255).
+function Get-WebpInfo([string]$Path) {
+    $php = @'
+<?php
+$im = @imagecreatefromwebp($argv[1]);
+if (!$im) { exit; }
+$l = function ($x, $y) use ($im) { $c = imagecolorat($im, $x, $y); return intdiv((($c >> 16) & 255) + (($c >> 8) & 255) + ($c & 255), 3); };
+$w = imagesx($im); $h = imagesy($im);
+echo $w, ' ', $h, ' ', $l(intdiv($w, 2), intdiv($h, 8)), ' ', $l(intdiv($w, 2), $h - 1 - intdiv($h, 8));
+'@
+    $tmp = [System.IO.Path]::GetTempFileName() + '.php'
+    # ASCII, bukan UTF8: BOM dari Set-Content PS 5.1 ikut tercetak PHP dan merusak parsing
+    Set-Content -LiteralPath $tmp -Value $php -Encoding ASCII
+    $o = "$(& php $tmp $Path)"
+    Remove-Item $tmp -ErrorAction SilentlyContinue
+    $p = $o -split ' '
+    if ($p.Count -ne 4) { return $null }
+    return [PSCustomObject]@{ W = [int]$p[0]; H = [int]$p[1]; Atas = [int]$p[2]; Bawah = [int]$p[3] }
+}
+
 function Section([string]$Title) {
     Write-Host ""
     Write-Host "═══ $Title" -ForegroundColor Cyan
@@ -2364,6 +2404,39 @@ foreach ($kasus in @(
     }
 }
 Remove-Item $imgBig, $imgKecil -ErrorAction SilentlyContinue
+
+# -- Foto ASLI benar-benar diproses sampai tersimpan --
+# Tes dimensi di atas memakai PNG header-saja yang ditolak SEBELUM decode, jadi tidak
+# ada foto yang pernah lewat pipeline-nya. Tiga kerusakan nyata lolos karenanya:
+#  - upload_tmp_dir di folder yang tak bisa di-list (C:\Windows\Temp): realpath()
+#    berkas upload = false, Passport membuka path "" -> SEMUA upload 500
+#  - multipart Gateway mengirim isAdminSekolah=false sebagai "" -> POST /karyawan
+#    berfoto selalu 422
+#  - auto-orient memutar 6000x6000 dalam resolusi penuh (~568 MB) -> lewat memory_limit
+# Maka ukurannya sengaja batas validasi (6000x6000) dan ber-EXIF orientasi 6.
+$imgExif = Join-Path $imgDir "uji-exif6-$TS.jpg"
+New-JpegExif6 $imgExif 6000
+$r = Api-Upload "karyawan" @{ email = "foto.$TS@example.com"; nip = "78$TS"; namaLengkap = "Uji Foto $TS"; jabatan = "Satpam" } $imgExif -FileMime 'image/jpeg'
+Chk "POST /karyawan + foto asli 6000x6000 EXIF-6 (harus 201)" $r 201
+if ($script:LAST_CHK) {
+    $kidFoto = $r.data.idKaryawan
+    $script:CREATED['karyawan_as'] = @($script:CREATED['karyawan_as']) + $kidFoto
+    $webp = Join-Path $imgDir "uji-exif6-$TS.webp"
+    $info = $null
+    try {
+        Invoke-WebRequest -Uri "$($CFG.BaseUrl)/karyawan/foto/$kidFoto" -UseBasicParsing -OutFile $webp `
+            -Headers @{ Accept = 'application/json'; Authorization = "Bearer $script:TOKEN" } -TimeoutSec $CFG.Timeout
+        $info = Get-WebpInfo $webp
+    } catch {}
+    if ($info -and $info.W -eq 360 -and $info.H -eq 480 -and $info.Atas -gt 200 -and $info.Bawah -lt 50) {
+        $script:PASS++; Write-Host "  [PASS] foto tersimpan 360x480 dan tegak (atas=$($info.Atas) bawah=$($info.Bawah))" -ForegroundColor Green
+    } else {
+        $hasil = if ($info) { "$($info.W)x$($info.H) atas=$($info.Atas) bawah=$($info.Bawah)" } else { 'tidak bisa diambil/didecode' }
+        $script:FAIL++; Write-Host "  [FAIL] foto hasil $hasil -- harus 360x480, atas terang, bawah gelap" -ForegroundColor Red
+    }
+    Remove-Item $webp -ErrorAction SilentlyContinue
+}
+Remove-Item $imgExif -ErrorAction SilentlyContinue
 
 # ──────────────────────────────────────────────
 #  PHASE 15 — CROSS-SERVICE VALIDATION

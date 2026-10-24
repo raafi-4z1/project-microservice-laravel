@@ -154,7 +154,11 @@ class RuangKelasController extends Controller
     public function store(Request $request)
     {
         try {
-            $request->merge(['jurusan' => strtoupper($request->jurusan)]);
+            // Hanya string yang dinormalisasi; null/array dibiarkan supaya ditolak
+            // validasi (422) — strtoupper(null) deprecated, strtoupper(array) TypeError (500).
+            if (is_string($request->jurusan)) {
+                $request->merge(['jurusan' => strtoupper($request->jurusan)]);
+            }
 
             $validate = Validator::make($request->all(), [
                 'noKelas'    => 'required|numeric|min:1',
@@ -199,7 +203,7 @@ class RuangKelasController extends Controller
     {
         try {
             $isJurusan = $request->filled('jurusan');
-            if ($isJurusan) {
+            if ($isJurusan && is_string($request->jurusan)) {
                 $request->merge(['jurusan' => strtoupper($request->jurusan)]);
             }
 

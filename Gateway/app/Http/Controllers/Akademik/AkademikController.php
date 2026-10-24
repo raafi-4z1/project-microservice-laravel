@@ -829,7 +829,9 @@ class AkademikController extends Controller
         // BOM UTF-8 supaya Excel membaca huruf beraksen dengan benar
         fwrite($out, "\xEF\xBB\xBF");
         foreach ($baris as $b) {
-            fputcsv($out, $b, ';');   // titik koma: default Excel lokal ID
+            // titik koma: default Excel lokal ID. $escape '' (RFC 4180, kutip digandakan)
+            // wajib ditulis eksplisit sejak PHP 8.4 — default lama "\\" deprecated.
+            fputcsv($out, $b, ';', '"', '');
         }
         rewind($out);
         $isi = stream_get_contents($out);

@@ -711,9 +711,15 @@ class GuruController extends Controller
 
     private function convertImage(\Illuminate\Http\UploadedFile $file, int $quality = 85): mixed
     {
-        return ImageManager::gd()->read($file->getPathname())
+        // autoOrientation dimatikan: kalau aktif, read() memutar gambar RESOLUSI PENUH
+        // sesuai EXIF — foto potret HP 12 MP jadi ~194 MB, 6000x6000 ~568 MB, lewat
+        // memory_limit. Crop dulu (dimensi ditukar bila EXIF 5-8 menukar sisi), baru
+        // putar hasil kecilnya: puncak tinggal biaya decode (~150 MB di 6000x6000).
+        $gambar   = ImageManager::gd(autoOrientation: false)->read($file->getPathname());
+        $tertukar = in_array($gambar->exif('IFD0.Orientation'), [5, 6, 7, 8], true);
+
+        return $gambar->coverDown($tertukar ? 480 : 360, $tertukar ? 360 : 480)
             ->orient()
-            ->coverDown(360, 480)
             ->toWebp($quality);
     }
 

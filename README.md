@@ -35,12 +35,39 @@ Klien / Frontend
 ## Prasyarat
 
 - **[Laragon](https://laragon.org/download/)** versi Full (sudah termasuk Apache, MySQL, PHP)
-- **PHP ≥ 8.2** — cek versi aktif di Laragon: klik kanan ikon Laragon di area notifikasi taskbar → PHP → versi
-- **Ekstensi PHP yang wajib aktif:** `pdo_mysql`, `gd`, `mbstring`, `openssl`, `fileinfo`, `sodium`, `curl`
+- **PHP ≥ 8.2.35** (atau 8.3.36 / 8.4.27 / 8.5.12) — rilis 21 Okt 2026 yang menambal
+  **CVE-2026-109618 & CVE-2026-109619** (RCE tanpa login, terpicu saat PHP mem-parsing
+  request multipart — *sebelum* kode Laravel jalan, jadi auth/validasi aplikasi tidak
+  menolong). Versi di bawahnya **jangan** dipakai. Cek: klik kanan ikon Laragon → PHP → versi.
+  - **Versi yang dipakai & teruji: PHP 8.5.12** (NTS x64) — dukungan keamanan s/d 31 Des
+    2029, didukung Laravel 12 *maupun* 13; seluruh `run-tests.ps1` lulus di atasnya. Dukungan
+    PHP 8.2 sendiri berakhir **31 Des 2026**. Di 8.5 OPcache sudah built-in dan **aktif**
+    (perubahan kode terbaca ±2 detik setelah disimpan) — **jangan** tambahkan
+    `zend_extension=opcache` di `php.ini` (memunculkan warning).
+  - Saat ganti versi PHP, **jangan salin `php.ini` dari versi lama.** Opsi yang sudah usang
+    (mis. `session.sid_length`, `session.sid_bits_per_character` di 8.5) mencetak "Deprecated"
+    di setiap perintah `php`/`artisan`/`composer`. Buat dari `php.ini-development` versi baru,
+    lalu terapkan pengaturan di bawah.
+  - **Laravel 12** hanya menerima perbaikan keamanan s/d **24 Feb 2027** — rencanakan
+    upgrade ke Laravel 13 (butuh PHP ≥ 8.3).
+- **Ekstensi PHP yang wajib aktif:** `pdo_mysql`, `gd`, `exif`, `mbstring`, `openssl`, `fileinfo`, `sodium`, `curl`
+  (dianjurkan juga: `intl`, `zip`, `pdo_sqlite` untuk unit test `:memory:`, `mysqli` untuk phpMyAdmin)
   - Cek di Laragon: klik kanan ikon Laragon di area notifikasi taskbar → PHP → Extensions
-  - `sodium` **wajib** — dependensi Laravel Passport (`lcobucci/jwt`); tanpa ini `composer install` Gateway gagal. `curl` dipakai komunikasi HMAC antar-service.
-  - Cara aktifkan: buka `php.ini` (klik kanan Laragon → PHP → php.ini), hapus `;` di depan `extension=sodium` dan `extension=curl`, simpan, lalu Reload Laragon.
-- **Composer ≥ 2** — download di [getcomposer.org](https://getcomposer.org)
+  - `sodium` **wajib** — dependensi Laravel Passport (`lcobucci/jwt`); tanpa ini `composer install` Gateway gagal. `curl` dipakai komunikasi HMAC antar-service. `exif` membaca orientasi foto kamera HP (tanpa ini foto potret tersimpan miring).
+  - Cara aktifkan: buka `php.ini` (klik kanan Laragon → PHP → php.ini), hapus `;` di depan baris `extension=...` yang belum aktif, simpan, lalu Reload Laragon.
+  - `php.ini` baru (hasil salin `php.ini-development`) **tidak** mengaktifkan ekstensi apa pun dan
+    `extension_dir`-nya menunjuk `C:\php\ext` — set `extension_dir` ke folder `ext` versi PHP itu
+    (path absolut), kalau tidak semua endpoint 500 (`Call to undefined function mb_split()`).
+  - Di `php.ini` itu set juga `upload_tmp_dir` dan `sys_temp_dir` ke `C:/laragon/tmp`. Kalau
+    kosong, PHP-CGI memakai `C:\Windows\Temp` — bisa ditulisi tapi tidak bisa di-*list* user
+    biasa, sehingga `realpath()` berkas upload gagal dan **setiap upload foto 500**
+    (Passport membuka path kosong saat membaca token).
+- **`memory_limit` ≥ 256M** — decode foto 6000×6000 (batas validasi) butuh ~150 MB; default 128M membuat upload foto valid gagal 500.
+- **Composer ≥ 2.10** — download di [getcomposer.org](https://getcomposer.org). Versi lama (2.4)
+  mencetak puluhan baris "Deprecated" di PHP 8.5 dan gagal mengunduh paket dist dari GitHub,
+  lalu diam-diam memasang lewat `git clone` (lambat, dan `vendor/` jadi berisi berkas yang
+  biasanya dibuang dari rilis). Laragon membawa Composer **sendiri** di `C:\laragon\bin\composer`
+  (dipakai terminal Laragon) selain hasil installer resmi — jalankan `composer self-update` di keduanya.
 - **Git**
 
 ---
@@ -646,8 +673,10 @@ Selalu jalankan `run-tests.ps1` sesudahnya. Kalau ada regresi,
 
 ### Testing Otomatis (PowerShell)
 
-Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**478 asersi**,
-terakhir 478 PASS / 0 FAIL / 0 SKIP — tanpa SKIP bila `TEST_TERMINAL_ID/TOKEN` diset) mencakup auth, CRUD semua service, akademik,
+Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**480 asersi**;
+terakhir 476 PASS / 0 FAIL / 1 SKIP — SKIP itu 4 asersi uji terminal yang ikut jalan
+bila `TEST_TERMINAL_ID/TOKEN` diset) mencakup auth, CRUD semua service, akademik,
+**upload foto asli** (6000×6000 ber-EXIF orientasi, sampai tersimpan tegak 360×480),
 **absensi** (kartu/QR, keluar, rekap, jendela PIN, wali kelas, autentikasi
 terminal), RBAC 5 akun (termasuk pasangan pembanding karyawan biasa vs
 Administrator Sekolah), **privasi baca** (penyaringan PII direktori + oracle
@@ -814,6 +843,31 @@ Checklist lain:
       penyerang daftar exploit yang cocok tanpa perlu menebak. Di `php.ini` set
       `expose_php = Off`; di konfigurasi Apache set `ServerTokens Prod` dan
       `ServerSignature Off`, lalu restart keduanya.
+- [ ] **PHP harus versi tertambal CVE-2026-109618/109619.** `php -v` di server
+      minimal 8.2.35 / 8.3.36 / 8.4.27 / 8.5.12 (paket distro boleh bernomor lebih
+      rendah *asal* vendornya menyatakan sudah backport). Celahnya terpicu saat
+      parsing request, jadi setiap URL Gateway adalah pintu masuk. Lapisan tambahan
+      di `php.ini`: `session.upload_progress.enabled = Off` — API ini tidak
+      memakainya, dan itu menutup jalur use-after-free yang sudah terkonfirmasi
+      (`ini_set()`/`.user.ini` terlambat, harus di `php.ini`). Setelah ganti versi
+      atau `php.ini`, **restart Apache** — worker `php-cgi` yang sudah jalan tetap
+      memakai binary & konfigurasi lama. Di server pakai `php.ini-production` sebagai
+      dasar (bukan `-development`, yang menampilkan error ke klien).
+- [ ] **Jangan pakai `root` tanpa password untuk aplikasi.** Contoh `.env` di atas
+      (`DB_USERNAME=root`, `DB_PASSWORD=` kosong) hanya untuk development. Di server:
+      beri `root` password, lalu buat satu user per service yang hanya punya hak atas
+      database service itu — kalau satu service jebol (mis. RCE seperti CVE PHP di
+      atas), penyerang tidak otomatis memegang semua database.
+- [ ] **`composer audit` bersih di setiap service** sebelum deploy — paket dengan
+      advisory keamanan (mis. ReDoS lewat header `Cache-Control` di
+      `symfony/http-foundation` < 7.4.19, bisa dipicu tanpa login) diperbaiki dengan
+      `composer update <paket> -w`, lalu jalankan ulang `run-tests.ps1`.
+- [ ] **Upgrade MySQL 8.0 → 8.4 LTS** (8.0 habis dukungan April 2026). Sebelum
+      start versi baru: backup (`backup-databases.ps1`), hapus
+      `default_authentication_plugin` dari `my.ini` (dihapus di 8.4 — server menolak
+      start), dan karena user lama memakai `mysql_native_password` yang di 8.4
+      **nonaktif secara default**, tambahkan `mysql_native_password=ON` di `[mysqld]`
+      atau ubah user ke `caching_sha2_password`.
 
 ---
 

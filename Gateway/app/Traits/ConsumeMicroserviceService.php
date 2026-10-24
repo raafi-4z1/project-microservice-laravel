@@ -43,11 +43,16 @@ trait ConsumeMicroserviceService
 
         $signature = hash_hmac('sha256', $timestamp . $hmacBody, $this->secret);
 
-        $options['headers'] = array_merge([
-            'X-Timestamp'     => $timestamp,
-            'X-Signature'     => $signature,
-            'X-Forwarded-For' => request()->ip(),
-        ], $extraHeaders);
+        // Nilai header int (X-Timestamp, X-Guru-Id, X-User-Id dari pemanggil) deprecated
+        // sejak Guzzle 7.11 dan ditolak di 8.0 — dijadikan string di satu tempat ini.
+        $options['headers'] = array_map(
+            fn ($v) => is_int($v) ? (string) $v : $v,
+            array_merge([
+                'X-Timestamp'     => $timestamp,
+                'X-Signature'     => $signature,
+                'X-Forwarded-For' => request()->ip(),
+            ], $extraHeaders)
+        );
         $options['timeout']         = 30;
         $options['connect_timeout'] = 5;
         
@@ -86,6 +91,11 @@ trait ConsumeMicroserviceService
                 ];
             } elseif (is_resource($value)) {
                 $multipart[] = ['name' => $name, 'contents' => $value];
+            } elseif (is_bool($value)) {
+                // (string) false = "" -> ditolak aturan `boolean` di service. Jalur JSON
+                // mengirim false apa adanya; multipart tak bertipe, jadi pakai "1"/"0".
+                // Tanpa ini POST /karyawan + foto (isAdminSekolah=false) selalu 422.
+                $multipart[] = ['name' => $name, 'contents' => $value ? '1' : '0'];
             } else {
                 $multipart[] = ['name' => $name, 'contents' => (string) $value];
             }
