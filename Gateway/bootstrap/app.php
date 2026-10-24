@@ -32,6 +32,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth.terminal' => \App\Http\Middleware\AuthenticateTerminal::class,
         ]);
         $middleware->append(\App\Http\Middleware\CollectForwardedIps::class);
+        // Global, bukan per-route: harus jalan SEBELUM auth:api. Passport membuka
+        // setiap berkas unggahan saat membaca token; berkas yang ditolak PHP
+        // (melewati upload_max_filesize) membuatnya meledak jadi 500.
+        $middleware->append(\App\Http\Middleware\TolakUploadGagal::class);
 
         // WAJIB. Sejak Laravel 11 grup `api` bawaan TIDAK lagi memuat throttle:
         // ia hanya disisipkan kalau apiLimiter diset, dan itu hanya terjadi lewat
@@ -97,6 +101,13 @@ return Application::configure(basePath: dirname(__DIR__))
                 } elseif (str_contains($e->getMessage(), 'Unauthenticated')) {
                     $msg = "Unauthenticated";
                     $err = 401;
+                } elseif ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) {
+                    // Status bawaan exception HTTP (413 PostTooLarge, abort(403), ...)
+                    // dulu dibuang dan jatuh ke 500 — klien mengira server yang rusak.
+                    $err = $e->getStatusCode();
+                    $msg = $e instanceof \Illuminate\Http\Exceptions\PostTooLargeException
+                        ? 'Ukuran permintaan melebihi batas server (maks ' . strtoupper(ini_get('post_max_size')) . 'B).'
+                        : (\Symfony\Component\HttpFoundation\Response::$statusTexts[$err] ?? 'Error');
                 }
 
                 // `data` dulu selalu berisi pesan exception mentah. Untuk 401/405

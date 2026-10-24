@@ -62,6 +62,11 @@ Klien / Frontend
     kosong, PHP-CGI memakai `C:\Windows\Temp` — bisa ditulisi tapi tidak bisa di-*list* user
     biasa, sehingga `realpath()` berkas upload gagal dan **setiap upload foto 500**
     (Passport membuka path kosong saat membaca token).
+  - Set juga `display_startup_errors = Off` (nilai `-development` adalah On). Peringatan fase
+    startup request — mis. `POST Content-Length ... exceeds the limit` saat foto > `post_max_size`
+    — kalau tidak dicetak sebagai **HTML di depan JSON**, sehingga app gagal mem-parse respons.
+    `display_errors = stderr` tidak menolong: opsi itu diabaikan oleh php-cgi di bawah fcgid
+    (nama SAPI-nya `cgi-fcgi`). Error tetap tercatat di `error_log`.
 - **`memory_limit` ≥ 256M** — decode foto 6000×6000 (batas validasi) butuh ~150 MB; default 128M membuat upload foto valid gagal 500.
 - **Composer ≥ 2.10** — download di [getcomposer.org](https://getcomposer.org). Versi lama (2.4)
   mencetak puluhan baris "Deprecated" di PHP 8.5 dan gagal mengunduh paket dist dari GitHub,
@@ -673,10 +678,11 @@ Selalu jalankan `run-tests.ps1` sesudahnya. Kalau ada regresi,
 
 ### Testing Otomatis (PowerShell)
 
-Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**480 asersi**;
-terakhir 476 PASS / 0 FAIL / 1 SKIP — SKIP itu 4 asersi uji terminal yang ikut jalan
+Selain Postman, tersedia `run-tests.ps1` — suite end-to-end (**482 asersi**;
+terakhir 478 PASS / 0 FAIL / 1 SKIP — SKIP itu 4 asersi uji terminal yang ikut jalan
 bila `TEST_TERMINAL_ID/TOKEN` diset) mencakup auth, CRUD semua service, akademik,
 **upload foto asli** (6000×6000 ber-EXIF orientasi, sampai tersimpan tegak 360×480),
+**batas ukuran upload** (3 MB → 422, 9 MB → 413, keduanya JSON — bukan 500),
 **absensi** (kartu/QR, keluar, rekap, jendela PIN, wali kelas, autentikasi
 terminal), RBAC 5 akun (termasuk pasangan pembanding karyawan biasa vs
 Administrator Sekolah), **privasi baca** (penyaringan PII direktori + oracle

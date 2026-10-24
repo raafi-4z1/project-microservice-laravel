@@ -104,16 +104,16 @@ sendiri. Komponen UI yang dipakai lebih dari satu feature diletakkan di
 ## Backend / API
 
 - Satu base URL Gateway. Untuk deployment ini backend ada di SERVER LAN, bukan PC
-  dev, jadi debug default = `https://192.168.12.162/api` (HP fisik & emulator sama-
-  sama menjangkaunya di LAN). **IP-nya dari DHCP dan sudah berpindah**
-  (`.185` → `.173` → `.162`), jadi base URL WAJIB configurable via
+  dev, jadi debug default = `https://192.168.12.173/api` per 2026-10-24 (HP fisik &
+  emulator sama-sama menjangkaunya di LAN). **IP-nya dari DHCP dan sudah berpindah**
+  (`.185` → `.173` → `.162` → `.179` → `.173`), jadi base URL WAJIB configurable via
   BuildConfig/setting — jangan dipatok. Sediakan opsi trust-all HANYA untuk build
   debug.
   **DUA masalah TLS terpisah — sering tertukar:**
   1. *Hostname mismatch*: app menembak IP yang tidak tercantum di sertifikat
      → `SSLPeerUnverifiedException: Hostname 192.168.12.x not verified`.
      **Sudah diselesaikan di server:** sertifikat kini memuat `gateway.test`,
-     `localhost`, `127.0.0.1`, `192.168.12.162`, `.173`, `.185`, `.186`. Masalah ini
+     `localhost`, `127.0.0.1`, `192.168.12.173`, `.162`, `.179`, `.185`, `.186`. Masalah ini
      hanya muncul lagi kalau DHCP memberi IP **baru** di luar daftar itu — backend
      lalu harus menerbitkan ulang sertifikatnya (`mkcert gateway.test <IP>`).
      Mematikan hostname verification di build debug (OkHttp:
@@ -332,6 +332,10 @@ untuk keluar dari keadaan itu.
   di atas 6000 dan dibalas **422 "invalid image dimensions"**. Setelah crop,
   perkecil sisi terpanjang ke ±1600 px (server toh menyimpannya sebagai 360×480).
   Itu sekaligus menyelesaikan batas 2 MB tanpa menurunkan kualitas yang terlihat.
+  Kalau berkas tetap terlalu besar, server membalas JSON biasa (tampilkan `resMsg`):
+  > 2 MB → **422** "Ukuran berkas foto melebihi batas unggah server (maks 2 MB)";
+  > 8 MB (seluruh request) → **413** "Ukuran permintaan melebihi batas server".
+  (Sebelum 2026-10-24 keduanya keliru dibalas 500.)
   Batas atas ini ada untuk mencegah *decompression bomb*: berkas kecil tapi
   dimensinya raksasa akan menghabiskan memori server saat di-decode.
   Foto pada respons detail berupa string `data:image/webp;base64,...` — render dengan Coil.

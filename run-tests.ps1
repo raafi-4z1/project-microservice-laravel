@@ -2438,6 +2438,26 @@ if ($script:LAST_CHK) {
 }
 Remove-Item $imgExif -ErrorAction SilentlyContinue
 
+# -- Berkas melewati batas PHP: harus 4xx ber-JSON, bukan 500 --
+# 3 MB > upload_max_filesize: PHP menolak berkasnya, lalu Passport (auth:api) membuka
+# path kosong saat membaca token -> 500. 9 MB > post_max_size: status 413 dibuang
+# fallback handler, dan peringatan startup PHP tercetak sebagai HTML di depan JSON.
+# Isinya acak: yang diuji jalur ukuran, bukan validasi gambar.
+$rndUji = [Random]::new(7)
+$besar3 = Join-Path $imgDir "uji-3mb-$TS.jpg"; $buf = New-Object byte[] (3MB); $rndUji.NextBytes($buf); [IO.File]::WriteAllBytes($besar3, $buf)
+$besar9 = Join-Path $imgDir "uji-9mb-$TS.jpg"; $buf = New-Object byte[] (9MB); $rndUji.NextBytes($buf); [IO.File]::WriteAllBytes($besar9, $buf)
+$r = Api-Upload "siswa" $fieldSiswa $besar3 -FileMime 'image/jpeg'
+Chk "POST /siswa foto 3 MB (harus 422, bukan 500)" $r 422
+if ($script:LAST_CHK -and "$($r.resMsg)" -notmatch 'batas|maks|max') {
+    $script:FAIL++; Write-Host "  [FAIL] 422 tapi pesannya tidak menyebut batas ukuran: $($r.resMsg)" -ForegroundColor Red
+}
+$r = Api-Upload "siswa" $fieldSiswa $besar9 -FileMime 'image/jpeg'
+# 413 (post_max_size) atau 422 (bila batas PHP dinaikkan) sama-sama benar; yang
+# dilarang 500 dan body non-JSON (resCode 0 = respons tak bisa di-parse).
+if ($r.resCode -in 413, 422) { $script:PASS++; Write-Host "  [PASS $($r.resCode)] POST /siswa foto 9 MB ditolak ber-JSON: $($r.resMsg)" -ForegroundColor Green }
+else { $script:FAIL++; Write-Host "  [FAIL $($r.resCode)] POST /siswa foto 9 MB (harus 413/422 ber-JSON) -- $($r.resMsg)" -ForegroundColor Red }
+Remove-Item $besar3, $besar9 -ErrorAction SilentlyContinue
+
 # ──────────────────────────────────────────────
 #  PHASE 15 — CROSS-SERVICE VALIDATION
 # ──────────────────────────────────────────────
